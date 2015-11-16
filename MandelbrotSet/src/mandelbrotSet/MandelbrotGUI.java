@@ -5,6 +5,7 @@ import java.awt.event.*;
 import javax.swing.*;
 
 /**
+ * HELLOS
  * <p>
  * Mandelbrot Set Program
  * </p>
