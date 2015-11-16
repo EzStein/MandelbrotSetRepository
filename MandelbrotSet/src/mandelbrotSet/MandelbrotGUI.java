@@ -5,12 +5,6 @@ import java.awt.event.*;
 import javax.swing.*;
 
 /**
- * 
- * 
- * sef
- * sefs
- * efs
- * ef
  * <p>
  * Mandelbrot Set Program
  * </p>
