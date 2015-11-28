@@ -3,42 +3,22 @@ package fx;
 import java.math.*;
 import java.util.HashMap;
 
+import colorFunction.ColorFunction;
+import colorFunction.RainbowFunctionLogarithmic;
 import javafx.scene.image.*;
 import javafx.scene.paint.Color;
 
 public class Calculator
 {
 	private boolean interrupted = false;
-	private final HashMap<Integer,Color> hm;
 	private int pixelsCalculated = 0;
+	private ColorFunction colorFunction;
+	
+	public Calculator()
 	{
-		hm = new HashMap<Integer, Color>();
-		int i = 0;
-		double R = 255, G = 0, B = 0;
-		while(i < 127)
-		{
-			hm.put(i, Color.color(R/255, G/255, B/255,1));
-			R-= 2;
-			G+= 2;
-			i++;
-		}
-		R = 0; G = 255; B = 0;
-		while(i < 254)
-		{
-			hm.put(i, Color.color(R/255, G/255, B/255,1));
-			G -= 2;
-			B += 2;
-			i++;
-		}
-		R = 0; G = 0; B = 255;
-		while(i < 381)
-		{
-			hm.put(i, Color.color(R/255, G/255, B/255,1));
-			R += 2;
-			B -= 2;
-			i ++;
-		}
-	};
+		colorFunction = new RainbowFunctionLogarithmic();
+		
+	}
 	
 	public int pointToPixelX(BigDecimal x, Region<BigDecimal> region, Region<Integer> pixelRegion, int precision)
 	{
@@ -134,7 +114,7 @@ public class Calculator
 					}
 					else
 					{
-						writer.setColor(x-x1, y-y1, colorFunction(it));
+						writer.setColor(x-x1, y-y1, colorFunction.getColor(it));
 					}
 				}
 				else
@@ -145,7 +125,7 @@ public class Calculator
 					}
 					else
 					{
-						writer.setColor(x-x1, y-y1, colorFunction(it));
+						writer.setColor(x-x1, y-y1, colorFunction.getColor(it));
 					}
 				}
 				incrementPixels();
@@ -192,7 +172,7 @@ public class Calculator
 							for(int j = 0; j<16; j++)
 							{
 								if(x-x1+i<image.getWidth()&&y-y1+j<image.getHeight())
-								writer.setColor(x-x1+i, y-y1+j, colorFunction(it));
+								writer.setColor(x-x1+i, y-y1+j, colorFunction.getColor(it));
 							}
 						}
 					}
@@ -217,7 +197,7 @@ public class Calculator
 							for(int j = 0; j<16; j++)
 							{
 								if(x-x1+i<image.getWidth()&&y-y1+j<image.getHeight())
-								writer.setColor(x-x1+i, y-y1+j, colorFunction(it));
+								writer.setColor(x-x1+i, y-y1+j, colorFunction.getColor(it));
 							}
 						}
 					}
@@ -267,7 +247,7 @@ public class Calculator
 								for(int j = 0; j<4; j++)
 								{
 									if(x-x1+i<image.getWidth()&&y-y1+j<image.getHeight())
-									writer.setColor(x-x1+i, y-y1+j, colorFunction(it));
+									writer.setColor(x-x1+i, y-y1+j, colorFunction.getColor(it));
 								}
 							}
 						}
@@ -292,7 +272,7 @@ public class Calculator
 								for(int j = 0; j<4; j++)
 								{
 									if(x-x1+i<image.getWidth()&&y-y1+j<image.getHeight())
-									writer.setColor(x-x1+i, y-y1+j, colorFunction(it));
+									writer.setColor(x-x1+i, y-y1+j, colorFunction.getColor(it));
 								}
 							}
 						}
@@ -332,7 +312,7 @@ public class Calculator
 						}
 						else
 						{
-							writer.setColor(x-x1, y-y1, colorFunction(it));
+							writer.setColor(x-x1, y-y1, colorFunction.getColor(it));
 						}
 					}
 					else
@@ -343,7 +323,7 @@ public class Calculator
 						}
 						else
 						{
-							writer.setColor(x-x1, y-y1, colorFunction(it));
+							writer.setColor(x-x1, y-y1, colorFunction.getColor(it));
 						}
 					}
 					incrementPixels();
@@ -395,7 +375,7 @@ public class Calculator
 					}
 					else
 					{
-						writer.setColor(x-x1, y-y1, colorFunction(it));
+						writer.setColor(x-x1, y-y1, colorFunction.getColor(it));
 					}
 					incrementPixels();
 				}
@@ -418,7 +398,7 @@ public class Calculator
 					}
 					else
 					{
-						writer.setColor(x-x1, y-y1, colorFunction(it));
+						writer.setColor(x-x1, y-y1, colorFunction.getColor(it));
 					}
 					incrementPixels();
 				}
@@ -466,7 +446,7 @@ public class Calculator
 							for(int j = 0; j<16; j++)
 							{
 								if(x-x1+i<image.getWidth()&&y-y1+j<image.getHeight())
-								writer.setColor(x-x1+i, y-y1+j, colorFunction(it));
+								writer.setColor(x-x1+i, y-y1+j, colorFunction.getColor(it));
 							}
 						}
 					}
@@ -503,7 +483,7 @@ public class Calculator
 							for(int j = 0; j<16; j++)
 							{
 								if(x-x1+i<image.getWidth()&&y-y1+j<image.getHeight())
-								writer.setColor(x-x1+i, y-y1+j, colorFunction(it));
+								writer.setColor(x-x1+i, y-y1+j, colorFunction.getColor(it));
 							}
 						}
 					}
@@ -554,7 +534,7 @@ public class Calculator
 								for(int j = 0; j<4; j++)
 								{
 									if(x-x1+i<image.getWidth()&&y-y1+j<image.getHeight())
-									writer.setColor(x-x1+i, y-y1+j, colorFunction(it));
+									writer.setColor(x-x1+i, y-y1+j, colorFunction.getColor(it));
 								}
 							}
 						}
@@ -594,7 +574,7 @@ public class Calculator
 								for(int j = 0; j<4; j++)
 								{
 									if(x-x1+i<image.getWidth()&&y-y1+j<image.getHeight())
-									writer.setColor(x-x1+i, y-y1+j, colorFunction(it));
+									writer.setColor(x-x1+i, y-y1+j, colorFunction.getColor(it));
 								}
 							}
 						}
@@ -634,7 +614,7 @@ public class Calculator
 						}
 						else
 						{
-							writer.setColor(x-x1, y-y1, colorFunction(it));
+							writer.setColor(x-x1, y-y1, colorFunction.getColor(it));
 						}
 						incrementPixels();
 					}
@@ -661,7 +641,7 @@ public class Calculator
 						}
 						else
 						{
-							writer.setColor(x-x1, y-y1, colorFunction(it));
+							writer.setColor(x-x1, y-y1, colorFunction.getColor(it));
 						}
 						incrementPixels();
 					}
@@ -685,11 +665,6 @@ public class Calculator
 	public synchronized void incrementPixels()
 	{
 		pixelsCalculated++;
-	}
-	
-	public Color colorFunction(int iterations)
-	{
-		return hm.get(iterations%381);
 	}
 	
 	public int getPixelsCalculated()
