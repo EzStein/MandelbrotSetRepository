@@ -42,4 +42,10 @@ public class RainbowFunctionLogarithmic implements ColorFunction
 	{
 		return hm.get(((int) (100*Math.log(iterations))%381));
 	}
+	
+	@Override
+	public String toString()
+	{
+		return "Rainbow Logarithmic";
+	}
 }

@@ -1,5 +1,6 @@
 package fx;
 
+import colorFunction.*;
 import javafx.collections.FXCollections;
 import javafx.geometry.*;
 import javafx.scene.*;
@@ -19,7 +20,7 @@ public class OptionsEditor
 	TextField iterationsField;
 	TextField precisionField;
 	ChoiceBox<String> savedRegionsChoiceBox;
-	ChoiceBox<String> colorChoiceBox;
+	ChoiceBox<ColorFunction> colorChoiceBox;
 	RadioButton arbitraryPrecision;
 	RadioButton doublePrecision;
 	public OptionsEditor(MainGUI gui)
@@ -60,11 +61,10 @@ public class OptionsEditor
 				"Region1",
 				"Region2",
 				"Region3"));
-		colorChoiceBox = new ChoiceBox<String>(FXCollections.observableArrayList(
-				"Rainbow",
-				"Gothic Black",
-				"Winter Wonderland"));
-		colorChoiceBox.setValue(gui.color);
+		colorChoiceBox = new ChoiceBox<ColorFunction>(FXCollections.observableArrayList(
+				ColorFunction.COLOR_FUNCTIONS
+				));
+		colorChoiceBox.setValue(gui.calculator.getColorFunction());
 		
 		
 		/*Buttons*/
@@ -178,7 +178,7 @@ public class OptionsEditor
 		gui.threadCount = Integer.parseInt(threadCountField.getText());
 		gui.iterations = Integer.parseInt(iterationsField.getText());
 		gui.precision = Integer.parseInt(precisionField.getText());
-		gui.color = colorChoiceBox.getValue();
+		gui.calculator.setColorFunction(colorChoiceBox.getValue());
 		gui.arbitraryPrecision = arbitraryPrecision.isSelected();
 	}
 	

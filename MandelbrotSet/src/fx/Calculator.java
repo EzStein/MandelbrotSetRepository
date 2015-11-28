@@ -17,7 +17,21 @@ public class Calculator
 	public Calculator()
 	{
 		colorFunction = new RainbowFunctionLogarithmic();
-		
+	}
+	
+	public Calculator(ColorFunction cf)
+	{
+		colorFunction = cf;
+	}
+	
+	public ColorFunction getColorFunction()
+	{
+		return colorFunction;
+	}
+	
+	public void setColorFunction(ColorFunction cf)
+	{
+		colorFunction = cf;
 	}
 	
 	public int pointToPixelX(BigDecimal x, Region<BigDecimal> region, Region<Integer> pixelRegion, int precision)

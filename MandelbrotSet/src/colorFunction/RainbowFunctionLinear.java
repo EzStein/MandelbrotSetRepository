@@ -43,4 +43,10 @@ public class RainbowFunctionLinear implements ColorFunction
 		return hm.get(iterations%381);
 	}
 	
+	@Override
+	public String toString()
+	{
+		return "Rainbow Linear";
+	}
+	
 }

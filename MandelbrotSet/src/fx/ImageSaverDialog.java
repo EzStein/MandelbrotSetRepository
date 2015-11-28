@@ -82,7 +82,7 @@ public class ImageSaverDialog
 		{
 			file = new File(fileName + "." + imageType);
 		}
-		Calculator calc = new Calculator();
+		Calculator calc = new Calculator(gui.calculator.getColorFunction());
 		ImageGenerator imageGen = new ImageGenerator(calc);
 		new Thread(imageGen).start();
 		Updater updater = new Updater(calc, imageGen, file, new ProgressMonitor());
