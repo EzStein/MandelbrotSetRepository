@@ -12,10 +12,10 @@ public class BlueMagentaFunctionLinear implements ColorFunction
 		hm = new HashMap<Integer, Color>();
 		
 		int i = 0;
-        int R = 0, G = 127, B = 255;
+        double R = 0, G = 127, B = 255;
         while(i < 127)
         {
-            hm.put(i, new Color(R, G, B,1));
+            hm.put(i, new Color(R/255, G/255, B/255,1));
             R++;
             G--;
             B--;
@@ -25,7 +25,7 @@ public class BlueMagentaFunctionLinear implements ColorFunction
         {
            
             B--;
-            hm.put(i, new Color(R, G, B,1));
+            hm.put(i, new Color(R/255, G/255, B/255,1));
             i++;
         }
         while(i< 381)
@@ -33,7 +33,7 @@ public class BlueMagentaFunctionLinear implements ColorFunction
         	R--;
         	G++;
         	B+=2;
-            hm.put(i, new Color(R, G, B,1));
+            hm.put(i, new Color(R/255, G/255, B/255,1));
             i++;
         }
     }

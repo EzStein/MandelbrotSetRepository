@@ -11,10 +11,10 @@ public class PinkBlueFunctionLinear implements ColorFunction
     {
 		hm = new HashMap<Integer, Color>();
 		int i = 0;
-        int R = 127, G = 127, B = 127;
+        double R = 127, G = 127, B = 127;
         while(i < 127)
         {
-            hm.put(i, new Color(R, G, B,1));
+            hm.put(i, new Color(R/255, G/255, B/255,1));
             R--;
             G--;
             B++;
@@ -24,14 +24,14 @@ public class PinkBlueFunctionLinear implements ColorFunction
         {
            
             B--;
-            hm.put(i, new Color(R, G, B,1));
+            hm.put(i, new Color(R/255, G/255, B/255,1));
             i++;
         }
         while(i< 381)
         {
         	R++;
         	G++;
-            hm.put(i, new Color(R, G, B,1));
+            hm.put(i, new Color(R/255, G/255, B/255,1));
             i++;
         }
     }

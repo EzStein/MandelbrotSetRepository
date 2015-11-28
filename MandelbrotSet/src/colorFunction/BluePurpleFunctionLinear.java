@@ -11,10 +11,10 @@ public class BluePurpleFunctionLinear implements ColorFunction
     {
 		hm = new HashMap<Integer, Color>();
 		int i = 0;
-        int R = 0, G = 127, B = 127;
+        double R = 0, G = 127, B = 127;
         while(i < 127)
         {
-            hm.put(i, new Color(R, G, B,1));
+            hm.put(i, new Color(R/255, G/255, B/255,1));
             G++;
             B++;
             i++;
@@ -24,14 +24,14 @@ public class BluePurpleFunctionLinear implements ColorFunction
            
             G--;
             R++;
-            hm.put(i, new Color(R, G, B,1));
+            hm.put(i, new Color(R/255, G/255, B/255,1));
             i++;
         }
         while(i<381)
         {
         	R--;
             B--;
-            hm.put(i, new Color(R, G, B,1));
+            hm.put(i, new Color(R/255, G/255, B/255,1));
             i++;
         }
     }

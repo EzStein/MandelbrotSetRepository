@@ -138,6 +138,7 @@ public class OptionsEditor
 			gui.interrupt();
 			setValues();
 			gui.drawSet();
+			gui.updateJuliaSetViewer();
 			window.close();
 		});
 		

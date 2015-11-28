@@ -10,8 +10,8 @@ public class DrSeussFunctionLinear implements ColorFunction
 	public DrSeussFunctionLinear()
     {
 		hm = new HashMap<Integer, Color>();
-		hm.put(0, new Color(0, 0, 255,1));
-		hm.put(1, new Color(0, 255, 0,1));
+		hm.put(0, new Color(0, 0, 1,1));
+		hm.put(1, new Color(0, 1, 0,1));
     }
 	@Override
 	public Color getColor(int iterations)

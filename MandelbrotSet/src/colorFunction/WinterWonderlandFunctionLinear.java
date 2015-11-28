@@ -10,21 +10,19 @@ public class WinterWonderlandFunctionLinear implements ColorFunction
 	public WinterWonderlandFunctionLinear()
     {
 		hm = new HashMap<Integer, Color>();
-		
 		int i = 0;
-        int R = 255, G = 255, B = 255;
+        double R = 255, G = 255, B = 255;
         while(i < 127)
         {
-            hm.put(i, new Color(R, G, B,1));
+            hm.put(i, new Color(R/255, G/255, B/255,1));
             R--;
             G--;
             i++;
         }
         while(i < 254)
         {
-           
             B--;
-            hm.put(i, new Color(R, G, B,1));
+            hm.put(i, new Color(R/255, G/255, B/255,1));
             i++;
         }
         while(i< 381)
@@ -32,7 +30,7 @@ public class WinterWonderlandFunctionLinear implements ColorFunction
         	R++;
         	G++;
         	B++;
-            hm.put(i, new Color(R, G, B,1));
+            hm.put(i, new Color(R/255, G/255, B/255,1));
             i++;
         }
     }

@@ -22,7 +22,7 @@ public class PannedImage implements Runnable
 	private MainGUI gui;
 	private Calculator calculator;
 	
-	public PannedImage(int relX, int relY, Region<Integer> pixelRegionSection, Region<BigDecimal> region, Region<Integer> pixelRegion,
+	public PannedImage(Calculator calculator, int relX, int relY, Region<Integer> pixelRegionSection, Region<BigDecimal> region, Region<Integer> pixelRegion,
 			int iterations, boolean arbPrecision, int precision,  boolean jSet, ComplexBigDecimal seed, GraphicsContext gc, MainGUI gui)
 	{
 		this.pixelRegionSection = pixelRegionSection;
@@ -37,7 +37,7 @@ public class PannedImage implements Runnable
 		this.relX = relX;
 		this.relY = relY;
 		this.gui = gui;
-		calculator = new Calculator();
+		this.calculator = calculator;
 	}
 	
 	@Override
