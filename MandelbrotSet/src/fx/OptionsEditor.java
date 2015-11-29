@@ -4,7 +4,6 @@ import java.io.*;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Optional;
-
 import colorFunction.*;
 import javafx.application.Platform;
 import javafx.beans.value.ChangeListener;
@@ -42,7 +41,7 @@ public class OptionsEditor
 	public OptionsEditor(MainGUI gui)
 	{
 		savedRegions = new ArrayList<SavedRegion>();
-		file = new File(this.getClass().getClassLoader().getResource("/res/SavedRegions.txt").toString());
+		file = new File(this.getClass().getResource("/res/SavedRegions.txt").toString());
 		try
 		{
 			in = new ObjectInputStream(new FileInputStream(file));
