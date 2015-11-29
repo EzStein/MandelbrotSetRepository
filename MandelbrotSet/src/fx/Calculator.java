@@ -1,10 +1,7 @@
 package fx;
 
 import java.math.*;
-import java.util.HashMap;
-
-import colorFunction.ColorFunction;
-import colorFunction.RainbowFunctionLogarithmic;
+import colorFunction.*;
 import javafx.scene.image.*;
 import javafx.scene.paint.Color;
 
@@ -80,16 +77,6 @@ public class Calculator
 		BigDecimal y2 = pixelToPointY(r.y2,region,pixelRegion,precision);
 		return new Region<BigDecimal>(x1,y1,x2,y2);
 	}
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
 	
 	/**
 	 * 
@@ -346,21 +333,6 @@ public class Calculator
 		}
 		return image;
 	}
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
 	
 	public WritableImage generateSet(Region<Integer> pixelRegionSection, Region<BigDecimal> region, Region<Integer> pixelRegion, int iterations, boolean arbitraryPrecision, int precision)
 	{

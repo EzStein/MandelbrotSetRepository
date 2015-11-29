@@ -1,4 +1,5 @@
 package fx;
+import java.io.Serializable;
 import java.math.*;
 
 /**
@@ -11,7 +12,7 @@ import java.math.*;
  * @since 2015
  * @see BigDecimal
  */
-public class ComplexBigDecimal
+public class ComplexBigDecimal implements Serializable
 {
 	/**
 	 * Holds the real part of the complex number in a BigDecimal object

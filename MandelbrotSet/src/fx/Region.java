@@ -1,8 +1,9 @@
 package fx;
 
+import java.io.Serializable;
 import java.math.*;
 
-public class Region<T extends Number>
+public class Region<T extends Number> implements Serializable
 {
 	public final T x1,x2,y1,y2;
 	public Region(T x1, T y1, T x2, T y2)

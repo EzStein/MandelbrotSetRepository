@@ -19,7 +19,6 @@ public class MainGUI extends Application
 {
 	Thread updater;
 	Label textArea;
-	String color = "Rainbow";
 	Stage window;
 	Scene scene;
 	BorderPane layout;
@@ -113,7 +112,6 @@ public class MainGUI extends Application
 			juliaSetMenu.setSelected(false);
 			julia = false;
 			drawSet();
-			
 		});
 		juliaSetMenu.setOnAction(e -> {
 			interrupt();
@@ -305,7 +303,7 @@ public class MainGUI extends Application
 				+ "Julia Set: " + julia + "\n"
 				+ "Center: " + currentRegion.getCenterX().stripTrailingZeros().toPlainString() + " + " + currentRegion.getCenterY().stripTrailingZeros().toPlainString() + "i" + "\n"
 				+ "Threads: " + threadCount + "\n"
-				+ "Color: " + color + "\n"
+				+ "Color: " + calculator.getColorFunction().toString() + "\n"
 				+ "Arbitrary Precision: " + arbitraryPrecision + "\n");
 		});
 		
@@ -321,7 +319,7 @@ public class MainGUI extends Application
 				+ "Julia Set: " + julia + "\n"
 				+ "Center: " + currentRegion.getCenterX().stripTrailingZeros().toPlainString() + " + " + currentRegion.getCenterY().stripTrailingZeros().toPlainString() + "i" + "\n"
 				+ "Threads: " + threadCount + "\n"
-				+ "Color: " + color + "\n"
+				+ "Color: " + calculator.getColorFunction().toString() + "\n"
 				+ "Arbitrary Precision: " + arbitraryPrecision + "\n");
 		vbox.getChildren().add(textArea);
 		layout.setRight(vbox);
@@ -375,7 +373,7 @@ public class MainGUI extends Application
 				+ "Julia Set: " + julia + "\n"
 				+ "Center: " + currentRegion.getCenterX().stripTrailingZeros().toPlainString() + " + " + currentRegion.getCenterY().stripTrailingZeros().toPlainString() + "i" + "\n"
 				+ "Threads: " + threadCount + "\n"
-				+ "Color: " + color + "\n"
+				+ "Color: " + calculator.getColorFunction().toString() + "\n"
 				+ "Arbitrary Precision: " + arbitraryPrecision + "\n");
 	}
 	

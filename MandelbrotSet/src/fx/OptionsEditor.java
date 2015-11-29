@@ -1,6 +1,14 @@
 package fx;
 
+import java.io.*;
+import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.Optional;
+
 import colorFunction.*;
+import javafx.application.Platform;
+import javafx.beans.value.ChangeListener;
+import javafx.beans.value.ObservableValue;
 import javafx.collections.FXCollections;
 import javafx.geometry.*;
 import javafx.scene.*;
@@ -14,18 +22,53 @@ public class OptionsEditor
 	MainGUI gui;
 	Stage window;
 	GridPane gridPane;
-	Label centerValue;
+	Label centerValue, set, seed;
 	Label boxValue;
 	TextField threadCountField;
 	TextField iterationsField;
 	TextField precisionField;
-	ChoiceBox<String> savedRegionsChoiceBox;
+	ChoiceBox<SavedRegion> savedRegionsChoiceBox;
 	ChoiceBox<ColorFunction> colorChoiceBox;
 	RadioButton arbitraryPrecision;
 	RadioButton doublePrecision;
+	ObjectInputStream in;
+	ObjectOutputStream out;
+	File file;
+	ArrayList<SavedRegion> savedRegions;
+	Region<BigDecimal> currentRegion;
+	boolean currentJulia;
+	ComplexBigDecimal currentSeed;
+	
 	public OptionsEditor(MainGUI gui)
 	{
+		savedRegions = new ArrayList<SavedRegion>();
+		file = new File("src/res/SavedRegions.txt");
+		try
+		{
+			in = new ObjectInputStream(new FileInputStream(file));
+			savedRegions = (ArrayList<SavedRegion>)in.readObject();
+		}
+		catch (FileNotFoundException e)
+		{
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch(EOFException eofe)
+		{
+			savedRegions = new ArrayList<SavedRegion>();
+		}
+		catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		catch(ClassNotFoundException cnfe)
+		{
+			cnfe.printStackTrace();
+		}
+		
 		this.gui = gui;
+		currentRegion = gui.currentRegion;
+		currentJulia = gui.julia;
+		currentSeed = gui.juliaSeed;
 	}
 	
 	public void showEditDialog()
@@ -57,15 +100,12 @@ public class OptionsEditor
 		threadCountField = new TextField(""+gui.threadCount);
 		iterationsField = new TextField("" +gui.iterations);
 		precisionField = new TextField("" + gui.precision);
-		savedRegionsChoiceBox = new ChoiceBox<String>(FXCollections.observableArrayList(
-				"Region1",
-				"Region2",
-				"Region3"));
-		colorChoiceBox = new ChoiceBox<ColorFunction>(FXCollections.observableArrayList(
-				ColorFunction.COLOR_FUNCTIONS
-				));
-		colorChoiceBox.setValue(gui.calculator.getColorFunction());
+		savedRegionsChoiceBox = new ChoiceBox<SavedRegion>(FXCollections.observableArrayList(savedRegions));
 		
+		
+		
+		colorChoiceBox = new ChoiceBox<ColorFunction>(FXCollections.observableArrayList(ColorFunction.ColorInfo.COLOR_FUNCTIONS.values()));
+		colorChoiceBox.setValue(gui.calculator.getColorFunction());
 		
 		/*Buttons*/
 		Button applyButton = new Button("Apply");
@@ -87,16 +127,16 @@ public class OptionsEditor
 			doublePrecision.setSelected(true);
 		}
 		
-		Label set = new Label();
-		Label seed = new Label();
+		set = new Label();
+		seed = new Label();
 		if(gui.julia)
 		{
-			set.setText("Julia Set");
+			set.setText("Julia set: ");
 			seed.setText(gui.juliaSeed.toString());
 		}
 		else
 		{
-			set.setText("Mandelbrot Set");
+			set.setText("Mandelbrot set: ");
 			seed.setText("0+0i");
 		}
 		
@@ -129,6 +169,40 @@ public class OptionsEditor
 		gridPane.add(applyAndRerenderButton, 3, 6);
 		
 		
+		
+		saveButton.setOnAction(e ->{
+			if(!checkValues())
+			{
+				return;
+			}
+			String name;
+			TextInputDialog dialog = new TextInputDialog();
+			dialog.setTitle("Save Region");
+			dialog.setContentText("Enter a name:");
+			Optional<String> result = dialog.showAndWait();
+			if(result.isPresent())
+			{
+				name = result.get();
+			}
+			else
+			{
+				return;
+			}
+			SavedRegion savedRegion = new SavedRegion(name,Integer.parseInt(iterationsField.getText()),
+					Integer.parseInt(precisionField.getText()), Integer.parseInt(threadCountField.getText()),
+					currentRegion,arbitraryPrecision.isSelected(),currentJulia,currentSeed,colorChoiceBox.getValue().toString());
+			savedRegions.add(savedRegion);
+			savedRegionsChoiceBox.getItems().add(savedRegion);
+			savedRegionsChoiceBox.setValue(savedRegion);
+			try {
+				/*Overwrites File*/
+				out = new ObjectOutputStream(new FileOutputStream(file));
+				out.writeObject(savedRegions);
+			} catch (Exception e1) {
+				// TODO Auto-generated catch block
+				e1.printStackTrace();
+			}
+		});
 		
 		applyAndRerenderButton.setOnAction(e->{
 			if(!checkValues())
@@ -167,11 +241,64 @@ public class OptionsEditor
 		});
 		
 		
+		
+		
+		
+		savedRegionsChoiceBox.getSelectionModel().selectedIndexProperty().addListener(new ChangeListener<Number>(){
+			@Override
+			public void changed(ObservableValue<? extends Number> observable, Number oldValue, Number newValue) {
+				Platform.runLater(() -> {
+					loadRegion();
+					});
+				}
+			
+		});
+		
 		//gridPane.setGridLinesVisible(true);
 		Scene scene = new Scene(gridPane);
 		scene.getStylesheets().add(this.getClass().getResource("OptionsStyleSheet.css").toExternalForm());
 		window.setScene(scene);
 		window.show();
+	}
+	
+	public void loadRegion()
+	{
+		SavedRegion sr = savedRegionsChoiceBox.getValue();
+		iterationsField.setText("" + sr.iterations);
+		precisionField.setText("" + sr.precision);
+		threadCountField.setText("" + sr.threadCount);
+		
+		if(sr.arbitraryPrecision)
+		{
+			arbitraryPrecision.setSelected(true);
+			doublePrecision.setSelected(false);
+		}
+		else
+		{
+			arbitraryPrecision.setSelected(false);
+			doublePrecision.setSelected(true);
+		}
+		
+		
+		colorChoiceBox.setValue(ColorFunction.ColorInfo.COLOR_FUNCTIONS.get(sr.colorFunction));
+		currentRegion = sr.region;
+		currentJulia = sr.julia;
+		currentSeed = sr.seed;
+		if(currentJulia)
+		{
+			set.setText("Julia set: ");
+			seed.setText(currentSeed.toString());
+		}
+		else
+		{
+			set.setText("Mandelbrot set: ");
+			seed.setText("0+0i");
+		}
+		centerValue.setText(currentRegion.getCenterX().stripTrailingZeros().toPlainString()+ " + "
+				+ currentRegion.getCenterY().stripTrailingZeros().toPlainString() + "i");
+		boxValue.setText(currentRegion.x1.subtract(currentRegion.x2).abs().stripTrailingZeros().toPlainString() + "x" +
+				currentRegion.y1.subtract(currentRegion.y2).abs().stripTrailingZeros().toPlainString());
+		gui.loggedRegions = new ArrayList<>();
 	}
 	
 	public void setValues()
@@ -181,6 +308,9 @@ public class OptionsEditor
 		gui.precision = Integer.parseInt(precisionField.getText());
 		gui.calculator.setColorFunction(colorChoiceBox.getValue());
 		gui.arbitraryPrecision = arbitraryPrecision.isSelected();
+		gui.currentRegion = currentRegion;
+		gui.julia = currentJulia;
+		gui.juliaSeed = currentSeed;
 	}
 	
 	public boolean checkValues()
