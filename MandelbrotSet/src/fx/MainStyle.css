@@ -1,4 +1,4 @@
 
 .root {
-	-fx-background-image:url("background.jpg");
+	-fx-background-image:url("/res/background.jpg");
 }

@@ -42,7 +42,7 @@ public class OptionsEditor
 	public OptionsEditor(MainGUI gui)
 	{
 		savedRegions = new ArrayList<SavedRegion>();
-		file = new File("src/res/SavedRegions.txt");
+		file = new File(this.getClass().getClassLoader().getResource("/res/SavedRegions.txt").toString());
 		try
 		{
 			in = new ObjectInputStream(new FileInputStream(file));
