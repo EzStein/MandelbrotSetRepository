@@ -13,28 +13,28 @@ public class PinkBlueFunctionLinear implements ColorFunction
 		name = "Pink Blue Linear";
 		hm = new HashMap<Integer, Color>();
 		int i = 0;
-        double R = 127, G = 127, B = 127;
+        double R = 255, G = 127, B = 127;
         while(i < 127)
         {
             hm.put(i, new Color(R/255, G/255, B/255,1));
-            R--;
-            G--;
+            R-= 2;
             B++;
             i++;
         }
-        while(i < 254)
-        {
-           
-            B--;
-            hm.put(i, new Color(R/255, G/255, B/255,1));
-            i++;
-        }
-        while(i< 381)
+        while(i<254)
         {
         	R++;
         	G++;
-            hm.put(i, new Color(R/255, G/255, B/255,1));
-            i++;
+        	hm.put(i,  new Color(R/255, G/255, B/255,1));
+        	i++;
+        }
+        while(i<381)
+        {
+        	R++;
+        	B--;
+        	G--;
+        	hm.put(i,  new Color(R/255, G/255, B/255,1));
+        	i++;
         }
     }
 	@Override

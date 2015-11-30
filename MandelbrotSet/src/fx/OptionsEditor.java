@@ -46,14 +46,13 @@ public class OptionsEditor
 		
 		try
 		{
-			file = new File(this.getClass().getResource("/src/resource/SavedRegions.txt").toURI());
+			file = new File(this.getClass().getClassLoader().getResource("resource/SavedRegions.txt").toURI());
 			in = new ObjectInputStream(new FileInputStream(file));
 			savedRegions = (ArrayList<SavedRegion>)in.readObject();
-			
 		}
 		catch(EOFException eofe)
 		{
-			/*File Empty*/
+			/*File Empty And in is null*/
 			savedRegions = new ArrayList<SavedRegion>();
 		}
 		catch (IOException | ClassNotFoundException | URISyntaxException e)
@@ -64,7 +63,10 @@ public class OptionsEditor
 		{
 			try
 			{
-				in.close();
+				if(in!=null)
+				{
+					in.close();
+				}
 			}
 			catch (IOException e)
 			{
@@ -113,7 +115,7 @@ public class OptionsEditor
 		
 		
 		colorChoiceBox = new ChoiceBox<ColorFunction>(FXCollections.observableArrayList(ColorFunction.ColorInfo.COLOR_FUNCTIONS.values()));
-		colorChoiceBox.setValue(gui.calculator.getColorFunction());
+		colorChoiceBox.setValue(gui.mainCalculator.getColorFunction());
 		
 		/*Buttons*/
 		Button applyButton = new Button("Apply");
@@ -328,7 +330,8 @@ public class OptionsEditor
 		gui.threadCount = Integer.parseInt(threadCountField.getText());
 		gui.iterations = Integer.parseInt(iterationsField.getText());
 		gui.precision = Integer.parseInt(precisionField.getText());
-		gui.calculator.setColorFunction(colorChoiceBox.getValue());
+		gui.mainCalculator.setColorFunction(colorChoiceBox.getValue());
+		gui.previewCalculator.setColorFunction(colorChoiceBox.getValue());
 		gui.arbitraryPrecision = arbitraryPrecision.isSelected();
 		gui.currentRegion = currentRegion;
 		gui.julia = currentJulia;
