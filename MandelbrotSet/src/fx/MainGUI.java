@@ -30,7 +30,7 @@ public class MainGUI extends Application
 	Region<Integer> viewerPixelRegion;
 	Region<Integer> previewPixelRegion;
 	WritableImage currentImage, displayImage;
-	int width=617,height=617;
+	int width,height;
 	int previewWidth, previewHeight;
 	boolean closed = false;
 	boolean idle = true;
@@ -60,28 +60,18 @@ public class MainGUI extends Application
 	@Override
 	public void start(Stage window)
 	{
-		
-		TextInputDialog inputDialog = new TextInputDialog();
-		inputDialog.setContentText("Enter in the preferred size of the fractal viewer: ");
-		Optional<String> result = inputDialog.showAndWait();
+		SizeChooser sizeChooser = new SizeChooser();
+		Optional<Integer> result = sizeChooser.showAndWait();
 		if(result.isPresent())
 		{
-			try
-			{
-				int size = Integer.parseInt(result.get());
-				width = size;
-				height = size;
-			}
-			catch(NumberFormatException nfe)
-			{
-				System.out.println("Wrong Number");
-				return;
-			}
+			width = result.get();
+			height = result.get();
 		}
 		else
 		{
 			return;
 		}
+		
 		mainCalculator = new Calculator();
 		previewCalculator = new Calculator();
 		currentImage = new WritableImage(width,height);
