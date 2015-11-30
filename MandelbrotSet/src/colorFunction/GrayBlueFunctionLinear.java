@@ -6,9 +6,11 @@ import javafx.scene.paint.Color;
 
 public class GrayBlueFunctionLinear implements ColorFunction
 {
+	private String name;
 	private HashMap<Integer, Color> hm;
 	public GrayBlueFunctionLinear()
     {
+		name = "Gray Blue Linear";
 		hm = new HashMap<Integer, Color>();
 		
 		int i = 0;
@@ -45,6 +47,33 @@ public class GrayBlueFunctionLinear implements ColorFunction
 	@Override
 	public String toString()
 	{
-		return "Gray Blue Linear";
+		return name;
+	}
+	
+	@Override
+	public boolean equals(Object o)
+	{
+		if(o == null)
+		{
+			return false;
+		}
+		if(o == this)
+		{
+			return true;
+		}
+		if(!(o instanceof GrayBlueFunctionLinear))
+		{
+			return false;
+		}
+		else
+		{
+			return true;
+		}
+	}
+	
+	@Override
+	public int hashCode()
+	{
+		return name.hashCode();
 	}
 }

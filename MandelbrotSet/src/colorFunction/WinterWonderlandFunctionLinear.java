@@ -6,9 +6,11 @@ import javafx.scene.paint.Color;
 
 public class WinterWonderlandFunctionLinear implements ColorFunction
 {
+	private String name;
 	private HashMap<Integer, Color> hm;
 	public WinterWonderlandFunctionLinear()
     {
+		name = "Winter Wonderland Linear";
 		hm = new HashMap<Integer, Color>();
 		int i = 0;
         double R = 255, G = 255, B = 255;
@@ -43,6 +45,32 @@ public class WinterWonderlandFunctionLinear implements ColorFunction
 	@Override
 	public String toString()
 	{
-		return "Winter Wonderland Linear";
+		return name;
+	}
+	@Override
+	public boolean equals(Object o)
+	{
+		if(o == null)
+		{
+			return false;
+		}
+		if(o == this)
+		{
+			return true;
+		}
+		if(!(o instanceof WinterWonderlandFunctionLinear))
+		{
+			return false;
+		}
+		else
+		{
+			return true;
+		}
+	}
+	
+	@Override
+	public int hashCode()
+	{
+		return name.hashCode();
 	}
 }

@@ -6,9 +6,11 @@ import javafx.scene.paint.Color;
 
 public class RainbowFunctionLinear implements ColorFunction
 {
+	private String name;
 	private HashMap<Integer, Color> hm;
 	public RainbowFunctionLinear()
 	{
+		name = "Rainbow Linear";
 		hm = new HashMap<Integer, Color>();
 		int i = 0;
 		double R = 255, G = 0, B = 0;
@@ -46,7 +48,33 @@ public class RainbowFunctionLinear implements ColorFunction
 	@Override
 	public String toString()
 	{
-		return "Rainbow Linear";
+		return name;
+	}
+	@Override
+	public boolean equals(Object o)
+	{
+		if(o == null)
+		{
+			return false;
+		}
+		if(o == this)
+		{
+			return true;
+		}
+		if(!(o instanceof RainbowFunctionLinear))
+		{
+			return false;
+		}
+		else
+		{
+			return true;
+		}
+	}
+	
+	@Override
+	public int hashCode()
+	{
+		return name.hashCode();
 	}
 	
 }

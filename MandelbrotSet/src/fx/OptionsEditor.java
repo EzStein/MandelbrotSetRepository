@@ -2,6 +2,8 @@ package fx;
 
 import java.io.*;
 import java.math.BigDecimal;
+import java.net.URISyntaxException;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.Optional;
 import colorFunction.*;
@@ -41,27 +43,34 @@ public class OptionsEditor
 	public OptionsEditor(MainGUI gui)
 	{
 		savedRegions = new ArrayList<SavedRegion>();
-		file = new File(this.getClass().getResource("/res/SavedRegions.txt").toString());
+		
 		try
 		{
+			file = new File(this.getClass().getResource("/src/resource/SavedRegions.txt").toURI());
 			in = new ObjectInputStream(new FileInputStream(file));
 			savedRegions = (ArrayList<SavedRegion>)in.readObject();
+			
 		}
-		catch (FileNotFoundException e)
+		catch(EOFException eofe)
 		{
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch(EOFException eofe)
-		{
+			/*File Empty*/
 			savedRegions = new ArrayList<SavedRegion>();
 		}
-		catch (IOException e) {
-			// TODO Auto-generated catch block
+		catch (IOException | ClassNotFoundException | URISyntaxException e)
+		{
 			e.printStackTrace();
 		}
-		catch(ClassNotFoundException cnfe)
+		finally
 		{
-			cnfe.printStackTrace();
+			try
+			{
+				in.close();
+			}
+			catch (IOException e)
+			{
+				System.out.println("Could Not Close Object InputStream");
+				e.printStackTrace();
+			}
 		}
 		
 		this.gui = gui;
@@ -193,13 +202,27 @@ public class OptionsEditor
 			savedRegions.add(savedRegion);
 			savedRegionsChoiceBox.getItems().add(savedRegion);
 			savedRegionsChoiceBox.setValue(savedRegion);
-			try {
+			try
+			{
 				/*Overwrites File*/
 				out = new ObjectOutputStream(new FileOutputStream(file));
 				out.writeObject(savedRegions);
-			} catch (Exception e1) {
-				// TODO Auto-generated catch block
-				e1.printStackTrace();
+			}
+			catch (IOException ioe)
+			{
+				ioe.printStackTrace();
+			}
+			finally
+			{
+				try
+				{
+					out.close();
+				}
+				catch (IOException ioe)
+				{
+					System.out.println("Could Not Close ObjectOutputStream");
+					ioe.printStackTrace();
+				}
 			}
 		});
 		

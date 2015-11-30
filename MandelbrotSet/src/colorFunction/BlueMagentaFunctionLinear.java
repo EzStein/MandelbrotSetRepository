@@ -1,14 +1,15 @@
 package colorFunction;
 
 import java.util.HashMap;
-
 import javafx.scene.paint.Color;
 
 public class BlueMagentaFunctionLinear implements ColorFunction
 {
 	private HashMap<Integer, Color> hm;
+	private String name;
 	public BlueMagentaFunctionLinear()
     {
+		name = "Blue Magenta Linear";
 		hm = new HashMap<Integer, Color>();
 		
 		int i = 0;
@@ -46,6 +47,33 @@ public class BlueMagentaFunctionLinear implements ColorFunction
 	@Override
 	public String toString()
 	{
-		return "Blue Magenta Linear";
+		return name;
+	}
+	
+	@Override
+	public boolean equals(Object o)
+	{
+		if(o == null)
+		{
+			return false;
+		}
+		if(o == this)
+		{
+			return true;
+		}
+		if(!(o instanceof BlueMagentaFunctionLinear))
+		{
+			return false;
+		}
+		else
+		{
+			return true;
+		}
+	}
+	
+	@Override
+	public int hashCode()
+	{
+		return name.hashCode();
 	}
 }

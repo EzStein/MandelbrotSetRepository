@@ -6,9 +6,11 @@ import javafx.scene.paint.Color;
 
 public class RainbowFunctionLogarithmic implements ColorFunction
 {
+	private String name;
 	private HashMap<Integer, Color> hm;
 	public RainbowFunctionLogarithmic()
 	{
+		name = "Rainbow Logarithmic";
 		hm = new HashMap<Integer, Color>();
 		int i = 0;
 		double R = 255, G = 0, B = 0;
@@ -46,6 +48,32 @@ public class RainbowFunctionLogarithmic implements ColorFunction
 	@Override
 	public String toString()
 	{
-		return "Rainbow Logarithmic";
+		return name;
+	}
+	@Override
+	public boolean equals(Object o)
+	{
+		if(o == null)
+		{
+			return false;
+		}
+		if(o == this)
+		{
+			return true;
+		}
+		if(!(o instanceof RainbowFunctionLogarithmic))
+		{
+			return false;
+		}
+		else
+		{
+			return true;
+		}
+	}
+	
+	@Override
+	public int hashCode()
+	{
+		return name.hashCode();
 	}
 }

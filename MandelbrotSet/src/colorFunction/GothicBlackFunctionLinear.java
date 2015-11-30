@@ -6,9 +6,11 @@ import javafx.scene.paint.Color;
 
 public class GothicBlackFunctionLinear implements ColorFunction
 {
+	private String name;
 	private HashMap<Integer, Color> hm;
 	public GothicBlackFunctionLinear()
     {
+		name = "Gothic Black Linear";
 		hm = new HashMap<Integer, Color>();
 		
 		int i = 0;
@@ -42,6 +44,33 @@ public class GothicBlackFunctionLinear implements ColorFunction
 	@Override
 	public String toString()
 	{
-		return "Gothic Black Linear";
+		return name;
+	}
+	
+	@Override
+	public boolean equals(Object o)
+	{
+		if(o == null)
+		{
+			return false;
+		}
+		if(o == this)
+		{
+			return true;
+		}
+		if(!(o instanceof GothicBlackFunctionLinear))
+		{
+			return false;
+		}
+		else
+		{
+			return true;
+		}
+	}
+	
+	@Override
+	public int hashCode()
+	{
+		return name.hashCode();
 	}
 }

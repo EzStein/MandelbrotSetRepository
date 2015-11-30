@@ -6,9 +6,11 @@ import javafx.scene.paint.Color;
 
 public class GreenPurpleFunctionLinear implements ColorFunction
 {
+	private String name;
 	private HashMap<Integer, Color> hm;
 	public GreenPurpleFunctionLinear()
     {
+		name = "Green Purple Linear";
 		hm = new HashMap<Integer, Color>();
 		int i = 0;
         double R = 0, G = 255, B = 127;
@@ -45,6 +47,33 @@ public class GreenPurpleFunctionLinear implements ColorFunction
 	@Override
 	public String toString()
 	{
-		return "Green Purple Linear";
+		return name;
+	}
+	
+	@Override
+	public boolean equals(Object o)
+	{
+		if(o == null)
+		{
+			return false;
+		}
+		if(o == this)
+		{
+			return true;
+		}
+		if(!(o instanceof GreenPurpleFunctionLinear))
+		{
+			return false;
+		}
+		else
+		{
+			return true;
+		}
+	}
+	
+	@Override
+	public int hashCode()
+	{
+		return name.hashCode();
 	}
 }

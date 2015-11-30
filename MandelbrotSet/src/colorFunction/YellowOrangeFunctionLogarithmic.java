@@ -6,9 +6,11 @@ import javafx.scene.paint.Color;
 
 public class YellowOrangeFunctionLogarithmic implements ColorFunction
 {
-	HashMap<Integer, Color> hm;
+	private String name;
+	private HashMap<Integer, Color> hm;
 	public YellowOrangeFunctionLogarithmic()
 	{
+		name = "Yellow Orange Logarithmic";
 		hm = new HashMap<Integer, Color>();
 		int i = 0;
         double R = 255, G = 127, B = 0;
@@ -42,8 +44,33 @@ public class YellowOrangeFunctionLogarithmic implements ColorFunction
 	@Override
 	public String toString()
 	{
-		return "Yellow Orange Logarithmic";
+		return name;
+	}
+	@Override
+	public boolean equals(Object o)
+	{
+		if(o == null)
+		{
+			return false;
+		}
+		if(o == this)
+		{
+			return true;
+		}
+		if(!(o instanceof YellowOrangeFunctionLogarithmic))
+		{
+			return false;
+		}
+		else
+		{
+			return true;
+		}
 	}
 	
+	@Override
+	public int hashCode()
+	{
+		return name.hashCode();
+	}
 	
 }
