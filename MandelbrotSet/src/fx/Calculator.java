@@ -78,17 +78,8 @@ public class Calculator
 		return new Region<BigDecimal>(x1,y1,x2,y2);
 	}
 	
-	/**
-	 * 
-	 * @param seed
-	 * @param pixelRegionSection
-	 * @param region
-	 * @param pixelRegion
-	 * @param iterations
-	 * @param arbPrecision
-	 * @param precision
-	 * @return a
-	 */
+	
+	
 	public WritableImage generateJuliaSet(ComplexBigDecimal seed, Region<Integer> pixelRegionSection, Region<BigDecimal> region, Region<Integer> pixelRegion, int iterations, boolean arbPrecision, int precision)
 	{
 		WritableImage image = new WritableImage(pixelRegionSection.getWidth().intValue(), pixelRegionSection.getHeight().intValue());
@@ -130,205 +121,6 @@ public class Calculator
 					}
 				}
 				incrementPixels();
-			}
-		}
-		return image;
-	}
-	
-	public WritableImage generateJuliaSetRough(ComplexBigDecimal seed, Region<Integer> pixelRegionSection, Region<BigDecimal> region, Region<Integer> pixelRegion, int iterations, boolean arbPrecision, int precision)
-	{
-		WritableImage image = new WritableImage(pixelRegionSection.getWidth().intValue(), pixelRegionSection.getHeight().intValue());
-		PixelWriter writer = image.getPixelWriter();
-		int x1,y1,x2,y2;
-		x1 = pixelRegionSection.x1;
-		x2 = pixelRegionSection.x2;
-		y1 = pixelRegionSection.y1;
-		y2 = pixelRegionSection.y2;
-		for(int x = x1; x<x2; x+=16)
-		{
-			for(int y = y1; y<y2; y+=16)
-			{
-				if(interrupted)
-				{
-					return image;
-				}
-				int it;
-				if(arbPrecision)
-				{
-					if((it = MandelbrotFunction.testPointBigDecimal(seed,toComplexBigDecimal(x,y, region, pixelRegion, precision), iterations))==0)
-					{
-						for(int i = 0; i<16; i++)
-						{
-							for(int j = 0; j<16; j++)
-							{
-								if(x-x1+i<image.getWidth()&&y-y1+j<image.getHeight())
-								writer.setColor(x-x1+i, y-y1+j, Color.BLACK);
-							}
-						}
-					}
-					else
-					{
-						for(int i = 0; i<16; i++)
-						{
-							for(int j = 0; j<16; j++)
-							{
-								if(x-x1+i<image.getWidth()&&y-y1+j<image.getHeight())
-								writer.setColor(x-x1+i, y-y1+j, colorFunction.getColor(it));
-							}
-						}
-					}
-				}
-				else
-				{
-					if((it = MandelbrotFunction.testPoint(seed.toComplex(),toComplexBigDecimal(x,y, region, pixelRegion, precision).toComplex(), iterations))==0)
-					{
-						for(int i = 0; i<16; i++)
-						{
-							for(int j = 0; j<16; j++)
-							{
-								if(x-x1+i<image.getWidth()&&y-y1+j<image.getHeight())
-								writer.setColor(x-x1+i, y-y1+j, Color.BLACK);
-							}
-						}
-					}
-					else
-					{
-						for(int i = 0; i<16; i++)
-						{
-							for(int j = 0; j<16; j++)
-							{
-								if(x-x1+i<image.getWidth()&&y-y1+j<image.getHeight())
-								writer.setColor(x-x1+i, y-y1+j, colorFunction.getColor(it));
-							}
-						}
-					}
-				}
-				incrementPixels();
-			}
-		}
-		return image;
-	}
-	
-	public WritableImage generateJuliaSetMed(ComplexBigDecimal seed, Region<Integer> pixelRegionSection, Region<BigDecimal> region, Region<Integer> pixelRegion,int iterations, boolean arbPrecision, int precision, WritableImage image)
-	{
-		PixelWriter writer = image.getPixelWriter();
-		int x1,y1,x2,y2;
-		x1 = pixelRegionSection.x1;
-		x2 = pixelRegionSection.x2;
-		y1 = pixelRegionSection.y1;
-		y2 = pixelRegionSection.y2;
-		for(int x = x1; x<x2; x+=4)
-		{
-			for(int y = y1; y<y2; y+=4)
-			{
-				if(!(x%16==0 && y%16==0))
-				{
-					if(interrupted)
-					{
-						return image;
-					}
-					int it;
-					if(arbPrecision)
-					{
-						if((it = MandelbrotFunction.testPointBigDecimal(seed,toComplexBigDecimal(x,y, region, pixelRegion, precision), iterations))==0)
-						{
-							for(int i = 0; i<4; i++)
-							{
-								for(int j = 0; j<4; j++)
-								{
-									if(x-x1+i<image.getWidth()&&y-y1+j<image.getHeight())
-									writer.setColor(x-x1+i, y-y1+j, Color.BLACK);
-								}
-							}
-						}
-						else
-						{
-							for(int i = 0; i<4; i++)
-							{
-								for(int j = 0; j<4; j++)
-								{
-									if(x-x1+i<image.getWidth()&&y-y1+j<image.getHeight())
-									writer.setColor(x-x1+i, y-y1+j, colorFunction.getColor(it));
-								}
-							}
-						}
-					}
-					else
-					{				
-						if((it = MandelbrotFunction.testPoint(seed.toComplex(),toComplexBigDecimal(x,y, region, pixelRegion, precision).toComplex(), iterations))==0)
-						{
-							for(int i = 0; i<4; i++)
-							{
-								for(int j = 0; j<4; j++)
-								{
-									if(x-x1+i<image.getWidth()&&y-y1+j<image.getHeight())
-									writer.setColor(x-x1+i, y-y1+j, Color.BLACK);
-								}
-							}
-						}
-						else
-						{
-							for(int i = 0; i<4; i++)
-							{
-								for(int j = 0; j<4; j++)
-								{
-									if(x-x1+i<image.getWidth()&&y-y1+j<image.getHeight())
-									writer.setColor(x-x1+i, y-y1+j, colorFunction.getColor(it));
-								}
-							}
-						}
-					}
-					incrementPixels();
-				}
-			}
-		}
-		return image;
-	}
-	
-	public WritableImage generateJuliaSetFine(ComplexBigDecimal seed, Region<Integer> pixelRegionSection, Region<BigDecimal> region, Region<Integer> pixelRegion, int iterations, boolean arbPrecision, int precision, WritableImage image)
-	{
-		PixelWriter writer = image.getPixelWriter();
-		int x1,y1,x2,y2;
-		x1 = pixelRegionSection.x1;
-		x2 = pixelRegionSection.x2;
-		y1 = pixelRegionSection.y1;
-		y2 = pixelRegionSection.y2;
-		for(int x = x1; x<x2; x+=1)
-		{
-			
-			for(int y = y1; y<y2; y+=1)
-			{
-				if(interrupted)
-				{
-					return image;
-				}
-				if(!(x%4==0 && y%4==0))
-				{
-					int it;
-					if(arbPrecision)
-					{
-						if((it = MandelbrotFunction.testPointBigDecimal(seed,toComplexBigDecimal(x,y, region, pixelRegion, precision),  iterations))==0)
-						{
-							writer.setColor(x-x1, y-y1, Color.BLACK);
-						}
-						else
-						{
-							writer.setColor(x-x1, y-y1, colorFunction.getColor(it));
-						}
-					}
-					else
-					{
-						if((it = MandelbrotFunction.testPoint(seed.toComplex(),toComplexBigDecimal(x,y, region, pixelRegion, precision).toComplex(),  iterations))==0)
-						{
-							writer.setColor(x-x1, y-y1, Color.BLACK);
-						}
-						else
-						{
-							writer.setColor(x-x1, y-y1, colorFunction.getColor(it));
-						}
-					}
-					incrementPixels();
-				}
 			}
 		}
 		return image;
@@ -393,250 +185,173 @@ public class Calculator
 		return image;
 	}
 	
-	public WritableImage generateSetRough(Region<Integer> pixelRegionSection, Region<BigDecimal> region, Region<Integer> pixelRegion, int iterations, boolean arbitraryPrecision, int precision)
+	public WritableImage generateSet(Region<Integer> pixelRegionSection, Region<BigDecimal> region, Region<Integer> pixelRegion,int iterations, boolean arbPrecision, int precision, int pixelCalc, int skip, WritableImage image)
 	{
-		WritableImage image = new WritableImage(pixelRegionSection.getWidth().intValue(), pixelRegionSection.getHeight().intValue());
+		boolean skipPixels = true;
 		PixelWriter writer = image.getPixelWriter();
 		int x1,y1,x2,y2;
 		x1 = pixelRegionSection.x1;
 		x2 = pixelRegionSection.x2;
 		y1 = pixelRegionSection.y1;
 		y2 = pixelRegionSection.y2;
-		if(arbitraryPrecision)
+		if(skip <=0)
 		{
-			for(int x = x1; x<x2; x+=16)
+			skipPixels = false;
+			//skip = 1;
+		}
+		for(int x = x1; x<x2; x+=pixelCalc)
+		{
+			for(int y = y1; y<y2; y+=pixelCalc)
 			{
-				for(int y = y1; y<y2; y+=16)
+				if(!skipPixels || !(x%skip==0 && y%skip==0))
 				{
 					if(interrupted)
 					{
 						return image;
 					}
 					int it;
-					if((it = MandelbrotFunction.testPointBigDecimal(toComplexBigDecimal(x,y, region, pixelRegion, precision),
-							new ComplexBigDecimal("0","0", precision), iterations))==0)
+					if(arbPrecision)
 					{
-						for(int i = 0; i<16; i++)
-						{
-							for(int j = 0; j<16; j++)
-							{
-								if(x-x1+i<image.getWidth()&&y-y1+j<image.getHeight())
-								writer.setColor(x-x1+i, y-y1+j, Color.BLACK);
-							}
-						}
-					}
-					else
-					{
-						for(int i = 0; i<16; i++)
-						{
-							for(int j = 0; j<16; j++)
-							{
-								if(x-x1+i<image.getWidth()&&y-y1+j<image.getHeight())
-								writer.setColor(x-x1+i, y-y1+j, colorFunction.getColor(it));
-							}
-						}
-					}
-					incrementPixels();
-				}
-			}
-		}
-		else
-		{
-			for(int x = x1; x<x2; x+=16)
-			{
-				for(int y = y1; y<y2; y+=16)
-				{
-					if(interrupted)
-					{
-						return image;
-					}
-					int it;
-					if((it = MandelbrotFunction.testPoint(toComplexBigDecimal(x,y, region, pixelRegion, precision).toComplex(), new Complex(0,0), iterations))==0)
-					{
-						for(int i = 0; i<16; i++)
-						{
-							for(int j = 0; j<16; j++)
-							{
-								if(x-x1+i<image.getWidth()&&y-y1+j<image.getHeight())
-								writer.setColor(x-x1+i, y-y1+j, Color.BLACK);
-							}
-						}
-					}
-					else
-					{
-						for(int i = 0; i<16; i++)
-						{
-							for(int j = 0; j<16; j++)
-							{
-								if(x-x1+i<image.getWidth()&&y-y1+j<image.getHeight())
-								writer.setColor(x-x1+i, y-y1+j, colorFunction.getColor(it));
-							}
-						}
-					}
-					incrementPixels();
-				}
-			}
-		}
-		return image;
-	}
-	
-	public WritableImage generateSetMed(Region<Integer> pixelRegionSection, Region<BigDecimal> region, Region<Integer> pixelRegion,int iterations, boolean arbitraryPrecision, int precision, WritableImage image)
-	{
-		PixelWriter writer = image.getPixelWriter();
-		int x1,y1,x2,y2;
-		x1 = pixelRegionSection.x1;
-		x2 = pixelRegionSection.x2;
-		y1 = pixelRegionSection.y1;
-		y2 = pixelRegionSection.y2;
-		if(arbitraryPrecision)
-		{
-			for(int x = x1; x<x2; x+=4)
-			{
-				for(int y = y1; y<y2; y+=4)
-				{
-					if(interrupted)
-					{
-						return image;
-					}
-					if(!(x%16==0 && y%16==0))
-					{
-						int it;
-						if((it = MandelbrotFunction.testPointBigDecimal(toComplexBigDecimal(x,y, region, pixelRegion, precision),
-								new ComplexBigDecimal("0","0",precision), iterations))==0)
-						{
-							for(int i = 0; i<4; i++)
-							{
-								for(int j = 0; j<4; j++)
-								{
-									if(x-x1+i<image.getWidth()&&y-y1+j<image.getHeight())
-									writer.setColor(x-x1+i, y-y1+j, Color.BLACK);
-								}
-							}
-						}
-						else
-						{
-							for(int i = 0; i<4; i++)
-							{
-								for(int j = 0; j<4; j++)
-								{
-									if(x-x1+i<image.getWidth()&&y-y1+j<image.getHeight())
-									writer.setColor(x-x1+i, y-y1+j, colorFunction.getColor(it));
-								}
-							}
-						}
-						incrementPixels();
-					}
-				}
-			}
-		}
-		else
-		{
-			for(int x = x1; x<x2; x+=4)
-			{
-				for(int y = y1; y<y2; y+=4)
-				{
-					if(interrupted)
-					{
-						return image;
-					}
-					if(!(x%16==0 && y%16==0))
-					{
-						int it;
-						if((it = MandelbrotFunction.testPoint(toComplexBigDecimal(x,y, region, pixelRegion, precision).toComplex(), new Complex(0,0), iterations))==0)
-						{
-							for(int i = 0; i<4; i++)
-							{
-								for(int j = 0; j<4; j++)
-								{
-									if(x-x1+i<image.getWidth()&&y-y1+j<image.getHeight())
-									writer.setColor(x-x1+i, y-y1+j, Color.BLACK);
-								}
-							}
-						}
-						else
-						{
-							for(int i = 0; i<4; i++)
-							{
-								for(int j = 0; j<4; j++)
-								{
-									if(x-x1+i<image.getWidth()&&y-y1+j<image.getHeight())
-									writer.setColor(x-x1+i, y-y1+j, colorFunction.getColor(it));
-								}
-							}
-						}
-						incrementPixels();
-					}
-				}
-			}
-		}
-		return image;
-	}
-	
-	public WritableImage generateSetFine(Region<Integer> pixelRegionSection, Region<BigDecimal> region, Region<Integer> pixelRegion, int iterations, boolean arbitraryPrecision, int precision, WritableImage image)
-	{
-		PixelWriter writer = image.getPixelWriter();
-		int x1,y1,x2,y2;
-		x1 = pixelRegionSection.x1;
-		x2 = pixelRegionSection.x2;
-		y1 = pixelRegionSection.y1;
-		y2 = pixelRegionSection.y2;
-		if(arbitraryPrecision)
-		{
-			for(int x = x1; x<x2; x+=1)
-			{
-				for(int y = y1; y<y2; y+=1)
-				{
-					if(interrupted)
-					{
-						return image;
-					}
-					if(!(x%4==0 && y%4==0))
-					{
-						int it;
 						if((it = MandelbrotFunction.testPointBigDecimal(toComplexBigDecimal(x,y, region, pixelRegion, precision),
 								new ComplexBigDecimal(new BigDecimal("0"),new BigDecimal("0"),precision), iterations))==0)
 						{
-							writer.setColor(x-x1, y-y1, Color.BLACK);
+							for(int i = 0; i<pixelCalc; i++)
+							{
+								for(int j = 0; j<pixelCalc; j++)
+								{
+									if(x-x1+i<image.getWidth()&&y-y1+j<image.getHeight())
+									writer.setColor(x-x1+i, y-y1+j, Color.BLACK);
+								}
+							}
 						}
 						else
 						{
-							writer.setColor(x-x1, y-y1, colorFunction.getColor(it));
+							for(int i = 0; i<pixelCalc; i++)
+							{
+								for(int j = 0; j<pixelCalc; j++)
+								{
+									if(x-x1+i<image.getWidth()&&y-y1+j<image.getHeight())
+									writer.setColor(x-x1+i, y-y1+j, colorFunction.getColor(it));
+								}
+							}
 						}
-						incrementPixels();
 					}
-					
-				}
-			}
-		}
-		else
-		{
-			for(int x = x1; x<x2; x+=1)
-			{
-				for(int y = y1; y<y2; y+=1)
-				{
-					if(interrupted)
-					{
-						return image;
-					}
-					if(!(x%4==0 && y%4==0))
-					{
-						int it;
-						if((it = MandelbrotFunction.testPoint(toComplexBigDecimal(x,y, region, pixelRegion, precision).toComplex(), new Complex(0,0), iterations))==0)
+					else
+					{	
+						if((it = MandelbrotFunction.testPoint(toComplexBigDecimal(x,y, region, pixelRegion, precision).toComplex(),
+								new Complex(0,0), iterations))==0)
 						{
-							writer.setColor(x-x1, y-y1, Color.BLACK);
+							for(int i = 0; i<pixelCalc; i++)
+							{
+								for(int j = 0; j<pixelCalc; j++)
+								{
+									if(x-x1+i<image.getWidth()&&y-y1+j<image.getHeight())
+									writer.setColor(x-x1+i, y-y1+j, Color.BLACK);
+								}
+							}
 						}
 						else
 						{
-							writer.setColor(x-x1, y-y1, colorFunction.getColor(it));
+							for(int i = 0; i<pixelCalc; i++)
+							{
+								for(int j = 0; j<pixelCalc; j++)
+								{
+									if(x-x1+i<image.getWidth()&&y-y1+j<image.getHeight())
+									writer.setColor(x-x1+i, y-y1+j, colorFunction.getColor(it));
+								}
+							}
 						}
-						incrementPixels();
 					}
-					
+					incrementPixels();
 				}
 			}
 		}
 		return image;
 	}
+	
+	public WritableImage generateJuliaSet(ComplexBigDecimal seed, Region<Integer> pixelRegionSection, Region<BigDecimal> region, Region<Integer> pixelRegion,int iterations, boolean arbPrecision, int precision, int pixelCalc, int skip, WritableImage image)
+	{
+		boolean skipPixels = true;
+		PixelWriter writer = image.getPixelWriter();
+		int x1,y1,x2,y2;
+		x1 = pixelRegionSection.x1;
+		x2 = pixelRegionSection.x2;
+		y1 = pixelRegionSection.y1;
+		y2 = pixelRegionSection.y2;
+		if(skip <=0)
+		{
+			skipPixels = false;
+			//skip = 1;
+		}
+		for(int x = x1; x<x2; x+=pixelCalc)
+		{
+			for(int y = y1; y<y2; y+=pixelCalc)
+			{
+				if(!skipPixels || !(x%skip==0 && y%skip==0))
+				{
+					if(interrupted)
+					{
+						return image;
+					}
+					int it;
+					if(arbPrecision)
+					{
+						if((it=MandelbrotFunction.testPointBigDecimal(seed,toComplexBigDecimal(x,y, region, pixelRegion, precision), iterations))==0)
+						{
+							for(int i = 0; i<pixelCalc; i++)
+							{
+								for(int j = 0; j<pixelCalc; j++)
+								{
+									if(x-x1+i<image.getWidth()&&y-y1+j<image.getHeight())
+									writer.setColor(x-x1+i, y-y1+j, Color.BLACK);
+								}
+							}
+						}
+						else
+						{
+							for(int i = 0; i<pixelCalc; i++)
+							{
+								for(int j = 0; j<pixelCalc; j++)
+								{
+									if(x-x1+i<image.getWidth()&&y-y1+j<image.getHeight())
+									writer.setColor(x-x1+i, y-y1+j, colorFunction.getColor(it));
+								}
+							}
+						}
+					}
+					else
+					{	
+						if((it=MandelbrotFunction.testPoint(seed.toComplex(),toComplexBigDecimal(x,y, region, pixelRegion, precision).toComplex(), iterations))==0)
+						{
+							for(int i = 0; i<pixelCalc; i++)
+							{
+								for(int j = 0; j<pixelCalc; j++)
+								{
+									if(x-x1+i<image.getWidth()&&y-y1+j<image.getHeight())
+									writer.setColor(x-x1+i, y-y1+j, Color.BLACK);
+								}
+							}
+						}
+						else
+						{
+							for(int i = 0; i<pixelCalc; i++)
+							{
+								for(int j = 0; j<pixelCalc; j++)
+								{
+									if(x-x1+i<image.getWidth()&&y-y1+j<image.getHeight())
+									writer.setColor(x-x1+i, y-y1+j, colorFunction.getColor(it));
+								}
+							}
+						}
+					}
+					incrementPixels();
+				}
+			}
+		}
+		return image;
+	}
+	
+	
 	
 	public void setInterrupt(boolean interrupt)
 	{

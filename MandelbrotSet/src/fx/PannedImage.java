@@ -38,6 +38,7 @@ public class PannedImage implements Runnable
 		this.relY = relY;
 		this.gui = gui;
 		this.calculator = calculator;
+		image = new WritableImage(pixelRegionSection.getWidth().intValue(), pixelRegionSection.getHeight().intValue());
 	}
 	
 	@Override
@@ -45,20 +46,20 @@ public class PannedImage implements Runnable
 	{
 		if(jSet)
 		{
-			image = calculator.generateJuliaSetRough(seed, pixelRegionSection, region, pixelRegion, iterations, arbPrecision, precision);
+			image = calculator.generateJuliaSet(seed, pixelRegionSection, region, pixelRegion, iterations, arbPrecision, precision,16,0,image);
 			render();
-			image = calculator.generateJuliaSetMed(seed, pixelRegionSection, region, pixelRegion, iterations, arbPrecision, precision,image);
+			image = calculator.generateJuliaSet(seed, pixelRegionSection, region, pixelRegion, iterations, arbPrecision, precision,4,16,image);
 			render();
-			image = calculator.generateJuliaSetFine(seed, pixelRegionSection, region, pixelRegion, iterations, arbPrecision, precision,image);
+			image = calculator.generateJuliaSet(seed, pixelRegionSection, region, pixelRegion, iterations, arbPrecision, precision,1,4,image);
 			render();
 		}
 		else
 		{
-			image = calculator.generateSetRough(pixelRegionSection, region, pixelRegion, iterations, arbPrecision, precision);
+			image = calculator.generateSet(pixelRegionSection, region, pixelRegion, iterations, arbPrecision, precision,16,0,image);
 			render();
-			image = calculator.generateSetMed(pixelRegionSection, region, pixelRegion, iterations, arbPrecision, precision,image);
+			image = calculator.generateSet(pixelRegionSection, region, pixelRegion, iterations, arbPrecision, precision,4,16,image);
 			render();
-			image = calculator.generateSetFine(pixelRegionSection, region, pixelRegion, iterations, arbPrecision, precision,image);
+			image = calculator.generateSet(pixelRegionSection, region, pixelRegion, iterations, arbPrecision, precision,1,4,image);
 			render();
 		}
 	}

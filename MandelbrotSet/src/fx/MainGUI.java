@@ -497,65 +497,46 @@ public class MainGUI extends Application
 			this.calculator = calculator;
 		}
 		
+		public void drawImageToCanvas(WritableImage im)
+		{
+			Platform.runLater(new Runnable(){
+				
+				@Override
+				public void run() {
+					gc.drawImage(im,pixelRegionSection.x1, pixelRegionSection.y1);
+				}
+			});
+		}
+		
 		@Override
 		public void run() {
 			if(jSet)
 			{
-				WritableImage image = calculator.generateJuliaSetRough(seed, pixelRegionSection, region, pixelRegion, iterations, arbPrecision, precision);
-				final WritableImage im = image;
-				Platform.runLater(new Runnable(){
-	
-					@Override
-					public void run() {
-						gc.drawImage(im,pixelRegionSection.x1, pixelRegionSection.y1);
-					}
-				});
-				image = calculator.generateJuliaSetMed(seed, pixelRegionSection, region, pixelRegion, iterations, arbPrecision, precision,image);
-				final WritableImage im2 = image;
-				Platform.runLater(new Runnable(){
-					@Override
-					public void run() {
-						gc.drawImage(im2,pixelRegionSection.x1, pixelRegionSection.y1);
-					}
-				});
-				image = calculator.generateJuliaSetFine(seed, pixelRegionSection, region, pixelRegion, iterations, arbPrecision, precision,image);
-				final WritableImage im3 = image;
-				Platform.runLater(new Runnable(){
-	
-					@Override
-					public void run() {
-						gc.drawImage(im3,pixelRegionSection.x1, pixelRegionSection.y1);
-					}
-				});
+				WritableImage image = new WritableImage(pixelRegionSection.getWidth().intValue(), pixelRegionSection.getHeight().intValue());
+				image = calculator.generateJuliaSet(seed, pixelRegionSection, region, pixelRegion, iterations, arbPrecision, precision, 16, 0, image);
+				drawImageToCanvas(image);
+				
+				image = calculator.generateJuliaSet(seed, pixelRegionSection, region, pixelRegion, iterations, arbPrecision, precision,4,16,image);
+				drawImageToCanvas(image);
+				
+				image = calculator.generateJuliaSet(seed, pixelRegionSection, region, pixelRegion, iterations, arbPrecision, precision,1,4,image);
+				drawImageToCanvas(image);
+				
 				if(gc.getCanvas().equals(viewerCanvas))
 				Platform.runLater(() -> currentImage = viewerCanvas.snapshot(new SnapshotParameters(), null));
 			}
 			else
 			{
-				WritableImage image = calculator.generateSetRough(pixelRegionSection, region, pixelRegion, iterations, arbPrecision, precision);
-				final WritableImage im = image;
-				Platform.runLater(new Runnable(){
-					@Override
-					public void run() {
-						gc.drawImage(im,pixelRegionSection.x1, pixelRegionSection.y1);
-					}
-				});
-				image = calculator.generateSetMed(pixelRegionSection, region, pixelRegion, iterations, arbPrecision, precision,image);
-				final WritableImage im2 = image;
-				Platform.runLater(new Runnable(){
-					@Override
-					public void run() {
-						gc.drawImage(im2,pixelRegionSection.x1, pixelRegionSection.y1);
-					}
-				});
-				image = calculator.generateSetFine(pixelRegionSection, region, pixelRegion, iterations, arbPrecision, precision,image);
-				final WritableImage im3 = image;
-				Platform.runLater(new Runnable(){
-					@Override
-					public void run() {
-						gc.drawImage(im3,pixelRegionSection.x1, pixelRegionSection.y1);
-					}
-				});
+				WritableImage image = new WritableImage(pixelRegionSection.getWidth().intValue(), pixelRegionSection.getHeight().intValue());
+				image = calculator.generateSet(pixelRegionSection, region, pixelRegion,
+						iterations, arbPrecision, precision,16,0,image);
+				drawImageToCanvas(image);
+				
+				image = calculator.generateSet(pixelRegionSection, region, pixelRegion, iterations, arbPrecision, precision,4,16,image);
+				drawImageToCanvas(image);
+				
+				image = calculator.generateSet(pixelRegionSection, region, pixelRegion, iterations, arbPrecision, precision,1, 4, image);
+				drawImageToCanvas(image);
 				
 				Platform.runLater(() -> currentImage = viewerCanvas.snapshot(new SnapshotParameters(), null));
 			}
