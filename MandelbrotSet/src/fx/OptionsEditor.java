@@ -46,7 +46,7 @@ public class OptionsEditor
 		
 		try
 		{
-			file = new File(this.getClass().getClassLoader().getResource("resource/SavedRegions.txt").toURI());
+			file = new File(Locator.locateFile("SavedRegions.txt"));
 			in = new ObjectInputStream(new FileInputStream(file));
 			savedRegions = (ArrayList<SavedRegion>)in.readObject();
 		}
@@ -55,7 +55,7 @@ public class OptionsEditor
 			/*File Empty And in is null*/
 			savedRegions = new ArrayList<SavedRegion>();
 		}
-		catch (IOException | ClassNotFoundException | URISyntaxException e)
+		catch (IOException | ClassNotFoundException e)
 		{
 			e.printStackTrace();
 		}
