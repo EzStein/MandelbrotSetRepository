@@ -15,6 +15,7 @@ public class SizeChooser
 	public Optional<Integer> showAndWait()
 	{
 		Stage window = new Stage();
+		window.setResizable(false);
 		window.initModality(Modality.APPLICATION_MODAL);
 		window.setOnCloseRequest(e ->{
 			result = Optional.empty();

@@ -8,13 +8,16 @@ import javafx.scene.image.*;
 import javafx.scene.input.*;
 import javafx.scene.layout.*;
 import javafx.scene.paint.*;
-
-import java.io.File;
-import java.io.IOException;
 import java.math.*;
 import java.util.*;
 import fx.Region;
 
+/**
+ * Holds the Main gui for this program.
+ * @author Ezra Stein
+ * @version 1.1
+ * @since 2015
+ */
 public class MainGUI extends Application
 {
 	Thread updater;
@@ -27,39 +30,43 @@ public class MainGUI extends Application
 	ProgressBar progressBar;
 	ProgressIndicator progressIndicator;
 	Region<BigDecimal> currentRegion;
-	Region<Integer> viewerPixelRegion;
-	Region<Integer> previewPixelRegion;
+	Region<Integer> viewerPixelRegion, previewPixelRegion;
 	WritableImage currentImage, displayImage;
-	int width,height;
-	int previewWidth, previewHeight;
-	boolean closed = false;
-	boolean idle = true;
-	boolean julia = false;
-	boolean arbitraryPrecision = false;
-	int iterations = 500;
-	int precision = 50;
-	int initX=0, initY=0;
-	int threadCount = 10;
-	int imageX=0, imageY=0;
+	Calculator mainCalculator, previewCalculator;
 	ComplexBigDecimal juliaSeed;
 	ArrayList<PannedImage> pannedImages;
-	ArrayList<Region<BigDecimal>> loggedRegions = new ArrayList<>();
-	ArrayList<Thread> runningThreads = new ArrayList<Thread>();
+	ArrayList<Region<BigDecimal>> loggedRegions;
+	ArrayList<Thread> runningThreads;
 	private final Region<BigDecimal> originalRegion = new Region<BigDecimal>(new BigDecimal("-2"),
 			new BigDecimal("2"),
 			new BigDecimal("2"),
 			new BigDecimal("-2"));
-	Calculator mainCalculator, previewCalculator;
 	
+	boolean closed, idle, julia, arbitraryPrecision;
+	int width, height, previewWidth, previewHeight, iterations, precision, initX, initY, imageX, imageY, threadCount;
+	
+	
+	/**
+	 * The main method that launches this gui.
+	 * @param args
+	 */
 	public static void main(String[] args)
 	{
 		
 		launch(args);
 	}
 	
+	/**
+	 * Builds the gui onto the primary stage.
+	 * Initially opens a sizeChooser window to choose the initial viewer size.
+	 * 
+	 * Constructs.
+	 */
 	@Override
 	public void start(Stage window)
 	{
+		
+		/*Opens the size chooser window.*/
 		SizeChooser sizeChooser = new SizeChooser();
 		Optional<Integer> result = sizeChooser.showAndWait();
 		if(result.isPresent())
@@ -69,75 +76,142 @@ public class MainGUI extends Application
 		}
 		else
 		{
+			/*Exits the program*/
 			return;
 		}
 		
+		
+		/*Creates two calculator objects. One for the preview viewer and one for the main viewer.*/
 		mainCalculator = new Calculator();
 		previewCalculator = new Calculator();
+		
+		
+		/*Initializes variables with the default value.*/
+		
 		currentImage = new WritableImage(width,height);
 		pannedImages = new ArrayList<PannedImage>();
 		juliaSeed = new ComplexBigDecimal("0","0",precision);
+		loggedRegions = new ArrayList<Region<BigDecimal>>();
+		runningThreads = new ArrayList<Thread>();
 		currentRegion = originalRegion;
+		closed = false;
+		idle = true;
+		julia = false;
+		arbitraryPrecision = false;
+		iterations = 500;
+		precision = 50;
+		initX=0;
+		initY=0;
+		threadCount = 10;
+		imageX=0;
+		imageY=0;
+		previewWidth = width/3;
+		previewHeight = height/3;
+		
+		/*Initializes Basic layout*/
 		this.window = window;
 		layout = new BorderPane();
-		scene = new Scene(layout);
+		layout.setId("layout");
+		Group rootGroup = new Group();
+		rootGroup.getChildren().add(layout);
+		scene = new Scene(rootGroup);
+		
+		/*Sets up style sheets*/
+		scene.getStylesheets().add(this.getClass().getResource("MainStyle.css").toExternalForm());
+		
+		/*close() method called when window is closed*/
 		window.setOnCloseRequest(e->{
 			e.consume();
 			close();
 			});
-		scene.getStylesheets().add(this.getClass().getResource("MainStyle.css").toExternalForm());
 		
-		/*Create Menus*/
+		
+		/*Create MenuBar*/
 		MenuBar menuBar = new MenuBar();
 		menuBar.useSystemMenuBarProperty().set(true);
+		rootGroup.getChildren().add(menuBar);
 		
-		/*File*/
+		/*Builds File Menu*/
 		Menu fileMenu = new Menu("File");
 		MenuItem saveMenu = new MenuItem("Save Image...");
 		MenuItem aboutMenu = new MenuItem("About");
-		aboutMenu.setOnAction(e -> {
-			Alert alert = new Alert(Alert.AlertType.INFORMATION);
-			alert.setTitle("About");
-			alert.setContentText("ABOUT THIS PROGRAM");
-			alert.show();
-		});
-		saveMenu.setOnAction(e->{
-			Platform.runLater(()->{new ImageSaverDialog(this).showSaverDialog();});
-			});
 		fileMenu.getItems().addAll(saveMenu,aboutMenu);
 		menuBar.getMenus().add(fileMenu);
 		
+		/*About Menu Item*/
+		aboutMenu.setOnAction(e -> {
+			Alert alert = new Alert(Alert.AlertType.INFORMATION);
+			alert.setTitle("About");
+			alert.setHeaderText("About This Program");
+			alert.setContentText("FractalApp\nVersion 1.1\n©Ezra Stein\n");
+			alert.show();
+		});
 		
-		/*Edit*/
+		/*
+		 * Save Menu Item:
+		 * Opens up the image saver dialog.
+		 */
+		saveMenu.setOnAction(e->{
+				new ImageSaverDialog(this).showSaverDialog();
+			});
+		
+		
+		/*Build Edit Menu*/
 		Menu editMenu = new Menu("Edit");
+		
 		ToggleGroup toggleGroup = new ToggleGroup();
 		RadioMenuItem mandelbrotSetMenu = new RadioMenuItem("Mandelbrot Set");
+		mandelbrotSetMenu.setToggleGroup(toggleGroup);
 		mandelbrotSetMenu.setSelected(true);
 		
 		RadioMenuItem juliaSetMenu = new RadioMenuItem("Julia Set");
 		juliaSetMenu.setToggleGroup(toggleGroup);
 		
-		menuBar.getMenus().add(editMenu);
-		mandelbrotSetMenu.setOnAction(e -> {
-			interrupt();
-			loggedRegions = new ArrayList<>();
-			currentRegion = originalRegion;
-			mandelbrotSetMenu.setSelected(true);
-			juliaSetMenu.setSelected(false);
-			julia = false;
-			drawSet();
-		});
-		juliaSetMenu.setOnAction(e -> {
-			interrupt();
-			loggedRegions = new ArrayList<>();
-			currentRegion = originalRegion;
-			mandelbrotSetMenu.setSelected(false);
-			juliaSetMenu.setSelected(true);
-			julia = true;
-			drawSet();
-			
-		});
 		MenuItem reset = new MenuItem("Reset");
+		MenuItem rerender = new MenuItem("Rerender");
+		MenuItem undo = new MenuItem("Undo");
+		MenuItem interrupt = new MenuItem("Interrupt");
+		MenuItem editMenuItem = new MenuItem("Edit...");
+		editMenu.getItems().addAll(mandelbrotSetMenu, juliaSetMenu,new SeparatorMenuItem(),
+				reset,rerender, undo,interrupt, new SeparatorMenuItem(), editMenuItem);
+		menuBar.getMenus().add(editMenu);
+		
+		/*
+		 * Mandelbrot Set Menu; Switches view to Mandelbrot set iff 
+		 * you are currently viewing the Julia set.
+		 */
+		mandelbrotSetMenu.setOnAction(e -> {
+			if(julia)
+			{
+				interrupt();
+				loggedRegions = new ArrayList<>();
+				currentRegion = originalRegion;
+				julia = false;
+				drawSet();
+			}
+		});
+		
+		/*
+		 * Julia Set Menu:
+		 * Switches view to Julia Set iff you are currently
+		 * viewing the Mandelbrot set. 
+		 */
+		juliaSetMenu.setOnAction(e -> {
+			if(!julia)
+			{
+				interrupt();
+				loggedRegions = new ArrayList<>();
+				currentRegion = originalRegion;
+				julia = true;
+				drawSet();
+			}
+		});
+		
+		/*
+		 * Reset Menu:
+		 * Resets the view to the original region.
+		 * Will also change arbitaryPrecision to false.
+		 */
 		reset.setOnAction(e -> {
 			interrupt();
 			loggedRegions.add(currentRegion);
@@ -146,68 +220,79 @@ public class MainGUI extends Application
 			drawSet();
 		});
 		
-		MenuItem rerender = new MenuItem("Rerender");
+		/*
+		 * Rerender Menu:
+		 * Redraws the current region. 
+		 */
 		rerender.setOnAction(e -> {
 			interrupt();
 			drawSet();
 			
 		});
 		
-		
-		MenuItem undo = new MenuItem("undo");
+		/*
+		 * Undo menu:
+		 * Moves to the last previously logged region;
+		 */
 		undo.setOnAction(e -> {
-			if(idle)
+			if(loggedRegions.size()>=1)
 			{
-				if(loggedRegions.size()>=1)
-				{
-					currentRegion = loggedRegions.get(loggedRegions.size()-1);
-					loggedRegions.remove(loggedRegions.size()-1);
-					drawSet();
-				}
-				else
-				{
-					
-				}
+				interrupt();
+				currentRegion = loggedRegions.get(loggedRegions.size()-1);
+				loggedRegions.remove(loggedRegions.size()-1);
+				drawSet();
+			}
+			else
+			{
+				Alert alert = new Alert(Alert.AlertType.ERROR);
+				alert.setTitle("Nothing to Undo");
+				alert.setContentText("There are no more previously logged regions");
+				alert.show();
 			}
 		});
 		
-		
-		MenuItem editMenuItem = new MenuItem("Edit...");
-		
+		/*
+		 * Edit Menu Item:
+		 * Opens the edit dialog 
+		 */
 		editMenuItem.setOnAction(e -> {
-			Platform.runLater(() -> {
 				new OptionsEditor(this).showEditDialog();
 			});
-			});
 		
-		MenuItem interrupt = new MenuItem("interrupt");
 		
+		/*
+		 * Interrupt Menu Item:
+		 * Interrupts the render.
+		 * Has no effect if idle == true.
+		 */
 		interrupt.setOnAction(e -> interrupt());
 		
-		editMenu.getItems().addAll(mandelbrotSetMenu, juliaSetMenu,new SeparatorMenuItem(),reset,rerender, undo,interrupt, new SeparatorMenuItem(), editMenuItem);
-		
-		/*Info*/
-		layout.setBottom(menuBar);
 		
 		/*Create Progress Bar*/
 		progressBar = new ProgressBar();
 		progressIndicator = new ProgressIndicator();
-		progressBar.setPrefWidth(width+200);
+		progressBar.setPrefWidth(width+previewWidth-40);
 		HBox hbox = new HBox(10);
 		hbox.getChildren().addAll(progressBar, progressIndicator);
 		layout.setTop(hbox);
 		
 		/*Create main canvas explorer*/
 		viewerCanvas = new Canvas(width,height);
-		width = (int) viewerCanvas.getWidth();
-		height = (int) viewerCanvas.getHeight();
 		mainGC = viewerCanvas.getGraphicsContext2D();
 		layout.setCenter(viewerCanvas);
 		
+		/*
+		 * Gives it focus so that whenever the mouse is on top of the canvas,
+		 * it will be able to receive mouse events.
+		 */
 		viewerCanvas.setOnMouseEntered(e ->{
 			viewerCanvas.requestFocus();
 		});
 		
+		/*
+		 * Mouse Pressed Event:
+		 * 
+		 */
 		viewerCanvas.setOnMousePressed(e->{
 			if(e.getButton() == MouseButton.PRIMARY)
 			{
@@ -222,13 +307,62 @@ public class MainGUI extends Application
 			interrupt();
 			if(e.getButton() == MouseButton.PRIMARY)
 			{
-				int x = (int)e.getX(), y = (int)e.getY();
+				/*int x = (int)e.getX(), y = (int)e.getY();
 				int max = Math.max(Math.abs(initX-x), Math.abs(initY-y));
 				Platform.runLater(() ->{
 					mainGC.drawImage(displayImage, 0, 0);
 					mainGC.setStroke(Color.WHITE);
 					mainGC.strokeRect(initX, initY, max, max);
-				});
+				
+				
+				
+				});*/
+				
+				
+				
+				
+				int x = (int)e.getX(), y = (int)e.getY();
+				int max = Math.max(Math.abs(initX-x), Math.abs(initY-y));
+				if(x<initX && y>initY)
+				{
+					Platform.runLater(() ->{
+						mainGC.drawImage(displayImage, 0, 0);
+						mainGC.setStroke(Color.WHITE);
+						mainGC.strokeRect(initX-max, initY, max, max);
+					
+					});
+				}
+				else if(x < initX && y< initY)
+				{
+					Platform.runLater(() ->{
+						mainGC.drawImage(displayImage, 0, 0);
+						mainGC.setStroke(Color.WHITE);
+						mainGC.strokeRect(initX-max, initY-max, max, max);
+					
+					});
+				}
+				else if(x>initX && y>initY)
+				{
+					Platform.runLater(() ->{
+						mainGC.drawImage(displayImage, 0, 0);
+						mainGC.setStroke(Color.WHITE);
+						mainGC.strokeRect(initX, initY, max, max);
+					
+					});
+				}
+				else if(x>initX && y<initY)
+				{
+					Platform.runLater(() ->{
+						mainGC.drawImage(displayImage, 0, 0);
+						mainGC.setStroke(Color.WHITE);
+						mainGC.strokeRect(initX, initY-max, max, max);
+					
+					});
+				}
+				
+				
+				
+				
 			}
 		
 		});
@@ -238,20 +372,37 @@ public class MainGUI extends Application
 			int x = (int)e.getX(), y = (int)e.getY();
 			if(e.getButton() == MouseButton.PRIMARY)
 			{
+				int max = Math.max(Math.abs(initX-x), Math.abs(initY-y));
+				loggedRegions.add(currentRegion);
 				if(initX==x&&initY==y)
 				{
 					int length = (int) width/50;
-					loggedRegions.add(currentRegion);
-					currentRegion = mainCalculator.toBigDecimalRegion(new Region<Integer>(initX-length,initY-length,initX+length,initY+length), currentRegion, viewerPixelRegion, precision);
-					drawSet();
+					currentRegion = mainCalculator.toBigDecimalRegion(new Region<Integer>(initX-length,initY-length,initX+length,initY+length),
+							currentRegion, viewerPixelRegion, precision);
 				}
-				else
+				else if(x<initX&&y<initY)
 				{
-					int max = Math.max(Math.abs(initX-x), Math.abs(initY-y));
-					loggedRegions.add(currentRegion);
-					currentRegion = mainCalculator.toBigDecimalRegion(new Region<Integer>(initX,initY,initX+max,initY+max), currentRegion, viewerPixelRegion, precision);
-					drawSet();
+					currentRegion = mainCalculator.toBigDecimalRegion(new Region<Integer>(initX-max,initY-max,initX,initY),
+							currentRegion, viewerPixelRegion, precision);
 				}
+				else if(x<initX&&y>initY)
+				{
+					currentRegion = mainCalculator.toBigDecimalRegion(new Region<Integer>(initX-max,initY,initX,initY+max),
+							currentRegion, viewerPixelRegion, precision);
+				}
+				else if(x>initX&&y<initY)
+				{
+					currentRegion = mainCalculator.toBigDecimalRegion(new Region<Integer>(initX,initY-max,initX+max,initY),
+							currentRegion, viewerPixelRegion, precision);
+				}
+				else if(x>initX&&y>initY)
+				{
+					currentRegion = mainCalculator.toBigDecimalRegion(new Region<Integer>(initX,initY,initX+max,initY+max),
+							currentRegion, viewerPixelRegion, precision);
+				}
+				
+				drawSet();
+				
 			}
 			else
 			{
@@ -320,12 +471,26 @@ public class MainGUI extends Application
 				+ "Color: " + mainCalculator.getColorFunction().toString() + "\n"
 				+ "Arbitrary Precision: " + arbitraryPrecision + "\n");
 		});
+		/*layout.setOnKeyTyped(e->{
+			if(e.getCode() == KeyCode.ESCAPE)
+			{
+				Alert alert = new Alert(AlertType.CONFIRMATION);
+				alert.setContentText("Are you sure you want to quit?");
+				Optional<ButtonType> response = alert.showAndWait();
+				if(response.isPresent())
+				{
+					interrupt();
+					close();
+				}
+				
+			}
+			
+		});*/
 		
 		/*Create right views*/
 		VBox vbox = new VBox();
-		Canvas juliaViewer = new Canvas(width/3,height/3);
-		previewWidth = (int) juliaViewer.getWidth();
-		previewHeight = (int)juliaViewer.getHeight();
+		Canvas juliaViewer = new Canvas(previewWidth,previewHeight);
+		
 		juliaGC = juliaViewer.getGraphicsContext2D();
 		vbox.getChildren().add(juliaViewer);
 		textArea = new Label("Iterations: " + iterations + "\n"
@@ -347,21 +512,46 @@ public class MainGUI extends Application
 		drawSet();
 	}
 	
+	/**
+	 * Interrupts the calculation causing all threads to halt and return immediately whatever pixels
+	 * they have calculated which are immediately rendered. Blocks until the updater thread has terminated thus indicating the
+	 * program has successfully become idle.
+	 * Has no effect if the program is already idle.
+	 */
 	public void interrupt()
 	{
 		if(!idle)
 		{
 			mainCalculator.setInterrupt(true);
-			idle = true;
+			
+			updater.interrupt();
 			try {
 				updater.join();
 			} catch (InterruptedException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
+			idle = true;
 		}
 	}
 	
+	/**
+	 * Called when the user needs to safely close the program.
+	 * First it interrupts the threads, then it closes;
+	 */
+	public void close()
+	{
+		interrupt();
+		closed = true;
+		window.close();
+	}
+	
+	/**
+	 * Draws the set given the current state of the program.
+	 * Creates threadCount number of threads and assigns them to horizontal sections of the canvas.
+	 * If threadCount does not divide evenly into the Canvas height, it will make one additional thread to cover the
+	 * last pixels.
+	 */
 	public void drawSet()
 	{
 		idle = false;
@@ -388,8 +578,14 @@ public class MainGUI extends Application
 			runningThreads.add(g);
 			g.start();
 		}
-		
-		
+		updateTextArea();
+	}
+	
+	/**
+	 * Updates the text in the text Area.
+	 */
+	public void updateTextArea()
+	{
 		textArea.setText("Iterations: " + iterations + "\n"
 				+ "Precision: " + precision + "\n"
 				+ "Julia Set: " + julia + "\n"
@@ -399,13 +595,40 @@ public class MainGUI extends Application
 				+ "Arbitrary Precision: " + arbitraryPrecision + "\n");
 	}
 	
-	public void close()
+	/**
+	 * Called when the preview Julia set viewer needs to be updated (on a right mouse click).
+	 * Will generate the necessary threads as well as any extras to cover uncolored pixels.
+	 */
+	public void updateJuliaSetViewer()
 	{
-		interrupt();
-		closed = true;
-		window.close();
+		int h = (int) previewHeight/threadCount;
+		for(int i = 0; i<threadCount; i++)
+		{
+			Region<Integer> pixelRegionSection = new Region<Integer>(0,i*h,previewWidth,i*h+h);
+			new Thread(new Generator(pixelRegionSection,
+					originalRegion, previewPixelRegion, iterations,arbitraryPrecision, precision, true, juliaSeed, juliaGC, previewCalculator)).start();
+		}
+		
+		if(h*threadCount < height)
+		{
+			Region<Integer> pixelRegionSection = new Region<Integer>(0,h*threadCount,previewWidth,previewHeight);
+			new Thread(new Generator(pixelRegionSection,
+					originalRegion, previewPixelRegion, iterations,arbitraryPrecision, precision, true, juliaSeed, juliaGC, previewCalculator)).start();
+		}
 	}
 	
+	
+	
+	/**
+	 * Updates the progress bar by continuously checking the number of pixels calculated by the main calculator
+	 * This thread breaks from the loop when either all the pixels have been calculated,
+	 * or it is interrupted by the interrupt method.
+	 * Upon breaking from the loop, the thread will wait for each generator thread to terminate
+	 * and then it will clear all the running Threads and reset the interrupt status of the mainCalculator.
+	 * @author Ezra Stein
+	 * @version 1.1
+	 * @since 2015
+	 */
 	public class Updater implements Runnable
 	{
 
@@ -416,9 +639,9 @@ public class MainGUI extends Application
 			{
 				try {
 					Thread.sleep(10);
-				} catch (InterruptedException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
+				} catch (InterruptedException e)
+				{
+					break;
 				}
 				Platform.runLater(new Runnable(){
 					public void run()
@@ -451,25 +674,14 @@ public class MainGUI extends Application
 		}
 	}
 	
-	public void updateJuliaSetViewer()
-	{
-		int h = (int) previewHeight/threadCount;
-		for(int i = 0; i<threadCount; i++)
-		{
-			Region<Integer> pixelRegionSection = new Region<Integer>(0,i*h,previewWidth,i*h+h);
-			new Thread(new Generator(pixelRegionSection,
-					originalRegion, previewPixelRegion, iterations,arbitraryPrecision, precision, true, juliaSeed, juliaGC, previewCalculator)).start();
-		}
-		
-		
-		if(h*threadCount < height)
-		{
-			Region<Integer> pixelRegionSection = new Region<Integer>(0,h*threadCount,previewWidth,previewHeight);
-			new Thread(new Generator(pixelRegionSection,
-					originalRegion, previewPixelRegion, iterations,arbitraryPrecision, precision, true, juliaSeed, juliaGC, previewCalculator)).start();
-		}
-	}
 	
+	
+	/**
+	 * Used to construct an image and draw to a canvas of either the julia set or the Mandelbrot Set.
+	 * @author Ezra
+	 * @version 1.1
+	 * @since 2015
+	 */
 	public class Generator implements Runnable
 	{
 		private Region<Integer> pixelRegionSection;
@@ -482,6 +694,21 @@ public class MainGUI extends Application
 		private boolean arbPrecision;
 		private Calculator calculator;
 		
+		/**
+		 * Constructs a generator object used to generate fractal images and render them onto the canvas.
+		 * @param pixelRegionSection	The Section of the canvas that this generator is responsible for drawing. Given in pixels.
+		 * @param region				The real-numbered region on the complex plane coordinate that will be mapped
+		 * 								To the ENTIRE canvas and not just to the section being calculated by the above region.
+		 * @param pixelRegion			The region of pixels that that {@code region} is mapped to. This is most often the
+		 * 								the region in pixels corresponding to the canvas ie (0,0,width,height);
+		 * @param iterations			The iterations to used when calculating this region. More iterations means higher accuracy.
+		 * @param arbPrecision			True if the generator is to use arbitrary precision BigDecimals to calculated the set.
+		 * @param precision				The precision each bigDecimal uses in its calculations. Has no effect if arbPrecision is false.
+		 * @param jSet					True if the generator will calculate a julia set. False if it will calculate the mandelbrot set.
+		 * @param seed					The seed used to calculate the Julia set. Has no effect if jSet is false.
+		 * @param gc					The graphicsContext which this generator will draw to. Either the mainViewer or the preivewViewer.
+		 * @param calculator			The calculator used to calculate each image.
+		 */
 		public Generator(Region<Integer> pixelRegionSection, Region<BigDecimal> region, Region<Integer> pixelRegion,
 								int iterations, boolean arbPrecision, int precision,  boolean jSet, ComplexBigDecimal seed, GraphicsContext gc, Calculator calculator)
 		{
@@ -497,6 +724,10 @@ public class MainGUI extends Application
 			this.calculator = calculator;
 		}
 		
+		/**
+		 * Renders this image onto the canvas whose graphicsContext is assigned to this thread.
+		 * @param im	The image to be Rendered.
+		 */
 		public void drawImageToCanvas(WritableImage im)
 		{
 			Platform.runLater(new Runnable(){
@@ -508,6 +739,10 @@ public class MainGUI extends Application
 			});
 		}
 		
+		/**
+		 * Generates a rough then medium then fine image, each time rendering it to the Canvas.
+		 * Afterwords, it takes a snapshot of the main canvas and sets it to currentImage.
+		 */
 		@Override
 		public void run() {
 			if(jSet)
