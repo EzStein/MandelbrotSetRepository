@@ -2,3 +2,7 @@
 #layout {
 	-fx-background-image:url("/resource/background.jpg");
 }
+
+.label {
+	-fx-background-color:white;
+}

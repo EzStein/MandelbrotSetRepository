@@ -13,7 +13,7 @@ import java.util.*;
 import fx.Region;
 
 /**
- * Holds the Main gui for this program.
+ * Holds the Main GUI for this program.
  * @author Ezra Stein
  * @version 1.1
  * @since 2015
@@ -107,6 +107,8 @@ public class MainGUI extends Application
 		imageY=0;
 		previewWidth = width/3;
 		previewHeight = height/3;
+		viewerPixelRegion = new Region<Integer>(0,0,width,height);
+		previewPixelRegion = new Region<Integer>(0,0,previewWidth,previewHeight);
 		
 		/*Initializes Basic layout*/
 		this.window = window;
@@ -291,7 +293,7 @@ public class MainGUI extends Application
 		
 		/*
 		 * Mouse Pressed Event:
-		 * 
+		 * Records the initial position of the mouse to be used for rendering a zoom box under the mouseDragged listener.
 		 */
 		viewerCanvas.setOnMousePressed(e->{
 			if(e.getButton() == MouseButton.PRIMARY)
@@ -301,26 +303,16 @@ public class MainGUI extends Application
 				initY = y;
 				Platform.runLater(() -> displayImage = viewerCanvas.snapshot(new SnapshotParameters(), null));
 			}
-			
 		});
+		
+		/*
+		 * Mouse Dragged Event:
+		 * Renders a square box on the screen.
+		 */
 		viewerCanvas.setOnMouseDragged(e ->{
 			interrupt();
 			if(e.getButton() == MouseButton.PRIMARY)
-			{
-				/*int x = (int)e.getX(), y = (int)e.getY();
-				int max = Math.max(Math.abs(initX-x), Math.abs(initY-y));
-				Platform.runLater(() ->{
-					mainGC.drawImage(displayImage, 0, 0);
-					mainGC.setStroke(Color.WHITE);
-					mainGC.strokeRect(initX, initY, max, max);
-				
-				
-				
-				});*/
-				
-				
-				
-				
+			{				
 				int x = (int)e.getX(), y = (int)e.getY();
 				int max = Math.max(Math.abs(initX-x), Math.abs(initY-y));
 				if(x<initX && y>initY)
@@ -359,14 +351,16 @@ public class MainGUI extends Application
 					
 					});
 				}
-				
-				
-				
-				
 			}
-		
 		});
 		
+		/*
+		 * Mouse Released Event:
+		 * Uses initX and initY as well as the current mouse position to
+		 * zoom into a new Region of the set.
+		 * If a right click occurred then it will update the previewViewer with a julia set image
+		 * whose seed is the position of the mouse.
+		 */
 		viewerCanvas.setOnMouseReleased(e ->{
 			interrupt();
 			int x = (int)e.getX(), y = (int)e.getY();
@@ -415,6 +409,14 @@ public class MainGUI extends Application
 			
 		});
 		
+		/*
+		 * KeyPressed Event:
+		 * Pans the image to the right.
+		 * ImageX and imageY refer to the position of the original image that has been panned.
+		 * It will then update the current region and calculate create a panned image object for the void that was left
+		 * when the image was panned.
+		 * The panned image object will render its sliver on its own time and then draw it relative to imageX and imageY.
+		 */
 		viewerCanvas.setOnKeyPressed(e ->{
 			interrupt();
 			int change = 10;
@@ -463,13 +465,7 @@ public class MainGUI extends Application
 					mainGC.drawImage(p.image, imageX+p.relX, imageY + p.relY);
 				}
 			});
-			textArea.setText("Iterations: " + iterations + "\n"
-				+ "Precision: " + precision + "\n"
-				+ "Julia Set: " + julia + "\n"
-				+ "Center: " + currentRegion.getCenterX().stripTrailingZeros().toPlainString() + " + " + currentRegion.getCenterY().stripTrailingZeros().toPlainString() + "i" + "\n"
-				+ "Threads: " + threadCount + "\n"
-				+ "Color: " + mainCalculator.getColorFunction().toString() + "\n"
-				+ "Arbitrary Precision: " + arbitraryPrecision + "\n");
+			updateTextArea();
 		});
 		/*layout.setOnKeyTyped(e->{
 			if(e.getCode() == KeyCode.ESCAPE)
@@ -487,12 +483,13 @@ public class MainGUI extends Application
 			
 		});*/
 		
-		/*Create right views*/
+		/*Preview Viewer*/
 		VBox vbox = new VBox();
 		Canvas juliaViewer = new Canvas(previewWidth,previewHeight);
-		
 		juliaGC = juliaViewer.getGraphicsContext2D();
 		vbox.getChildren().add(juliaViewer);
+		
+		/*Create Text Area*/
 		textArea = new Label("Iterations: " + iterations + "\n"
 				+ "Precision: " + precision + "\n"
 				+ "Julia Set: " + julia + "\n"
@@ -502,12 +499,13 @@ public class MainGUI extends Application
 				+ "Arbitrary Precision: " + arbitraryPrecision + "\n");
 		vbox.getChildren().add(textArea);
 		layout.setRight(vbox);
-		viewerPixelRegion = new Region<Integer>(0,0,width,height);
-		previewPixelRegion = new Region<Integer>(0,0,previewWidth,previewHeight);
 		
+		
+		/*Shows the window*/
 		window.setScene(scene);
 		window.show();
 		
+		/*Initializes the canvases*/
 		updateJuliaSetViewer();
 		drawSet();
 	}
@@ -741,7 +739,7 @@ public class MainGUI extends Application
 		
 		/**
 		 * Generates a rough then medium then fine image, each time rendering it to the Canvas.
-		 * Afterwords, it takes a snapshot of the main canvas and sets it to currentImage.
+		 * Afterwards, it takes a snapshot of the main canvas and sets it to currentImage.
 		 */
 		@Override
 		public void run() {
