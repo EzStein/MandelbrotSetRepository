@@ -355,6 +355,24 @@ public class MainGUI extends Application
 		});
 		
 		/*
+		 * Scroll Event:
+		 * Controls zooming in and out.
+		 */
+		viewerCanvas.setOnScroll(e ->{
+			System.out.println(e.getTotalDeltaY());
+		});
+		
+		viewerCanvas.setOnScrollFinished(e ->{
+			
+			System.out.println("Finished");
+		});
+		
+		viewerCanvas.setOnScrollStarted(e ->{
+			
+			System.out.println(e.getMultiplierY());
+		});
+		
+		/*
 		 * Mouse Released Event:
 		 * Uses initX and initY as well as the current mouse position to
 		 * zoom into a new Region of the set.
