@@ -61,4 +61,20 @@ public class Region<T extends Number> implements Serializable
 			return new BigDecimal("" + (y2.doubleValue()+y1.doubleValue())/2);
 		}
 	}
+	
+	public Region<BigDecimal> scale(double sx, double sy, BigDecimal px, BigDecimal py)
+	{
+		BigDecimal bigX1 = (BigDecimal) x1;
+		BigDecimal bigX2 = (BigDecimal) x2;
+		BigDecimal bigY1 = (BigDecimal) y1;
+		BigDecimal bigY2 = (BigDecimal) y2;
+		
+		Region<BigDecimal> r = new Region<>(
+		px.subtract(bigX1.subtract(px).abs().multiply(new BigDecimal(sx))),
+		bigY1.subtract(py).abs().multiply(new BigDecimal(sy)).add(py),
+		bigX2.subtract(px).abs().multiply(new BigDecimal(sx)).add(px),
+		py.subtract(bigY2.subtract(py).abs().multiply(new BigDecimal(sy)))
+		);
+		return r;
+	}
 }

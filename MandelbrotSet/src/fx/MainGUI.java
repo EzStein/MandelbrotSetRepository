@@ -1,15 +1,19 @@
 package fx;
+import javafx.animation.*;
 import javafx.application.*;
 import javafx.scene.*;
 import javafx.scene.canvas.*;
 import javafx.stage.*;
+import javafx.util.Duration;
 import javafx.scene.control.*;
 import javafx.scene.image.*;
 import javafx.scene.input.*;
 import javafx.scene.layout.*;
 import javafx.scene.paint.*;
+import javafx.scene.transform.*;
 import java.math.*;
 import java.util.*;
+
 import fx.Region;
 
 /**
@@ -37,6 +41,7 @@ public class MainGUI extends Application
 	ArrayList<PannedImage> pannedImages;
 	ArrayList<Region<BigDecimal>> loggedRegions;
 	ArrayList<Thread> runningThreads;
+	Timeline timeline;
 	private final Region<BigDecimal> originalRegion = new Region<BigDecimal>(new BigDecimal("-2"),
 			new BigDecimal("2"),
 			new BigDecimal("2"),
@@ -44,6 +49,7 @@ public class MainGUI extends Application
 	
 	boolean closed, idle, julia, arbitraryPrecision;
 	int width, height, previewWidth, previewHeight, iterations, precision, initX, initY, imageX, imageY, threadCount;
+	double zoomFactor;
 	
 	
 	/**
@@ -93,6 +99,7 @@ public class MainGUI extends Application
 		juliaSeed = new ComplexBigDecimal("0","0",precision);
 		loggedRegions = new ArrayList<Region<BigDecimal>>();
 		runningThreads = new ArrayList<Thread>();
+		timeline = new Timeline(new KeyFrame(Duration.millis(2000),ae->{}));
 		currentRegion = originalRegion;
 		closed = false;
 		idle = true;
@@ -354,23 +361,38 @@ public class MainGUI extends Application
 			}
 		});
 		
+		zoomFactor = 0;
 		/*
 		 * Scroll Event:
 		 * Controls zooming in and out.
 		 */
 		viewerCanvas.setOnScroll(e ->{
-			System.out.println(e.getTotalDeltaY());
+			interrupt();
+			zoomFactor = zoomFactor - e.getDeltaY();
+			int x = (int) e.getX();
+			int y = (int) e.getY();
+			double scaleFactor = Math.pow(Math.E, zoomFactor/1000);
+			double scaleFactor2 = Math.pow(Math.E, -zoomFactor/1000);
+			Region<BigDecimal> temp = currentRegion.scale(scaleFactor2, scaleFactor2,
+					Calculator.pixelToPointX(x, currentRegion, viewerPixelRegion, precision),
+					Calculator.pixelToPointY(y, currentRegion, viewerPixelRegion, precision));
+			Affine transform = new Affine();
+			transform.appendScale(scaleFactor, scaleFactor,x,y);
+			mainGC.setFill(Color.WHITE);
+			mainGC.fillRect(0, 0, width, height);
+			mainGC.setTransform(transform);
+			mainGC.drawImage(currentImage, 0, 0);
+			mainGC.setTransform(new Affine());
+			timeline.stop();
+			timeline = new Timeline(new KeyFrame(Duration.millis(1000),ae->{
+				loggedRegions.add(currentRegion);
+				currentRegion = temp;
+				zoomFactor = 0;
+				drawSet();
+			}));
+			timeline.play();
 		});
 		
-		viewerCanvas.setOnScrollFinished(e ->{
-			
-			System.out.println("Finished");
-		});
-		
-		viewerCanvas.setOnScrollStarted(e ->{
-			
-			System.out.println(e.getMultiplierY());
-		});
 		
 		/*
 		 * Mouse Released Event:
@@ -389,27 +411,27 @@ public class MainGUI extends Application
 				if(initX==x&&initY==y)
 				{
 					int length = (int) width/50;
-					currentRegion = mainCalculator.toBigDecimalRegion(new Region<Integer>(initX-length,initY-length,initX+length,initY+length),
+					currentRegion = Calculator.toBigDecimalRegion(new Region<Integer>(initX-length,initY-length,initX+length,initY+length),
 							currentRegion, viewerPixelRegion, precision);
 				}
 				else if(x<initX&&y<initY)
 				{
-					currentRegion = mainCalculator.toBigDecimalRegion(new Region<Integer>(initX-max,initY-max,initX,initY),
+					currentRegion = Calculator.toBigDecimalRegion(new Region<Integer>(initX-max,initY-max,initX,initY),
 							currentRegion, viewerPixelRegion, precision);
 				}
 				else if(x<initX&&y>initY)
 				{
-					currentRegion = mainCalculator.toBigDecimalRegion(new Region<Integer>(initX-max,initY,initX,initY+max),
+					currentRegion = Calculator.toBigDecimalRegion(new Region<Integer>(initX-max,initY,initX,initY+max),
 							currentRegion, viewerPixelRegion, precision);
 				}
 				else if(x>initX&&y<initY)
 				{
-					currentRegion = mainCalculator.toBigDecimalRegion(new Region<Integer>(initX,initY-max,initX+max,initY),
+					currentRegion = Calculator.toBigDecimalRegion(new Region<Integer>(initX,initY-max,initX+max,initY),
 							currentRegion, viewerPixelRegion, precision);
 				}
 				else if(x>initX&&y>initY)
 				{
-					currentRegion = mainCalculator.toBigDecimalRegion(new Region<Integer>(initX,initY,initX+max,initY+max),
+					currentRegion = Calculator.toBigDecimalRegion(new Region<Integer>(initX,initY,initX+max,initY+max),
 							currentRegion, viewerPixelRegion, precision);
 				}
 				
@@ -420,7 +442,7 @@ public class MainGUI extends Application
 			{
 				if(!julia)
 				{
-					juliaSeed = mainCalculator.toComplexBigDecimal(x, y, currentRegion, viewerPixelRegion, precision);
+					juliaSeed = Calculator.toComplexBigDecimal(x, y, currentRegion, viewerPixelRegion, precision);
 					updateJuliaSetViewer();
 				}
 			}
@@ -441,7 +463,7 @@ public class MainGUI extends Application
 			if(e.getCode() == KeyCode.UP)
 			{
 				imageY+=change;
-				currentRegion = mainCalculator.toBigDecimalRegion(new Region<Integer>(0,-change,width,height-change), currentRegion, viewerPixelRegion, precision);
+				currentRegion = Calculator.toBigDecimalRegion(new Region<Integer>(0,-change,width,height-change), currentRegion, viewerPixelRegion, precision);
 				PannedImage pi = new PannedImage(mainCalculator, -imageX,-imageY, new Region<Integer>(0,0,width,change),currentRegion, viewerPixelRegion, iterations,
 						arbitraryPrecision, precision, julia,juliaSeed, mainGC,this);
 				new Thread(pi).start();
@@ -450,7 +472,7 @@ public class MainGUI extends Application
 			else if(e.getCode() == KeyCode.DOWN)
 			{
 				imageY-=change;
-				currentRegion = mainCalculator.toBigDecimalRegion(new Region<Integer>(0,change,width,height+change), currentRegion, viewerPixelRegion, precision);
+				currentRegion = Calculator.toBigDecimalRegion(new Region<Integer>(0,change,width,height+change), currentRegion, viewerPixelRegion, precision);
 				PannedImage pi = new PannedImage(mainCalculator,-imageX,height-imageY-change, new Region<Integer>(0,height-change,width,height),currentRegion, viewerPixelRegion, iterations,
 						arbitraryPrecision, precision, julia,juliaSeed, mainGC,this);
 				new Thread(pi).start();
@@ -459,7 +481,7 @@ public class MainGUI extends Application
 			else if(e.getCode() == KeyCode.LEFT)
 			{
 				imageX+=change;
-				currentRegion = mainCalculator.toBigDecimalRegion(new Region<Integer>(-change,0,width-change,height), currentRegion, viewerPixelRegion, precision);
+				currentRegion = Calculator.toBigDecimalRegion(new Region<Integer>(-change,0,width-change,height), currentRegion, viewerPixelRegion, precision);
 				PannedImage pi = new PannedImage(mainCalculator,-imageX,-imageY, new Region<Integer>(0,0,change,height),currentRegion, viewerPixelRegion, iterations,
 						arbitraryPrecision, precision, julia,juliaSeed, mainGC,this);
 				new Thread(pi).start();
@@ -468,7 +490,7 @@ public class MainGUI extends Application
 			else if(e.getCode() == KeyCode.RIGHT)
 			{
 				imageX-=change;
-				currentRegion = mainCalculator.toBigDecimalRegion(new Region<Integer>(change,0, width+change,height), currentRegion, viewerPixelRegion, precision);
+				currentRegion = Calculator.toBigDecimalRegion(new Region<Integer>(change,0, width+change,height), currentRegion, viewerPixelRegion, precision);
 				PannedImage pi = new PannedImage(mainCalculator,-imageX+width-change,-imageY, new Region<Integer>(width-change,0,width,height),currentRegion, viewerPixelRegion, iterations,
 						arbitraryPrecision, precision, julia,juliaSeed, mainGC,this);
 				new Thread(pi).start();
@@ -687,10 +709,9 @@ public class MainGUI extends Application
 			
 			runningThreads = new ArrayList<Thread>();
 			mainCalculator.setInterrupt(false);
+			Platform.runLater(() -> currentImage = viewerCanvas.snapshot(new SnapshotParameters(), null));
 		}
 	}
-	
-	
 	
 	/**
 	 * Used to construct an image and draw to a canvas of either the julia set or the Mandelbrot Set.
@@ -773,8 +794,7 @@ public class MainGUI extends Application
 				image = calculator.generateJuliaSet(seed, pixelRegionSection, region, pixelRegion, iterations, arbPrecision, precision,1,4,image);
 				drawImageToCanvas(image);
 				
-				if(gc.getCanvas().equals(viewerCanvas))
-				Platform.runLater(() -> currentImage = viewerCanvas.snapshot(new SnapshotParameters(), null));
+				
 			}
 			else
 			{
@@ -789,9 +809,8 @@ public class MainGUI extends Application
 				image = calculator.generateSet(pixelRegionSection, region, pixelRegion, iterations, arbPrecision, precision,1, 4, image);
 				drawImageToCanvas(image);
 				
-				Platform.runLater(() -> currentImage = viewerCanvas.snapshot(new SnapshotParameters(), null));
+				
 			}
 		}
 	}
-
 }

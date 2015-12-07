@@ -31,36 +31,36 @@ public class Calculator
 		colorFunction = cf;
 	}
 	
-	public int pointToPixelX(BigDecimal x, Region<BigDecimal> region, Region<Integer> pixelRegion, int precision)
+	public static int pointToPixelX(BigDecimal x, Region<BigDecimal> region, Region<Integer> pixelRegion, int precision)
 	{
 		BigDecimal scale = pixelRegion.getWidth().divide(region.getWidth(),precision,BigDecimal.ROUND_HALF_UP);
 		return x.subtract(region.x1).multiply(scale).add(new BigDecimal(pixelRegion.x1)).intValue();
 	}
 	
-	public int pointToPixelY(BigDecimal y, Region<BigDecimal> region, Region<Integer> pixelRegion, int precision)
+	public static int pointToPixelY(BigDecimal y, Region<BigDecimal> region, Region<Integer> pixelRegion, int precision)
 	{
 		BigDecimal scale = pixelRegion.getHeight().divide(region.getHeight(),precision,BigDecimal.ROUND_HALF_UP);
 		return y.subtract(region.y1).multiply(scale).add(new BigDecimal(pixelRegion.y1)).intValue();
 	}
 	
-	public BigDecimal pixelToPointX(int x, Region<BigDecimal> region, Region<Integer> pixelRegion, int precision)
+	public static BigDecimal pixelToPointX(int x, Region<BigDecimal> region, Region<Integer> pixelRegion, int precision)
 	{
 		BigDecimal scale = pixelRegion.getWidth().divide(region.getWidth(),precision,BigDecimal.ROUND_HALF_UP);
 		return new BigDecimal(x-pixelRegion.x1).divide(scale,precision,BigDecimal.ROUND_HALF_UP).add(region.x1);
 	}
 	
-	public BigDecimal pixelToPointY(int y, Region<BigDecimal> region, Region<Integer> pixelRegion, int precision)
+	public static BigDecimal pixelToPointY(int y, Region<BigDecimal> region, Region<Integer> pixelRegion, int precision)
 	{
 		BigDecimal scale = pixelRegion.getHeight().divide(region.getHeight(),precision,BigDecimal.ROUND_HALF_UP);
 		return region.y1.subtract((new BigDecimal(y-pixelRegion.y1).divide(scale,precision,BigDecimal.ROUND_HALF_UP)));
 	}
 	
-	public ComplexBigDecimal toComplexBigDecimal(int x, int y, Region<BigDecimal> region, Region<Integer> pixelRegion, int precision)
+	public static ComplexBigDecimal toComplexBigDecimal(int x, int y, Region<BigDecimal> region, Region<Integer> pixelRegion, int precision)
 	{
 		return new ComplexBigDecimal(pixelToPointX(x, region, pixelRegion, precision), pixelToPointY(y, region, pixelRegion, precision),precision);
 	}
 	
-	public Region<Integer> toPixelRegion(Region<BigDecimal> r, Region<BigDecimal> region, Region<Integer> pixelRegion, int precision)
+	public static Region<Integer> toPixelRegion(Region<BigDecimal> r, Region<BigDecimal> region, Region<Integer> pixelRegion, int precision)
 	{
 		int x1 = pointToPixelX(r.x1, region, pixelRegion, precision);
 		int y1 = pointToPixelY(r.y1, region, pixelRegion, precision);
@@ -69,7 +69,7 @@ public class Calculator
 		return new Region<Integer>(x1,y1,x2,y2);
 	}
 	
-	public Region<BigDecimal> toBigDecimalRegion(Region<Integer> r, Region<BigDecimal> region, Region<Integer> pixelRegion, int precision)
+	public static Region<BigDecimal> toBigDecimalRegion(Region<Integer> r, Region<BigDecimal> region, Region<Integer> pixelRegion, int precision)
 	{
 		BigDecimal x1 = pixelToPointX(r.x1,region,pixelRegion,precision);
 		BigDecimal y1 = pixelToPointY(r.y1,region,pixelRegion,precision);
