@@ -1,6 +1,9 @@
 package fx;
 import javafx.animation.*;
 import javafx.application.*;
+import javafx.beans.value.ChangeListener;
+import javafx.beans.value.ObservableValue;
+import javafx.geometry.Pos;
 import javafx.scene.*;
 import javafx.scene.canvas.*;
 import javafx.stage.*;
@@ -29,7 +32,7 @@ public class MainGUI extends Application
 	Stage window;
 	Scene scene;
 	BorderPane layout;
-	Canvas viewerCanvas;
+	Canvas viewerCanvas, juliaViewer;
 	GraphicsContext mainGC, juliaGC;
 	ProgressBar progressBar;
 	ProgressIndicator progressIndicator;
@@ -100,9 +103,10 @@ public class MainGUI extends Application
 		loggedRegions = new ArrayList<Region<BigDecimal>>();
 		runningThreads = new ArrayList<Thread>();
 		timeline = new Timeline(new KeyFrame(Duration.millis(2000),ae->{}));
+		updater = new Thread();
 		currentRegion = originalRegion;
 		closed = false;
-		idle = true;
+		idle = false;
 		julia = false;
 		arbitraryPrecision = false;
 		iterations = 500;
@@ -121,6 +125,7 @@ public class MainGUI extends Application
 		this.window = window;
 		layout = new BorderPane();
 		layout.setId("layout");
+	
 		Group rootGroup = new Group();
 		rootGroup.getChildren().add(layout);
 		scene = new Scene(rootGroup);
@@ -289,6 +294,7 @@ public class MainGUI extends Application
 		viewerCanvas = new Canvas(width,height);
 		mainGC = viewerCanvas.getGraphicsContext2D();
 		layout.setCenter(viewerCanvas);
+		
 		
 		/*
 		 * Gives it focus so that whenever the mouse is on top of the canvas,
@@ -507,6 +513,61 @@ public class MainGUI extends Application
 			});
 			updateTextArea();
 		});
+		
+		scene.widthProperty().addListener(new ChangeListener<Number>(){
+			@Override
+			public void changed(ObservableValue<? extends Number> observableValue, Number oldValue, Number newValue)
+			{
+				//interrupt();
+				if(idle)
+				{
+					System.out.println(oldValue + " " + newValue);
+					double changeInWidth = newValue.doubleValue()-oldValue.doubleValue();
+					
+					width = width+(int)changeInWidth;
+					if(width>height)
+					{
+						width = height;
+					}
+					else
+					{
+						height = width;
+					}
+					previewWidth = width/3;
+					updateAfterResize();
+				}
+				
+			}
+		});
+		
+		scene.heightProperty().addListener(new ChangeListener<Number>(){
+			@Override
+			public void changed(ObservableValue<? extends Number> observableValue, Number oldValue, Number newValue)
+			{
+				//interrupt();
+				if(idle)
+				{
+					System.out.println(oldValue + " " + newValue);
+					double changeInHeight = newValue.doubleValue()-oldValue.doubleValue();
+					height = height+(int)changeInHeight;
+					
+					if(width>height)
+					{
+						width = height;
+					}
+					else
+					{
+						height = width;
+					}
+					
+					previewHeight = height/3;
+					updateAfterResize();
+				}
+				
+			}
+		});
+		
+		
 		/*layout.setOnKeyTyped(e->{
 			if(e.getCode() == KeyCode.ESCAPE)
 			{
@@ -525,7 +586,7 @@ public class MainGUI extends Application
 		
 		/*Preview Viewer*/
 		VBox vbox = new VBox();
-		Canvas juliaViewer = new Canvas(previewWidth,previewHeight);
+		juliaViewer = new Canvas(previewWidth,previewHeight);
 		juliaGC = juliaViewer.getGraphicsContext2D();
 		vbox.getChildren().add(juliaViewer);
 		
@@ -541,6 +602,10 @@ public class MainGUI extends Application
 		layout.setRight(vbox);
 		
 		
+		BorderPane.setAlignment(viewerCanvas, Pos.TOP_LEFT);
+		BorderPane.setAlignment(juliaViewer, Pos.TOP_LEFT);
+		BorderPane.setAlignment(textArea, Pos.TOP_LEFT);
+		
 		/*Shows the window*/
 		window.setScene(scene);
 		window.show();
@@ -548,6 +613,23 @@ public class MainGUI extends Application
 		/*Initializes the canvases*/
 		updateJuliaSetViewer();
 		drawSet();
+	}
+	
+	public void updateAfterResize()
+	{
+		juliaViewer.setHeight(previewHeight);
+		juliaViewer.setWidth(previewWidth);
+		viewerCanvas.setHeight(height);
+		viewerCanvas.setWidth(width);
+		layout.setMaxHeight(height);
+		layout.setMaxWidth(width+200);
+		Platform.runLater(()->{
+			mainGC.drawImage(currentImage, 0, 0,width,height);
+			juliaGC.drawImage(displayImage, 0, 0, previewWidth,previewHeight);
+		});
+		
+		viewerPixelRegion = new Region<Integer>(0,0,width,height);
+		previewPixelRegion = new Region<Integer>(0,0,previewWidth,previewHeight);
 	}
 	
 	/**
