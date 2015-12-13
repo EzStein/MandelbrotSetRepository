@@ -15,7 +15,11 @@ import javafx.scene.layout.*;
 import javafx.scene.paint.*;
 import javafx.scene.transform.*;
 import java.math.*;
+import java.text.DecimalFormat;
+import java.text.NumberFormat;
 import java.util.*;
+
+import javax.swing.text.NumberFormatter;
 
 import fx.Region;
 
@@ -45,6 +49,7 @@ public class MainGUI extends Application
 	ArrayList<Region<BigDecimal>> loggedRegions;
 	ArrayList<Thread> runningThreads;
 	Timeline timeline;
+	BigDecimal magnification;
 	private final Region<BigDecimal> originalRegion = new Region<BigDecimal>(new BigDecimal("-2"),
 			new BigDecimal("2"),
 			new BigDecimal("2"),
@@ -104,6 +109,7 @@ public class MainGUI extends Application
 		runningThreads = new ArrayList<Thread>();
 		timeline = new Timeline(new KeyFrame(Duration.millis(2000),ae->{}));
 		updater = new Thread();
+		magnification = new BigDecimal("1");
 		currentRegion = originalRegion;
 		closed = false;
 		idle = false;
@@ -521,20 +527,16 @@ public class MainGUI extends Application
 				//interrupt();
 				if(idle)
 				{
-					System.out.println(oldValue + " " + newValue);
-					double changeInWidth = newValue.doubleValue()-oldValue.doubleValue();
 					
-					width = width+(int)changeInWidth;
-					if(width>height)
-					{
-						width = height;
-					}
-					else
-					{
-						height = width;
-					}
+					System.out.println(oldValue + " " + newValue);
+				
+					double changeInWidth = newValue.doubleValue()-oldValue.doubleValue();
+					width = (int) Math.min(scene.getHeight()+100, scene.getWidth()-width/3);
+					height = width;
 					previewWidth = width/3;
+					previewHeight = height/3;
 					updateAfterResize();
+					
 				}
 				
 			}
@@ -549,17 +551,9 @@ public class MainGUI extends Application
 				{
 					System.out.println(oldValue + " " + newValue);
 					double changeInHeight = newValue.doubleValue()-oldValue.doubleValue();
-					height = height+(int)changeInHeight;
-					
-					if(width>height)
-					{
-						width = height;
-					}
-					else
-					{
-						height = width;
-					}
-					
+					height = (int) Math.min(scene.getHeight(), scene.getWidth()-width/3);
+					width = height;
+					previewWidth = width/3;
 					previewHeight = height/3;
 					updateAfterResize();
 				}
@@ -591,7 +585,8 @@ public class MainGUI extends Application
 		vbox.getChildren().add(juliaViewer);
 		
 		/*Create Text Area*/
-		textArea = new Label("Iterations: " + iterations + "\n"
+		textArea = new Label("Magnification: " + magnification.toString() + "x\n" + 
+				"Iterations: " + iterations + "\n"
 				+ "Precision: " + precision + "\n"
 				+ "Julia Set: " + julia + "\n"
 				+ "Center: " + currentRegion.getCenterX().stripTrailingZeros().toPlainString() + " + " + currentRegion.getCenterY().stripTrailingZeros().toPlainString() + "i" + "\n"
@@ -675,6 +670,7 @@ public class MainGUI extends Application
 	public void drawSet()
 	{
 		idle = false;
+		magnification = originalRegion.getWidth().divide(currentRegion.getWidth(), precision, BigDecimal.ROUND_HALF_UP);
 		pannedImages = new ArrayList<PannedImage>();
 		imageX = 0;
 		imageY = 0;
@@ -706,13 +702,27 @@ public class MainGUI extends Application
 	 */
 	public void updateTextArea()
 	{
-		textArea.setText("Iterations: " + iterations + "\n"
+		textArea.setText("Magnification: " + format(magnification.setScale(1, BigDecimal.ROUND_HALF_UP))+ "x\n" + 
+				"Iterations: " + iterations + "\n"
 				+ "Precision: " + precision + "\n"
 				+ "Julia Set: " + julia + "\n"
 				+ "Center: " + currentRegion.getCenterX().stripTrailingZeros().toPlainString() + " + " + currentRegion.getCenterY().stripTrailingZeros().toPlainString() + "i" + "\n"
 				+ "Threads: " + threadCount + "\n"
 				+ "Color: " + mainCalculator.getColorFunction().toString() + "\n"
 				+ "Arbitrary Precision: " + arbitraryPrecision + "\n");
+	}
+	
+	/**
+	 * Returns the bigDecimal as a string in scientific notation
+	 * @param number
+	 * @return
+	 */
+	public String format(BigDecimal number)
+	{
+		NumberFormat formatter = new DecimalFormat("0.0E0");
+		formatter.setRoundingMode(RoundingMode.HALF_UP);
+		formatter.setMaximumFractionDigits(number.scale());
+		return formatter.format(number);
 	}
 	
 	/**
