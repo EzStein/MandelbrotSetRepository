@@ -196,7 +196,7 @@ public class OptionsEditor
 		removeButton.setOnAction(e ->{
 			SavedRegion deletedRegion = savedRegionsChoiceBox.getValue();
 			if(deletedRegion == null)
-			{
+			{ 
 				Alert alert = new Alert(AlertType.ERROR);
 				alert.setContentText("No region is selected");
 				alert.show();
