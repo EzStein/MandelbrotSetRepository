@@ -18,9 +18,6 @@ import java.math.*;
 import java.text.DecimalFormat;
 import java.text.NumberFormat;
 import java.util.*;
-
-import javax.swing.text.NumberFormatter;
-
 import fx.Region;
 
 /**
@@ -32,7 +29,7 @@ import fx.Region;
 public class MainGUI extends Application
 {
 	Thread updater;
-	Label textArea;
+	TextArea textArea;
 	Stage window;
 	Scene scene;
 	BorderPane layout;
@@ -42,7 +39,7 @@ public class MainGUI extends Application
 	ProgressIndicator progressIndicator;
 	Region<BigDecimal> currentRegion;
 	Region<Integer> viewerPixelRegion, previewPixelRegion;
-	WritableImage currentImage, displayImage;
+	WritableImage currentImage, displayImage, previewViewerImage;
 	Calculator mainCalculator, previewCalculator;
 	ComplexBigDecimal juliaSeed;
 	ArrayList<PannedImage> pannedImages;
@@ -55,7 +52,7 @@ public class MainGUI extends Application
 			new BigDecimal("2"),
 			new BigDecimal("-2"));
 	
-	boolean closed, idle, julia, arbitraryPrecision, autoIterations;
+	boolean closed, idle, julia, arbitraryPrecision, autoIterations,resizable;
 	int width, height, previewWidth, previewHeight, iterations, precision, initX, initY, imageX, imageY, threadCount;
 	double zoomFactor;
 	
@@ -116,6 +113,7 @@ public class MainGUI extends Application
 		julia = false;
 		arbitraryPrecision = false;
 		autoIterations = true;
+		resizable = false;
 		iterations = 500;
 		precision = 50;
 		initX=0;
@@ -128,6 +126,7 @@ public class MainGUI extends Application
 		viewerPixelRegion = new Region<Integer>(0,0,width,height);
 		previewPixelRegion = new Region<Integer>(0,0,previewWidth,previewHeight);
 		
+		Platform.runLater(() -> previewViewerImage = juliaViewer.snapshot(new SnapshotParameters(), null));
 		/*Initializes Basic layout*/
 		this.window = window;
 		layout = new BorderPane();
@@ -299,6 +298,7 @@ public class MainGUI extends Application
 		
 		/*Create main canvas explorer*/
 		viewerCanvas = new Canvas(width,height);
+		viewerCanvas.setId("main-canvas");
 		mainGC = viewerCanvas.getGraphicsContext2D();
 		layout.setCenter(viewerCanvas);
 		
@@ -518,6 +518,7 @@ public class MainGUI extends Application
 					mainGC.drawImage(p.image, imageX+p.relX, imageY + p.relY);
 				}
 			});
+			Platform.runLater(() -> displayImage = viewerCanvas.snapshot(new SnapshotParameters(), null));
 			updateTextArea();
 		});
 		
@@ -525,21 +526,18 @@ public class MainGUI extends Application
 			@Override
 			public void changed(ObservableValue<? extends Number> observableValue, Number oldValue, Number newValue)
 			{
-				//interrupt();
-				if(idle)
+				if(resizable)
 				{
+					interrupt();
 					
-					System.out.println(oldValue + " " + newValue);
-				
-					double changeInWidth = newValue.doubleValue()-oldValue.doubleValue();
-					width = (int) Math.min(scene.getHeight()+100, scene.getWidth()-width/3);
+					width = (int) Math.min(scene.getHeight()-50, scene.getWidth()-width/3);
 					height = width;
 					previewWidth = width/3;
 					previewHeight = height/3;
 					updateAfterResize();
 					
+					
 				}
-				
 			}
 		});
 		
@@ -547,16 +545,16 @@ public class MainGUI extends Application
 			@Override
 			public void changed(ObservableValue<? extends Number> observableValue, Number oldValue, Number newValue)
 			{
-				//interrupt();
-				if(idle)
+				if(resizable)
 				{
-					System.out.println(oldValue + " " + newValue);
-					double changeInHeight = newValue.doubleValue()-oldValue.doubleValue();
-					height = (int) Math.min(scene.getHeight(), scene.getWidth()-width/3);
+					interrupt();
+					
+					height = (int) Math.min(scene.getHeight()-50, scene.getWidth()-width/3);
 					width = height;
 					previewWidth = width/3;
 					previewHeight = height/3;
 					updateAfterResize();
+					
 				}
 				
 			}
@@ -586,14 +584,18 @@ public class MainGUI extends Application
 		vbox.getChildren().add(juliaViewer);
 		
 		/*Create Text Area*/
-		textArea = new Label("Magnification: " + magnification.toString() + "x\n" + 
+		textArea = new TextArea("Magnification: " + magnification.toString() + "x\n" + 
 				"Iterations: " + iterations + "\n"
 				+ "Precision: " + precision + "\n"
 				+ "Julia Set: " + julia + "\n"
-				+ "Center: " + currentRegion.getCenterX().stripTrailingZeros().toPlainString() + " + " + currentRegion.getCenterY().stripTrailingZeros().toPlainString() + "i" + "\n"
+				+ "Center: " + currentRegion.getCenterX().setScale(6, BigDecimal.ROUND_HALF_UP).stripTrailingZeros().toPlainString() + " + "
+				+ currentRegion.getCenterY().setScale(6, BigDecimal.ROUND_HALF_UP).stripTrailingZeros().toPlainString() + "i" + "\n"
 				+ "Threads: " + threadCount + "\n"
 				+ "Color: " + mainCalculator.getColorFunction().toString() + "\n"
 				+ "Arbitrary Precision: " + arbitraryPrecision + "\n");
+		textArea.setEditable(false);
+		textArea.setFocusTraversable(false);
+		textArea.setMaxWidth(previewWidth);
 		vbox.getChildren().add(textArea);
 		layout.setRight(vbox);
 		
@@ -613,15 +615,16 @@ public class MainGUI extends Application
 	
 	public void updateAfterResize()
 	{
+		progressBar.setPrefWidth(width+previewWidth-40);
 		juliaViewer.setHeight(previewHeight);
 		juliaViewer.setWidth(previewWidth);
 		viewerCanvas.setHeight(height);
 		viewerCanvas.setWidth(width);
-		layout.setMaxHeight(height);
-		layout.setMaxWidth(width+200);
+		textArea.setPrefWidth(previewWidth);
+		
 		Platform.runLater(()->{
-			mainGC.drawImage(currentImage, 0, 0,width,height);
-			juliaGC.drawImage(displayImage, 0, 0, previewWidth,previewHeight);
+			mainGC.drawImage(displayImage, 0, 0,width,height);
+			juliaGC.drawImage(previewViewerImage, 0, 0, previewWidth,previewHeight);
 		});
 		
 		viewerPixelRegion = new Region<Integer>(0,0,width,height);
@@ -717,7 +720,8 @@ public class MainGUI extends Application
 				"Iterations: " + iterations + "\n"
 				+ "Precision: " + precision + "\n"
 				+ "Julia Set: " + julia + "\n"
-				+ "Center: " + currentRegion.getCenterX().stripTrailingZeros().toPlainString() + " + " + currentRegion.getCenterY().stripTrailingZeros().toPlainString() + "i" + "\n"
+				+ "Center: " + currentRegion.getCenterX().setScale(6, BigDecimal.ROUND_HALF_UP).stripTrailingZeros().toPlainString() + " + "
+				+ currentRegion.getCenterY().setScale(6, BigDecimal.ROUND_HALF_UP).stripTrailingZeros().toPlainString() + "i" + "\n"
 				+ "Threads: " + threadCount + "\n"
 				+ "Color: " + mainCalculator.getColorFunction().toString() + "\n"
 				+ "Arbitrary Precision: " + arbitraryPrecision + "\n");
@@ -742,7 +746,7 @@ public class MainGUI extends Application
 	 */
 	public void updateJuliaSetViewer()
 	{
-		int h = (int) previewHeight/threadCount;
+		int h = (int) (previewHeight/threadCount);
 		for(int i = 0; i<threadCount; i++)
 		{
 			Region<Integer> pixelRegionSection = new Region<Integer>(0,i*h,previewWidth,i*h+h);
@@ -750,7 +754,7 @@ public class MainGUI extends Application
 					originalRegion, previewPixelRegion, iterations,arbitraryPrecision, precision, true, juliaSeed, juliaGC, previewCalculator)).start();
 		}
 		
-		if(h*threadCount < height)
+		if(h*threadCount < previewHeight)
 		{
 			Region<Integer> pixelRegionSection = new Region<Integer>(0,h*threadCount,previewWidth,previewHeight);
 			new Thread(new Generator(pixelRegionSection,
@@ -813,6 +817,7 @@ public class MainGUI extends Application
 			runningThreads = new ArrayList<Thread>();
 			mainCalculator.setInterrupt(false);
 			Platform.runLater(() -> currentImage = viewerCanvas.snapshot(new SnapshotParameters(), null));
+			Platform.runLater(() -> displayImage = viewerCanvas.snapshot(new SnapshotParameters(), null));
 		}
 	}
 	
@@ -881,10 +886,10 @@ public class MainGUI extends Application
 		
 		/**
 		 * Generates a rough then medium then fine image, each time rendering it to the Canvas.
-		 * Afterwards, it takes a snapshot of the main canvas and sets it to currentImage.
 		 */
 		@Override
 		public void run() {
+			resizable = true;
 			if(jSet)
 			{
 				WritableImage image = new WritableImage(pixelRegionSection.getWidth().intValue(), pixelRegionSection.getHeight().intValue());
@@ -897,7 +902,7 @@ public class MainGUI extends Application
 				image = calculator.generateJuliaSet(seed, pixelRegionSection, region, pixelRegion, iterations, arbPrecision, precision,1,4,image);
 				drawImageToCanvas(image);
 				
-				
+				Platform.runLater(() -> previewViewerImage = juliaViewer.snapshot(new SnapshotParameters(), null));
 			}
 			else
 			{

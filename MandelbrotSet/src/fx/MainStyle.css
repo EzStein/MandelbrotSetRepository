@@ -6,3 +6,10 @@
 .label {
 	-fx-background-color:white;
 }
+
+#main-canvas {
+	-fx-border-style:solid;
+	-fx-border-width:5px;
+	-fx-border-color:red;
+	-fx-border-radius:5.0;
+}
