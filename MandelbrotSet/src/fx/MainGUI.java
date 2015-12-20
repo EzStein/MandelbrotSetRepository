@@ -55,7 +55,7 @@ public class MainGUI extends Application
 			new BigDecimal("2"),
 			new BigDecimal("-2"));
 	
-	boolean closed, idle, julia, arbitraryPrecision;
+	boolean closed, idle, julia, arbitraryPrecision, autoIterations;
 	int width, height, previewWidth, previewHeight, iterations, precision, initX, initY, imageX, imageY, threadCount;
 	double zoomFactor;
 	
@@ -115,6 +115,7 @@ public class MainGUI extends Application
 		idle = false;
 		julia = false;
 		arbitraryPrecision = false;
+		autoIterations = true;
 		iterations = 500;
 		precision = 50;
 		initX=0;
@@ -661,6 +662,11 @@ public class MainGUI extends Application
 		window.close();
 	}
 	
+	public int calcAutoIterations(BigDecimal mag)
+	{
+		return (int) (300+2000*Math.log10(magnification.longValue()));
+	}
+	
 	/**
 	 * Draws the set given the current state of the program.
 	 * Creates threadCount number of threads and assigns them to horizontal sections of the canvas.
@@ -671,6 +677,11 @@ public class MainGUI extends Application
 	{
 		idle = false;
 		magnification = originalRegion.getWidth().divide(currentRegion.getWidth(), precision, BigDecimal.ROUND_HALF_UP);
+		if(autoIterations)
+		{
+			iterations = calcAutoIterations(magnification);
+		}
+		
 		pannedImages = new ArrayList<PannedImage>();
 		imageX = 0;
 		imageY = 0;

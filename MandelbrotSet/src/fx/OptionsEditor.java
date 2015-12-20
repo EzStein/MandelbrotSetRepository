@@ -14,9 +14,11 @@ import javafx.collections.FXCollections;
 import javafx.geometry.*;
 import javafx.scene.*;
 import javafx.scene.control.*;
+import javafx.scene.control.Alert.AlertType;
 import javafx.scene.layout.*;
 import javafx.scene.text.Font;
 import javafx.stage.*;
+import javafx.util.StringConverter;
 
 public class OptionsEditor
 {
@@ -28,6 +30,7 @@ public class OptionsEditor
 	TextField threadCountField;
 	TextField iterationsField;
 	TextField precisionField;
+	CheckBox autoIterationsCheckBox;
 	ChoiceBox<SavedRegion> savedRegionsChoiceBox;
 	ChoiceBox<ColorFunction> colorChoiceBox;
 	RadioButton arbitraryPrecision;
@@ -101,17 +104,33 @@ public class OptionsEditor
 		Label centerLabel = new Label("Center:");
 		Label boxLabel = new Label("Box Dimensions:");
 		
-		centerValue = new Label(gui.currentRegion.getCenterX().stripTrailingZeros().toPlainString()+ " + "
-									+ gui.currentRegion.getCenterY().stripTrailingZeros().toPlainString() + "i");
-		boxValue = new Label(gui.currentRegion.x1.subtract(gui.currentRegion.x2).abs().stripTrailingZeros().toPlainString() + "x" +
-				gui.currentRegion.y1.subtract(gui.currentRegion.y2).abs().stripTrailingZeros().toPlainString());
+		centerValue = new Label(gui.currentRegion.getCenterX().setScale(5, BigDecimal.ROUND_HALF_UP).stripTrailingZeros().toPlainString()
+				+ " + "
+				+ gui.currentRegion.getCenterY().setScale(5, BigDecimal.ROUND_HALF_UP).stripTrailingZeros().toPlainString() + "i");
+		boxValue = new Label(gui.currentRegion.x1.subtract(gui.currentRegion.x2).abs().setScale(5, BigDecimal.ROUND_HALF_UP).stripTrailingZeros().toPlainString()
+				+ "x"
+				+ gui.currentRegion.y1.subtract(gui.currentRegion.y2).abs().setScale(5, BigDecimal.ROUND_HALF_UP).stripTrailingZeros().toPlainString());
 		
 		/*Text Fields*/
 		threadCountField = new TextField(""+gui.threadCount);
 		iterationsField = new TextField("" +gui.iterations);
 		precisionField = new TextField("" + gui.precision);
 		savedRegionsChoiceBox = new ChoiceBox<SavedRegion>(FXCollections.observableArrayList(savedRegions));
-		
+		savedRegionsChoiceBox.setConverter(new StringConverter<SavedRegion>(){
+
+			@Override
+			public String toString(SavedRegion sr)
+			{
+				return sr.getName();
+			}
+
+			@Override
+			public SavedRegion fromString(String string) {
+				return null;
+			}
+			
+			
+		});
 		
 		
 		colorChoiceBox = new ChoiceBox<ColorFunction>(FXCollections.observableArrayList(ColorFunction.ColorInfo.COLOR_FUNCTIONS.values()));
@@ -150,28 +169,90 @@ public class OptionsEditor
 			seed.setText("0+0i");
 		}
 		
+		autoIterationsCheckBox = new CheckBox("Auto Iterations");
+		if(gui.autoIterations)
+		{
+			autoIterationsCheckBox.setSelected(true);
+			iterationsField.setDisable(true);
+		}
+		else
+		{
+			autoIterationsCheckBox.setSelected(false);
+			iterationsField.setDisable(false);
+		}
+		autoIterationsCheckBox.setOnAction(e ->{
+			if(autoIterationsCheckBox.isSelected())
+			{
+				iterationsField.setDisable(true);
+				iterationsField.setText(gui.calcAutoIterations(gui.magnification) + "");
+			}
+			else
+			{
+				iterationsField.setDisable(false);
+			}
+		});
+		
+		Button removeButton = new Button("Remove");
+		removeButton.setOnAction(e ->{
+			SavedRegion deletedRegion = savedRegionsChoiceBox.getValue();
+			if(deletedRegion == null)
+			{
+				Alert alert = new Alert(AlertType.ERROR);
+				alert.setContentText("No region is selected");
+				alert.show();
+				return;
+			}
+			savedRegions.remove(deletedRegion);
+			savedRegionsChoiceBox.getItems().remove(deletedRegion);
+			try
+			{
+				/*Overwrites File*/
+				out = new ObjectOutputStream(new FileOutputStream(file));
+				out.writeObject(savedRegions);
+			}
+			catch (IOException ioe)
+			{
+				ioe.printStackTrace();
+			}
+			finally
+			{
+				try
+				{
+					out.close();
+				}
+				catch (IOException ioe)
+				{
+					System.out.println("Could Not Close ObjectOutputStream");
+					ioe.printStackTrace();
+				}
+			}
+		});
+		
 		gridPane.add(savedRegionsLabel, 0, 0,2,1);
 		gridPane.add(colorLabel, 0, 1);
 		gridPane.add(iterationsLabel, 0, 2);
-		gridPane.add(precisionLabel, 0, 3);
-		gridPane.add(threadCountLabel, 0,4);
+		gridPane.add(precisionLabel, 0, 4);
+		gridPane.add(threadCountLabel, 0,5);
+		
+		
+		gridPane.add(colorChoiceBox, 1, 1);
+		gridPane.add(autoIterationsCheckBox, 1, 2);
+		gridPane.add(iterationsField, 1, 3);
+		gridPane.add(precisionField, 1, 4);
+		gridPane.add(threadCountField, 1, 5);
+		gridPane.add(doublePrecision, 1, 6);
+		gridPane.add(arbitraryPrecision, 1, 7);
+		
+		
 		
 		gridPane.add(savedRegionsChoiceBox, 2, 0);
-		gridPane.add(colorChoiceBox, 1, 1);
-		gridPane.add(iterationsField, 1, 2);
-		gridPane.add(precisionField, 1, 3);
-		gridPane.add(threadCountField, 1, 4);
-		gridPane.add(doublePrecision, 1, 5);
-		gridPane.add(arbitraryPrecision, 1, 6);
-		
-		
-		
 		gridPane.add(set, 2, 2);
 		gridPane.add(centerLabel, 2, 3);
 		gridPane.add(boxLabel, 2, 4);
 		gridPane.add(applyButton, 2, 5);
 		gridPane.add(cancelButton, 2, 6);
 		
+		gridPane.add(removeButton, 3, 0);
 		gridPane.add(seed, 3, 2);
 		gridPane.add(centerValue, 3, 3);
 		gridPane.add(boxValue, 3, 4);
@@ -193,12 +274,30 @@ public class OptionsEditor
 			if(result.isPresent())
 			{
 				name = result.get();
+				for(SavedRegion sr : savedRegionsChoiceBox.getItems())
+				{
+					if(sr.getName().equals(name))
+					{
+						Alert alert = new Alert(AlertType.ERROR);
+						alert.setContentText("That Name Already Exists");
+						alert.show();
+						return;
+					}
+				}
 			}
 			else
 			{
 				return;
 			}
-			SavedRegion savedRegion = new SavedRegion(name,Integer.parseInt(iterationsField.getText()),
+			
+			/*Resets the values if a region has already been loaded*/
+			if(savedRegionsChoiceBox.getValue()!=null)
+			{
+				resetValues();
+			}
+			
+			SavedRegion savedRegion = new SavedRegion(name, autoIterationsCheckBox.isSelected(),
+					Integer.parseInt(iterationsField.getText()),
 					Integer.parseInt(precisionField.getText()), Integer.parseInt(threadCountField.getText()),
 					currentRegion,arbitraryPrecision.isSelected(),currentJulia,currentSeed,colorChoiceBox.getValue().toString());
 			savedRegions.add(savedRegion);
@@ -263,11 +362,6 @@ public class OptionsEditor
 		precisionField.setOnMouseClicked(e -> {
 			precisionField.setStyle("-fx-background-color:white");
 		});
-		
-		
-		
-		
-		
 		savedRegionsChoiceBox.getSelectionModel().selectedIndexProperty().addListener(new ChangeListener<Number>(){
 			@Override
 			public void changed(ObservableValue<? extends Number> observable, Number oldValue, Number newValue) {
@@ -285,12 +379,56 @@ public class OptionsEditor
 		window.show();
 	}
 	
+	public void resetValues()
+	{
+		threadCountField.setText(gui.threadCount + "");
+		
+		autoIterationsCheckBox.setSelected(gui.autoIterations);
+		iterationsField.setDisable(gui.autoIterations);
+		iterationsField.setText(gui.iterations + "");
+		
+		
+		precisionField.setText(gui.precision + "");
+		colorChoiceBox.setValue(gui.mainCalculator.getColorFunction());
+		
+		arbitraryPrecision.setSelected(gui.arbitraryPrecision);
+		doublePrecision.setSelected(!gui.arbitraryPrecision);
+		currentRegion = gui.currentRegion;
+		currentJulia = gui.julia;
+		currentSeed = gui.juliaSeed;
+		
+		if(currentJulia)
+		{
+			set.setText("Julia set: ");
+			seed.setText(currentSeed.toString());
+		}
+		else
+		{
+			set.setText("Mandelbrot set: ");
+			seed.setText("0+0i");
+		}
+		centerValue.setText(currentRegion.getCenterX().setScale(5, BigDecimal.ROUND_HALF_UP).stripTrailingZeros().toPlainString()+ " + "
+				+ currentRegion.getCenterY().setScale(5, BigDecimal.ROUND_HALF_UP).stripTrailingZeros().toPlainString() + "i");
+		boxValue.setText(currentRegion.x1.subtract(currentRegion.x2).abs().setScale(5, BigDecimal.ROUND_HALF_UP).stripTrailingZeros().toPlainString() + "x" +
+				currentRegion.y1.subtract(currentRegion.y2).abs().setScale(5, BigDecimal.ROUND_HALF_UP).stripTrailingZeros().toPlainString());
+	}
+	
 	public void loadRegion()
 	{
 		SavedRegion sr = savedRegionsChoiceBox.getValue();
 		iterationsField.setText("" + sr.iterations);
 		precisionField.setText("" + sr.precision);
 		threadCountField.setText("" + sr.threadCount);
+		
+		autoIterationsCheckBox.setSelected(sr.autoIterations);
+		if(sr.autoIterations)
+		{
+			iterationsField.setDisable(true);
+		}
+		else
+		{
+			iterationsField.setDisable(false);
+		}
 		
 		if(sr.arbitraryPrecision)
 		{
@@ -318,17 +456,24 @@ public class OptionsEditor
 			set.setText("Mandelbrot set: ");
 			seed.setText("0+0i");
 		}
-		centerValue.setText(currentRegion.getCenterX().stripTrailingZeros().toPlainString()+ " + "
-				+ currentRegion.getCenterY().stripTrailingZeros().toPlainString() + "i");
-		boxValue.setText(currentRegion.x1.subtract(currentRegion.x2).abs().stripTrailingZeros().toPlainString() + "x" +
-				currentRegion.y1.subtract(currentRegion.y2).abs().stripTrailingZeros().toPlainString());
+		centerValue.setText(currentRegion.getCenterX().setScale(5, BigDecimal.ROUND_HALF_UP).stripTrailingZeros().toPlainString()+ " + "
+				+ currentRegion.getCenterY().setScale(5, BigDecimal.ROUND_HALF_UP).stripTrailingZeros().toPlainString() + "i");
+		boxValue.setText(currentRegion.x1.subtract(currentRegion.x2).abs().setScale(5, BigDecimal.ROUND_HALF_UP).stripTrailingZeros().toPlainString() + "x" +
+				currentRegion.y1.subtract(currentRegion.y2).abs().setScale(5, BigDecimal.ROUND_HALF_UP).stripTrailingZeros().toPlainString());
 		gui.loggedRegions = new ArrayList<>();
 	}
 	
 	public void setValues()
 	{
 		gui.threadCount = Integer.parseInt(threadCountField.getText());
-		gui.iterations = Integer.parseInt(iterationsField.getText());
+		
+		gui.autoIterations = autoIterationsCheckBox.isSelected();
+		if(!gui.autoIterations)
+		{
+			gui.iterations = Integer.parseInt(iterationsField.getText());
+		}
+		
+		
 		gui.precision = Integer.parseInt(precisionField.getText());
 		gui.mainCalculator.setColorFunction(colorChoiceBox.getValue());
 		gui.previewCalculator.setColorFunction(colorChoiceBox.getValue());

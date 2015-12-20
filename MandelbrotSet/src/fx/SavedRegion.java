@@ -2,20 +2,20 @@ package fx;
 
 import java.io.*;
 import java.math.*;
-
 import colorFunction.*;
 
 public class SavedRegion implements Serializable
 {
-	public String name;
-	public int iterations, precision, threadCount;
-	public String colorFunction;
-	public Region<BigDecimal> region;
-	public boolean julia, arbitraryPrecision;
-	public ComplexBigDecimal seed;
+	public final String name;
+	public final int iterations, precision, threadCount;
+	public final String colorFunction;
+	public final Region<BigDecimal> region;
+	public final boolean julia, arbitraryPrecision, autoIterations;
+	public final ComplexBigDecimal seed;
 	
 	/**
 	 * @param name
+	 * @param autoIterations
 	 * @param iterations
 	 * @param precision
 	 * @param threadCount
@@ -25,13 +25,14 @@ public class SavedRegion implements Serializable
 	 * @param seed
 	 * @param colorFunction
 	 */
-	public SavedRegion(String name,
+	public SavedRegion(String name, boolean autoIterations,
 			int iterations, int precision, int threadCount,
 			Region<BigDecimal> region,
 			boolean arbitraryPrecision,  boolean julia,
 			ComplexBigDecimal seed, String colorFunction)
 	{
 		this.name = name;
+		this.autoIterations = autoIterations;
 		this.iterations = iterations;
 		this.precision = precision;
 		this.threadCount = threadCount;
@@ -42,9 +43,41 @@ public class SavedRegion implements Serializable
 		this.seed = seed;
 	}
 	
-	@Override
-	public String toString()
+	public String getName()
 	{
 		return name;
+	}
+	
+	@Override
+	public boolean equals(Object object)
+	{
+		if(object == null)
+		{
+			return false;
+		}
+		if(object == this)
+		{
+			return true;
+		}
+		if(!(object instanceof SavedRegion))
+		{
+			return false;
+		}
+		
+		SavedRegion sr = (SavedRegion) object;
+		if(sr.getName().equals(name))
+		{
+			return true;
+		}
+		else
+		{
+			return false;
+		}
+	}
+	
+	@Override
+	public int hashCode()
+	{
+		return name.hashCode();
 	}
 }
