@@ -4,9 +4,11 @@ import javafx.application.*;
 import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
 import javafx.geometry.Pos;
+import javafx.geometry.Rectangle2D;
 import javafx.scene.*;
 import javafx.scene.canvas.*;
 import javafx.stage.*;
+import javafx.util.Callback;
 import javafx.util.Duration;
 import javafx.scene.control.*;
 import javafx.scene.image.*;
@@ -47,12 +49,13 @@ public class MainGUI extends Application
 	ArrayList<Thread> runningThreads;
 	Timeline timeline;
 	BigDecimal magnification;
+	Object lock = new Object();
 	private final Region<BigDecimal> originalRegion = new Region<BigDecimal>(new BigDecimal("-2"),
 			new BigDecimal("2"),
 			new BigDecimal("2"),
 			new BigDecimal("-2"));
 	
-	boolean closed, idle, julia, arbitraryPrecision, autoIterations,resizable;
+	boolean closed, idle, julia, arbitraryPrecision, autoIterations,resizable, waitForImage;
 	int width, height, previewWidth, previewHeight, iterations, precision, initX, initY, imageX, imageY, threadCount;
 	double zoomFactor;
 	
@@ -114,6 +117,7 @@ public class MainGUI extends Application
 		arbitraryPrecision = false;
 		autoIterations = true;
 		resizable = false;
+		waitForImage = false;
 		iterations = 500;
 		precision = 50;
 		initX=0;
@@ -299,6 +303,7 @@ public class MainGUI extends Application
 		/*Create main canvas explorer*/
 		viewerCanvas = new Canvas(width,height);
 		viewerCanvas.setId("main-canvas");
+		
 		mainGC = viewerCanvas.getGraphicsContext2D();
 		layout.setCenter(viewerCanvas);
 		
@@ -528,15 +533,26 @@ public class MainGUI extends Application
 			{
 				if(resizable)
 				{
-					interrupt();
-					
-					width = (int) Math.min(scene.getHeight()-50, scene.getWidth()-width/3);
-					height = width;
-					previewWidth = width/3;
-					previewHeight = height/3;
-					updateAfterResize();
-					
-					
+					if(idle)
+					{
+						width = (int) Math.min(scene.getHeight()-50, scene.getWidth()-width/3);
+						height = width;
+						previewWidth = width/3;
+						previewHeight = height/3;
+						updateAfterResize();
+					}
+					else
+					{
+						new Thread(new Runnable(){
+							public void run()
+							{
+								if(!mainCalculator.getInterrupt())
+								{
+									interrupt();
+								}
+							}
+							}).start();
+					}
 				}
 			}
 		});
@@ -547,19 +563,40 @@ public class MainGUI extends Application
 			{
 				if(resizable)
 				{
-					interrupt();
-					
-					height = (int) Math.min(scene.getHeight()-50, scene.getWidth()-width/3);
-					width = height;
-					previewWidth = width/3;
-					previewHeight = height/3;
-					updateAfterResize();
-					
+					if(idle)
+					{
+						height = (int) Math.min(scene.getHeight()-50, scene.getWidth()-width/3);
+						width = height;
+						previewWidth = width/3;
+						previewHeight = height/3;
+						updateAfterResize();
+					}
+					else
+					{
+						new Thread(new Runnable(){
+							public void run()
+							{
+								if(!mainCalculator.getInterrupt())
+								{
+									interrupt();
+								}
+							}
+							}).start();
+					}
 				}
 				
 			}
 		});
 		
+		viewerCanvas.widthProperty().addListener(new ChangeListener<Number>()
+		{
+			@Override
+			public void changed(ObservableValue<? extends Number> observableValue, Number oldValue, Number newValue)
+			{
+				System.out.println(newValue + "");
+			}
+			
+		});
 		
 		/*layout.setOnKeyTyped(e->{
 			if(e.getCode() == KeyCode.ESCAPE)
@@ -618,8 +655,10 @@ public class MainGUI extends Application
 		progressBar.setPrefWidth(width+previewWidth-40);
 		juliaViewer.setHeight(previewHeight);
 		juliaViewer.setWidth(previewWidth);
+		
 		viewerCanvas.setHeight(height);
 		viewerCanvas.setWidth(width);
+		
 		textArea.setPrefWidth(previewWidth);
 		
 		Platform.runLater(()->{
@@ -636,6 +675,8 @@ public class MainGUI extends Application
 	 * they have calculated which are immediately rendered. Blocks until the updater thread has terminated thus indicating the
 	 * program has successfully become idle.
 	 * Has no effect if the program is already idle.
+	 * 
+	 * SHOULD NEVER BE CALLED FROM THE JAVAFX APPLICATION THREAD
 	 */
 	public void interrupt()
 	{
@@ -644,11 +685,32 @@ public class MainGUI extends Application
 			mainCalculator.setInterrupt(true);
 			
 			updater.interrupt();
-			try {
-				updater.join();
-			} catch (InterruptedException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
+			System.out.println("interrupting");
+			if(Platform.isFxApplicationThread())
+			{
+				(new Exception()).printStackTrace();
+			}
+			else
+			{		
+					try {
+						updater.join();
+						System.out.println("ALIVE");
+					} catch (InterruptedException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+				synchronized(lock)
+				{
+					try {
+						while(waitForImage)
+						{
+							lock.wait();
+						}
+					} catch (InterruptedException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+				}
 			}
 			idle = true;
 		}
@@ -800,12 +862,13 @@ public class MainGUI extends Application
 					idle = true;
 				}
 			}
+			
 			for(Thread r: runningThreads)
 			{
 				try {
 					r.join();
-				} catch (InterruptedException e) {
-					// TODO Auto-generated catch block
+				} catch (InterruptedException e)
+				{
 					e.printStackTrace();
 				}
 			}
@@ -816,9 +879,33 @@ public class MainGUI extends Application
 			
 			runningThreads = new ArrayList<Thread>();
 			mainCalculator.setInterrupt(false);
-			Platform.runLater(() -> currentImage = viewerCanvas.snapshot(new SnapshotParameters(), null));
-			Platform.runLater(() -> displayImage = viewerCanvas.snapshot(new SnapshotParameters(), null));
+			
+			ImageReady ready = new ImageReady();
+			SnapshotParameters sp = new SnapshotParameters();
+			Platform.runLater(() -> viewerCanvas.snapshot(ready, sp, null));
+			
+			waitForImage = true;
+			System.out.println("1");
 		}
+	}
+	
+	public class ImageReady implements Callback<SnapshotResult, Void>
+	{
+		@Override
+		public Void call(SnapshotResult result)
+		{
+			currentImage = result.getImage();
+			displayImage = result.getImage();
+			System.out.println("RESIZE!!!!");
+			waitForImage = false;
+			synchronized(lock)
+			{
+				lock.notifyAll();
+			}
+			
+			return null;
+		}
+		
 	}
 	
 	/**
