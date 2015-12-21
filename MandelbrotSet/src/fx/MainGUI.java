@@ -30,6 +30,7 @@ import fx.Region;
  */
 public class MainGUI extends Application
 {
+	//This is the concurrencyBranch
 	Thread updater;
 	TextArea textArea;
 	Stage window;
