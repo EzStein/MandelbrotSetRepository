@@ -1,5 +1,6 @@
 package fx;
 import javafx.animation.*;
+import javafx.animation.Animation.Status;
 import javafx.application.*;
 import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
@@ -424,15 +425,19 @@ public class MainGUI extends Application
 		 * Controls zooming in and out.
 		 */
 		viewerCanvas.setOnScroll(e ->{
-			if(timeline.getStatus())
-			scrollX = (int) e.getX();
-			scrollY = (int) e.getY();
+			
+			
 			threadQueue.callLater(() -> {
 				
 				interrupt();
 				
-				zoomFactor = zoomFactor - e.getDeltaY();
+				if(timeline.getStatus()==Status.STOPPED)
+				{
+					scrollX = (int) e.getX();
+					scrollY = (int) e.getY();
+				}
 				
+				zoomFactor = zoomFactor - e.getDeltaY();
 				double scaleFactor = Math.pow(Math.E, zoomFactor/1000);
 				double scaleFactor2 = Math.pow(Math.E, -zoomFactor/1000);
 				Region<BigDecimal> temp = currentRegion.scale(scaleFactor2, scaleFactor2,
