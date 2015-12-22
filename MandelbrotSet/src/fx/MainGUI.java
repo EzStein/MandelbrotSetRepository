@@ -58,7 +58,7 @@ public class MainGUI extends Application
 			new BigDecimal("2"),
 			new BigDecimal("2"),
 			new BigDecimal("-2"));
-	
+	boolean skip = true;
 	boolean closed, idle, julia, arbitraryPrecision, autoIterations,resizable, waitForImage;
 	int width, height, previewWidth, previewHeight, iterations, precision, initX, initY, imageX, imageY, threadCount;
 	double zoomFactor;
@@ -464,6 +464,7 @@ public class MainGUI extends Application
 		 * whose seed is the position of the mouse.
 		 */
 		viewerCanvas.setOnMouseReleased(e ->{
+			
 			threadQueue.callLater(() -> {
 				interrupt();
 				int x = (int)e.getX(), y = (int)e.getY();
@@ -497,7 +498,6 @@ public class MainGUI extends Application
 						currentRegion = Calculator.toBigDecimalRegion(new Region<Integer>(initX,initY,initX+max,initY+max),
 								currentRegion, viewerPixelRegion, precision);
 					}
-					
 					drawSet();
 				
 				}
@@ -514,6 +514,10 @@ public class MainGUI extends Application
 			
 		});
 		
+		/*skip = false;
+		Timeline timeline2 = new Timeline(new KeyFrame(Duration.millis(100),ae->{skip = false;}));
+		timeline2.setCycleCount(Timeline.INDEFINITE);
+		timeline2.play();*/
 		/*
 		 * KeyPressed Event:
 		 * Pans the image to the right.
@@ -523,9 +527,20 @@ public class MainGUI extends Application
 		 * The panned image object will render its sliver on its own time and then draw it relative to imageX and imageY.
 		 */
 		viewerCanvas.setOnKeyPressed(e ->{
+			/*System.out.println(skip);
+			if(skip)
+			{
+				System.out.println("ABC");
+				return;
+			}
+			skip = true;*/
+			
+			
+			
 			
 			threadQueue.callLater(() -> {
 				interrupt();
+				
 				int change = 10;
 				if(e.getCode() == KeyCode.UP)
 				{
@@ -564,16 +579,23 @@ public class MainGUI extends Application
 					pannedImages.add(pi);
 				}
 				
-				Platform.runLater(() ->{
-					mainGC.drawImage(currentImage, imageX, imageY);
-				});
-					for(PannedImage p: pannedImages)
-					{
-						Platform.runLater(() ->{
+				try {
+					FXUtilities.runAndWait(() ->{
+						for(PannedImage p: pannedImages)
+						{
 							mainGC.drawImage(p.image, imageX+p.relX, imageY + p.relY);
-						});
-					}
+						}
+					});
+				} catch (Exception e1) {
+					// TODO Auto-generated catch block
+					e1.printStackTrace();
+				}
+						
+				
+				
+				
 					Platform.runLater(() ->{
+						mainGC.drawImage(currentImage, imageX, imageY);
 						displayImage = viewerCanvas.snapshot(new SnapshotParameters(), null);
 						actualImage = displayImage;
 					});
@@ -582,6 +604,8 @@ public class MainGUI extends Application
 				
 				return false;
 			});
+			
+			
 		});
 		
 		scene.widthProperty().addListener(new ChangeListener<Number>(){
@@ -700,8 +724,11 @@ public class MainGUI extends Application
 			mainGC.drawImage(displayImage, 0, 0,width,height);
 			juliaGC.drawImage(previewViewerImage, 0, 0, previewWidth,previewHeight);
 			actualImage = viewerCanvas.snapshot(new SnapshotParameters(), null);
+			currentImage = viewerCanvas.snapshot(new SnapshotParameters(), null);
 		});
-		
+		pannedImages = new ArrayList<PannedImage>();
+		imageX = 0;
+		imageY = 0;
 		viewerPixelRegion = new Region<Integer>(0,0,width,height);
 		previewPixelRegion = new Region<Integer>(0,0,previewWidth,previewHeight);
 	}
@@ -724,8 +751,7 @@ public class MainGUI extends Application
 		
 		if(!idle)
 		{
-			
-			
+			previewCalculator.setInterrupt(true);
 			mainCalculator.setInterrupt(true);
 			updater.interrupt();
 			try
@@ -1073,7 +1099,7 @@ public class MainGUI extends Application
 		public void callLater(CallableClass callable)
 		{
 			/*Consider Changing to Put*/
-			System.out.println(queue.offer(callable));
+			System.out.println(queue.offer(callable) + ": " + queue.size());
 		}
 		
 		public void terminate()
@@ -1089,7 +1115,7 @@ public class MainGUI extends Application
 			{
 				while(!terminate)
 				{
-					System.out.println("A");
+					System.out.println(queue.size());
 					CallableClass callable = queue.take();
 					if(callable.call())
 					{
