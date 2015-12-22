@@ -20,6 +20,8 @@ import java.math.*;
 import java.text.DecimalFormat;
 import java.text.NumberFormat;
 import java.util.*;
+import java.util.concurrent.ArrayBlockingQueue;
+
 import fx.Region;
 
 /**
@@ -30,6 +32,7 @@ import fx.Region;
  */
 public class MainGUI extends Application
 {
+	//This is the concurrencyBranch
 	Thread updater;
 	TextArea textArea;
 	Stage window;
@@ -41,7 +44,7 @@ public class MainGUI extends Application
 	ProgressIndicator progressIndicator;
 	Region<BigDecimal> currentRegion;
 	Region<Integer> viewerPixelRegion, previewPixelRegion;
-	WritableImage currentImage, displayImage, previewViewerImage;
+	WritableImage currentImage, displayImage, previewViewerImage, actualImage;
 	Calculator mainCalculator, previewCalculator;
 	ComplexBigDecimal juliaSeed;
 	ArrayList<PannedImage> pannedImages;
@@ -50,11 +53,12 @@ public class MainGUI extends Application
 	Timeline timeline;
 	BigDecimal magnification;
 	Object lock = new Object();
+	ThreadQueue threadQueue;
 	private final Region<BigDecimal> originalRegion = new Region<BigDecimal>(new BigDecimal("-2"),
 			new BigDecimal("2"),
 			new BigDecimal("2"),
 			new BigDecimal("-2"));
-	
+	boolean skip = true;
 	boolean closed, idle, julia, arbitraryPrecision, autoIterations,resizable, waitForImage;
 	int width, height, previewWidth, previewHeight, iterations, precision, initX, initY, imageX, imageY, threadCount;
 	double zoomFactor;
@@ -110,6 +114,8 @@ public class MainGUI extends Application
 		timeline = new Timeline(new KeyFrame(Duration.millis(2000),ae->{}));
 		updater = new Thread();
 		magnification = new BigDecimal("1");
+		threadQueue = new ThreadQueue();
+		new Thread(threadQueue).start();
 		currentRegion = originalRegion;
 		closed = false;
 		idle = false;
@@ -207,11 +213,16 @@ public class MainGUI extends Application
 		mandelbrotSetMenu.setOnAction(e -> {
 			if(julia)
 			{
-				interrupt();
-				loggedRegions = new ArrayList<>();
-				currentRegion = originalRegion;
-				julia = false;
-				drawSet();
+				threadQueue.callLater(() -> {
+					interrupt();
+					loggedRegions = new ArrayList<>();
+					currentRegion = originalRegion;
+					julia = false;
+					drawSet();
+					
+					return false;
+				});
+				
 			}
 		});
 		
@@ -223,11 +234,15 @@ public class MainGUI extends Application
 		juliaSetMenu.setOnAction(e -> {
 			if(!julia)
 			{
-				interrupt();
-				loggedRegions = new ArrayList<>();
-				currentRegion = originalRegion;
-				julia = true;
-				drawSet();
+				threadQueue.callLater(() -> {
+					interrupt();
+					loggedRegions = new ArrayList<>();
+					currentRegion = originalRegion;
+					julia = true;
+					drawSet();
+					
+					return false;
+				});
 			}
 		});
 		
@@ -237,11 +252,16 @@ public class MainGUI extends Application
 		 * Will also change arbitaryPrecision to false.
 		 */
 		reset.setOnAction(e -> {
-			interrupt();
-			loggedRegions.add(currentRegion);
-			currentRegion = originalRegion;
-			arbitraryPrecision = false;
-			drawSet();
+			threadQueue.callLater(() -> {
+			
+				interrupt();
+				loggedRegions.add(currentRegion);
+				currentRegion = originalRegion;
+				arbitraryPrecision = false;
+				drawSet();
+				
+				return false;
+			});
 		});
 		
 		/*
@@ -249,9 +269,11 @@ public class MainGUI extends Application
 		 * Redraws the current region. 
 		 */
 		rerender.setOnAction(e -> {
-			interrupt();
-			drawSet();
-			
+			threadQueue.callLater(() -> {
+				interrupt();
+				drawSet();
+				return false;
+			});
 		});
 		
 		/*
@@ -261,10 +283,16 @@ public class MainGUI extends Application
 		undo.setOnAction(e -> {
 			if(loggedRegions.size()>=1)
 			{
-				interrupt();
-				currentRegion = loggedRegions.get(loggedRegions.size()-1);
-				loggedRegions.remove(loggedRegions.size()-1);
-				drawSet();
+				threadQueue.callLater(() -> {
+					
+				
+					interrupt();
+					currentRegion = loggedRegions.get(loggedRegions.size()-1);
+					loggedRegions.remove(loggedRegions.size()-1);
+					drawSet();
+					
+					return false;
+				});
 			}
 			else
 			{
@@ -289,7 +317,13 @@ public class MainGUI extends Application
 		 * Interrupts the render.
 		 * Has no effect if idle == true.
 		 */
-		interrupt.setOnAction(e -> interrupt());
+		interrupt.setOnAction(e -> {
+			threadQueue.callLater(() -> {
+				interrupt();
+				
+				return false;
+			});
+		});
 		
 		
 		/*Create Progress Bar*/
@@ -335,48 +369,51 @@ public class MainGUI extends Application
 		 * Renders a square box on the screen.
 		 */
 		viewerCanvas.setOnMouseDragged(e ->{
-			interrupt();
-			if(e.getButton() == MouseButton.PRIMARY)
-			{				
-				int x = (int)e.getX(), y = (int)e.getY();
-				int max = Math.max(Math.abs(initX-x), Math.abs(initY-y));
-				if(x<initX && y>initY)
-				{
-					Platform.runLater(() ->{
-						mainGC.drawImage(displayImage, 0, 0);
-						mainGC.setStroke(Color.WHITE);
-						mainGC.strokeRect(initX-max, initY, max, max);
-					
-					});
+			threadQueue.callLater(() -> {
+				interrupt();
+				if(e.getButton() == MouseButton.PRIMARY)
+				{				
+					int x = (int)e.getX(), y = (int)e.getY();
+					int max = Math.max(Math.abs(initX-x), Math.abs(initY-y));
+					if(x<initX && y>initY)
+					{
+						Platform.runLater(() ->{
+							mainGC.drawImage(displayImage, 0, 0);
+							mainGC.setStroke(Color.WHITE);
+							mainGC.strokeRect(initX-max, initY, max, max);
+						
+						});
+					}
+					else if(x < initX && y< initY)
+					{
+						Platform.runLater(() ->{
+							mainGC.drawImage(displayImage, 0, 0);
+							mainGC.setStroke(Color.WHITE);
+							mainGC.strokeRect(initX-max, initY-max, max, max);
+						
+						});
+					}
+					else if(x>initX && y>initY)
+					{
+						Platform.runLater(() ->{
+							mainGC.drawImage(displayImage, 0, 0);
+							mainGC.setStroke(Color.WHITE);
+							mainGC.strokeRect(initX, initY, max, max);
+						
+						});
+					}
+					else if(x>initX && y<initY)
+					{
+						Platform.runLater(() ->{
+							mainGC.drawImage(displayImage, 0, 0);
+							mainGC.setStroke(Color.WHITE);
+							mainGC.strokeRect(initX, initY-max, max, max);
+						
+						});
+					}
 				}
-				else if(x < initX && y< initY)
-				{
-					Platform.runLater(() ->{
-						mainGC.drawImage(displayImage, 0, 0);
-						mainGC.setStroke(Color.WHITE);
-						mainGC.strokeRect(initX-max, initY-max, max, max);
-					
-					});
-				}
-				else if(x>initX && y>initY)
-				{
-					Platform.runLater(() ->{
-						mainGC.drawImage(displayImage, 0, 0);
-						mainGC.setStroke(Color.WHITE);
-						mainGC.strokeRect(initX, initY, max, max);
-					
-					});
-				}
-				else if(x>initX && y<initY)
-				{
-					Platform.runLater(() ->{
-						mainGC.drawImage(displayImage, 0, 0);
-						mainGC.setStroke(Color.WHITE);
-						mainGC.strokeRect(initX, initY-max, max, max);
-					
-					});
-				}
-			}
+				return false;
+			});
 		});
 		
 		zoomFactor = 0;
@@ -385,30 +422,37 @@ public class MainGUI extends Application
 		 * Controls zooming in and out.
 		 */
 		viewerCanvas.setOnScroll(e ->{
-			interrupt();
-			zoomFactor = zoomFactor - e.getDeltaY();
-			int x = (int) e.getX();
-			int y = (int) e.getY();
-			double scaleFactor = Math.pow(Math.E, zoomFactor/1000);
-			double scaleFactor2 = Math.pow(Math.E, -zoomFactor/1000);
-			Region<BigDecimal> temp = currentRegion.scale(scaleFactor2, scaleFactor2,
-					Calculator.pixelToPointX(x, currentRegion, viewerPixelRegion, precision),
-					Calculator.pixelToPointY(y, currentRegion, viewerPixelRegion, precision));
-			Affine transform = new Affine();
-			transform.appendScale(scaleFactor, scaleFactor,x,y);
-			mainGC.setFill(Color.WHITE);
-			mainGC.fillRect(0, 0, width, height);
-			mainGC.setTransform(transform);
-			mainGC.drawImage(currentImage, 0, 0);
-			mainGC.setTransform(new Affine());
-			timeline.stop();
-			timeline = new Timeline(new KeyFrame(Duration.millis(1000),ae->{
-				loggedRegions.add(currentRegion);
-				currentRegion = temp;
-				zoomFactor = 0;
-				drawSet();
-			}));
-			timeline.play();
+			threadQueue.callLater(() -> {
+				
+				
+				interrupt();
+				
+				zoomFactor = zoomFactor - e.getDeltaY();
+				int x = (int) e.getX();
+				int y = (int) e.getY();
+				double scaleFactor = Math.pow(Math.E, zoomFactor/1000);
+				double scaleFactor2 = Math.pow(Math.E, -zoomFactor/1000);
+				Region<BigDecimal> temp = currentRegion.scale(scaleFactor2, scaleFactor2,
+						Calculator.pixelToPointX(x, currentRegion, viewerPixelRegion, precision),
+						Calculator.pixelToPointY(y, currentRegion, viewerPixelRegion, precision));
+				Affine transform = new Affine();
+				transform.appendScale(scaleFactor, scaleFactor,x,y);
+				mainGC.setFill(Color.WHITE);
+				mainGC.fillRect(0, 0, width, height);
+				mainGC.setTransform(transform);
+				mainGC.drawImage(actualImage, 0, 0);
+				mainGC.setTransform(new Affine());
+				timeline.stop();
+				timeline = new Timeline(new KeyFrame(Duration.millis(1000),ae->{
+					loggedRegions.add(currentRegion);
+					currentRegion = temp;
+					zoomFactor = 0;
+					drawSet();
+				}));
+				timeline.play();
+				
+				return false;
+			});
 		});
 		
 		
@@ -420,50 +464,53 @@ public class MainGUI extends Application
 		 * whose seed is the position of the mouse.
 		 */
 		viewerCanvas.setOnMouseReleased(e ->{
-			interrupt();
-			int x = (int)e.getX(), y = (int)e.getY();
-			if(e.getButton() == MouseButton.PRIMARY)
-			{
-				int max = Math.max(Math.abs(initX-x), Math.abs(initY-y));
-				loggedRegions.add(currentRegion);
-				if(initX==x&&initY==y)
+			
+			threadQueue.callLater(() -> {
+				interrupt();
+				int x = (int)e.getX(), y = (int)e.getY();
+				if(e.getButton() == MouseButton.PRIMARY)
 				{
-					int length = (int) width/50;
-					currentRegion = Calculator.toBigDecimalRegion(new Region<Integer>(initX-length,initY-length,initX+length,initY+length),
-							currentRegion, viewerPixelRegion, precision);
-				}
-				else if(x<initX&&y<initY)
-				{
-					currentRegion = Calculator.toBigDecimalRegion(new Region<Integer>(initX-max,initY-max,initX,initY),
-							currentRegion, viewerPixelRegion, precision);
-				}
-				else if(x<initX&&y>initY)
-				{
-					currentRegion = Calculator.toBigDecimalRegion(new Region<Integer>(initX-max,initY,initX,initY+max),
-							currentRegion, viewerPixelRegion, precision);
-				}
-				else if(x>initX&&y<initY)
-				{
-					currentRegion = Calculator.toBigDecimalRegion(new Region<Integer>(initX,initY-max,initX+max,initY),
-							currentRegion, viewerPixelRegion, precision);
-				}
-				else if(x>initX&&y>initY)
-				{
-					currentRegion = Calculator.toBigDecimalRegion(new Region<Integer>(initX,initY,initX+max,initY+max),
-							currentRegion, viewerPixelRegion, precision);
-				}
+					int max = Math.max(Math.abs(initX-x), Math.abs(initY-y));
+					loggedRegions.add(currentRegion);
+					if(initX==x&&initY==y)
+					{
+						int length = (int) width/50;
+						currentRegion = Calculator.toBigDecimalRegion(new Region<Integer>(initX-length,initY-length,initX+length,initY+length),
+								currentRegion, viewerPixelRegion, precision);
+					}
+					else if(x<initX&&y<initY)
+					{
+						currentRegion = Calculator.toBigDecimalRegion(new Region<Integer>(initX-max,initY-max,initX,initY),
+								currentRegion, viewerPixelRegion, precision);
+					}
+					else if(x<initX&&y>initY)
+					{
+						currentRegion = Calculator.toBigDecimalRegion(new Region<Integer>(initX-max,initY,initX,initY+max),
+								currentRegion, viewerPixelRegion, precision);
+					}
+					else if(x>initX&&y<initY)
+					{
+						currentRegion = Calculator.toBigDecimalRegion(new Region<Integer>(initX,initY-max,initX+max,initY),
+								currentRegion, viewerPixelRegion, precision);
+					}
+					else if(x>initX&&y>initY)
+					{
+						currentRegion = Calculator.toBigDecimalRegion(new Region<Integer>(initX,initY,initX+max,initY+max),
+								currentRegion, viewerPixelRegion, precision);
+					}
+					drawSet();
 				
-				drawSet();
-				
-			}
-			else
-			{
-				if(!julia)
-				{
-					juliaSeed = Calculator.toComplexBigDecimal(x, y, currentRegion, viewerPixelRegion, precision);
-					updateJuliaSetViewer();
 				}
-			}
+				else
+				{
+					if(!julia)
+					{
+						juliaSeed = Calculator.toComplexBigDecimal(x, y, currentRegion, viewerPixelRegion, precision);
+						updateJuliaSetViewer();
+					}
+				}
+				return false;
+			});
 			
 		});
 		
@@ -476,84 +523,107 @@ public class MainGUI extends Application
 		 * The panned image object will render its sliver on its own time and then draw it relative to imageX and imageY.
 		 */
 		viewerCanvas.setOnKeyPressed(e ->{
-			interrupt();
-			int change = 10;
-			if(e.getCode() == KeyCode.UP)
+			
+			if(threadQueue.getQueue().size()>=2)
 			{
-				imageY+=change;
-				currentRegion = Calculator.toBigDecimalRegion(new Region<Integer>(0,-change,width,height-change), currentRegion, viewerPixelRegion, precision);
-				PannedImage pi = new PannedImage(mainCalculator, -imageX,-imageY, new Region<Integer>(0,0,width,change),currentRegion, viewerPixelRegion, iterations,
-						arbitraryPrecision, precision, julia,juliaSeed, mainGC,this);
-				new Thread(pi).start();
-				pannedImages.add(pi);
-			}
-			else if(e.getCode() == KeyCode.DOWN)
-			{
-				imageY-=change;
-				currentRegion = Calculator.toBigDecimalRegion(new Region<Integer>(0,change,width,height+change), currentRegion, viewerPixelRegion, precision);
-				PannedImage pi = new PannedImage(mainCalculator,-imageX,height-imageY-change, new Region<Integer>(0,height-change,width,height),currentRegion, viewerPixelRegion, iterations,
-						arbitraryPrecision, precision, julia,juliaSeed, mainGC,this);
-				new Thread(pi).start();
-				pannedImages.add(pi);
-			}
-			else if(e.getCode() == KeyCode.LEFT)
-			{
-				imageX+=change;
-				currentRegion = Calculator.toBigDecimalRegion(new Region<Integer>(-change,0,width-change,height), currentRegion, viewerPixelRegion, precision);
-				PannedImage pi = new PannedImage(mainCalculator,-imageX,-imageY, new Region<Integer>(0,0,change,height),currentRegion, viewerPixelRegion, iterations,
-						arbitraryPrecision, precision, julia,juliaSeed, mainGC,this);
-				new Thread(pi).start();
-				pannedImages.add(pi);
-			}
-			else if(e.getCode() == KeyCode.RIGHT)
-			{
-				imageX-=change;
-				currentRegion = Calculator.toBigDecimalRegion(new Region<Integer>(change,0, width+change,height), currentRegion, viewerPixelRegion, precision);
-				PannedImage pi = new PannedImage(mainCalculator,-imageX+width-change,-imageY, new Region<Integer>(width-change,0,width,height),currentRegion, viewerPixelRegion, iterations,
-						arbitraryPrecision, precision, julia,juliaSeed, mainGC,this);
-				new Thread(pi).start();
-				pannedImages.add(pi);
+				return;
 			}
 			
-			Platform.runLater(() ->{
+			
+			threadQueue.callLater(() -> {
+				interrupt();
 				
-				mainGC.drawImage(currentImage, imageX, imageY);
+				int change = 10;
+				if(e.getCode() == KeyCode.UP)
+				{
+					imageY+=change;
+					currentRegion = Calculator.toBigDecimalRegion(new Region<Integer>(0,-change,width,height-change), currentRegion, viewerPixelRegion, precision);
+					PannedImage pi = new PannedImage(mainCalculator, -imageX,-imageY, new Region<Integer>(0,0,width,change),currentRegion, viewerPixelRegion, iterations,
+							arbitraryPrecision, precision, julia,juliaSeed, mainGC,this);
+					new Thread(pi).start();
+					pannedImages.add(pi);
+				}
+				else if(e.getCode() == KeyCode.DOWN)
+				{
+					imageY-=change;
+					currentRegion = Calculator.toBigDecimalRegion(new Region<Integer>(0,change,width,height+change), currentRegion, viewerPixelRegion, precision);
+					PannedImage pi = new PannedImage(mainCalculator,-imageX,height-imageY-change, new Region<Integer>(0,height-change,width,height),currentRegion, viewerPixelRegion, iterations,
+							arbitraryPrecision, precision, julia,juliaSeed, mainGC,this);
+					new Thread(pi).start();
+					pannedImages.add(pi);
+				}
+				else if(e.getCode() == KeyCode.LEFT)
+				{
+					imageX+=change;
+					currentRegion = Calculator.toBigDecimalRegion(new Region<Integer>(-change,0,width-change,height), currentRegion, viewerPixelRegion, precision);
+					PannedImage pi = new PannedImage(mainCalculator,-imageX,-imageY, new Region<Integer>(0,0,change,height),currentRegion, viewerPixelRegion, iterations,
+							arbitraryPrecision, precision, julia,juliaSeed, mainGC,this);
+					new Thread(pi).start();
+					pannedImages.add(pi);
+				}
+				else if(e.getCode() == KeyCode.RIGHT)
+				{
+					imageX-=change;
+					currentRegion = Calculator.toBigDecimalRegion(new Region<Integer>(change,0, width+change,height), currentRegion, viewerPixelRegion, precision);
+					PannedImage pi = new PannedImage(mainCalculator,-imageX+width-change,-imageY, new Region<Integer>(width-change,0,width,height),currentRegion, viewerPixelRegion, iterations,
+							arbitraryPrecision, precision, julia,juliaSeed, mainGC,this);
+					new Thread(pi).start();
+					pannedImages.add(pi);
+				}
+				
+				/*try {
+					FXUtilities.runAndWait(() ->{
+						for(PannedImage p: pannedImages)
+						{
+							mainGC.drawImage(p.image, imageX+p.relX, imageY + p.relY);
+						}
+					});
+				} catch (Exception e1) {
+					// TODO Auto-generated catch block
+					e1.printStackTrace();
+				}*/
+				
+						
 				for(PannedImage p: pannedImages)
 				{
-					mainGC.drawImage(p.image, imageX+p.relX, imageY + p.relY);
+					Platform.runLater(() ->{
+						mainGC.drawImage(p.image, imageX+p.relX, imageY + p.relY);
+					});
 				}
+				
+				
+				
+					Platform.runLater(() ->{
+						mainGC.drawImage(currentImage, imageX, imageY);
+						displayImage = viewerCanvas.snapshot(new SnapshotParameters(), null);
+						actualImage = displayImage;
+					});
+				
+				updateTextArea();
+				
+				return false;
 			});
-			Platform.runLater(() -> displayImage = viewerCanvas.snapshot(new SnapshotParameters(), null));
-			updateTextArea();
+			
+			
 		});
 		
 		scene.widthProperty().addListener(new ChangeListener<Number>(){
 			@Override
 			public void changed(ObservableValue<? extends Number> observableValue, Number oldValue, Number newValue)
 			{
-				if(resizable)
-				{
-					if(idle)
+				threadQueue.callLater(() -> {
+					
+					if(resizable)
 					{
+						interrupt();
 						width = (int) Math.min(scene.getHeight()-50, scene.getWidth()-width/3);
 						height = width;
 						previewWidth = width/3;
 						previewHeight = height/3;
 						updateAfterResize();
 					}
-					else
-					{
-						new Thread(new Runnable(){
-							public void run()
-							{
-								if(!mainCalculator.getInterrupt())
-								{
-									interrupt();
-								}
-							}
-							}).start();
-					}
-				}
+					return false;
+				});
 			}
 		});
 		
@@ -561,41 +631,19 @@ public class MainGUI extends Application
 			@Override
 			public void changed(ObservableValue<? extends Number> observableValue, Number oldValue, Number newValue)
 			{
-				if(resizable)
-				{
-					if(idle)
+				threadQueue.callLater(() -> {
+					if(resizable)
 					{
+						interrupt();
 						height = (int) Math.min(scene.getHeight()-50, scene.getWidth()-width/3);
 						width = height;
 						previewWidth = width/3;
 						previewHeight = height/3;
 						updateAfterResize();
 					}
-					else
-					{
-						new Thread(new Runnable(){
-							public void run()
-							{
-								if(!mainCalculator.getInterrupt())
-								{
-									interrupt();
-								}
-							}
-							}).start();
-					}
-				}
-				
+					return false;
+				});
 			}
-		});
-		
-		viewerCanvas.widthProperty().addListener(new ChangeListener<Number>()
-		{
-			@Override
-			public void changed(ObservableValue<? extends Number> observableValue, Number oldValue, Number newValue)
-			{
-				System.out.println(newValue + "");
-			}
-			
 		});
 		
 		/*layout.setOnKeyTyped(e->{
@@ -664,8 +712,12 @@ public class MainGUI extends Application
 		Platform.runLater(()->{
 			mainGC.drawImage(displayImage, 0, 0,width,height);
 			juliaGC.drawImage(previewViewerImage, 0, 0, previewWidth,previewHeight);
+			actualImage = viewerCanvas.snapshot(new SnapshotParameters(), null);
+			currentImage = viewerCanvas.snapshot(new SnapshotParameters(), null);
 		});
-		
+		pannedImages = new ArrayList<PannedImage>();
+		imageX = 0;
+		imageY = 0;
 		viewerPixelRegion = new Region<Integer>(0,0,width,height);
 		previewPixelRegion = new Region<Integer>(0,0,previewWidth,previewHeight);
 	}
@@ -680,38 +732,28 @@ public class MainGUI extends Application
 	 */
 	public void interrupt()
 	{
+		if(Platform.isFxApplicationThread())
+		{
+			(new Exception("CALLED FROM FX APPLICATION THREAD")).printStackTrace();
+			return;
+		}
+		
 		if(!idle)
 		{
+			previewCalculator.setInterrupt(true);
 			mainCalculator.setInterrupt(true);
-			
 			updater.interrupt();
-			System.out.println("interrupting");
-			if(Platform.isFxApplicationThread())
+			try
 			{
-				(new Exception()).printStackTrace();
+				updater.join();
 			}
-			else
-			{		
-					try {
-						updater.join();
-						System.out.println("ALIVE");
-					} catch (InterruptedException e) {
-						// TODO Auto-generated catch block
-						e.printStackTrace();
-					}
-				synchronized(lock)
-				{
-					try {
-						while(waitForImage)
-						{
-							lock.wait();
-						}
-					} catch (InterruptedException e) {
-						// TODO Auto-generated catch block
-						e.printStackTrace();
-					}
-				}
+			catch (InterruptedException e)
+			{
+				// TODO Auto-generated catch block
+				e.printStackTrace();
 			}
+			
+		
 			idle = true;
 		}
 	}
@@ -722,14 +764,28 @@ public class MainGUI extends Application
 	 */
 	public void close()
 	{
-		interrupt();
-		closed = true;
-		window.close();
+		threadQueue.callLater(()->{
+			interrupt();
+			closed = true;
+			//threadQueue.terminate();
+			Platform.runLater(()->{
+				window.close();
+			});
+			
+			return true;
+			
+		});
+		
 	}
 	
 	public int calcAutoIterations(BigDecimal mag)
 	{
-		return (int) (300+2000*Math.log10(magnification.longValue()));
+		int returnValue = (int) (300+2000*Math.log10(magnification.longValue()));
+		if(returnValue<=100)
+		{
+			returnValue = 100;
+		}
+		return returnValue;
 	}
 	
 	/**
@@ -808,6 +864,7 @@ public class MainGUI extends Application
 	 */
 	public void updateJuliaSetViewer()
 	{
+		previewCalculator.setInterrupt(false);
 		int h = (int) (previewHeight/threadCount);
 		for(int i = 0; i<threadCount; i++)
 		{
@@ -885,7 +942,18 @@ public class MainGUI extends Application
 			Platform.runLater(() -> viewerCanvas.snapshot(ready, sp, null));
 			
 			waitForImage = true;
-			System.out.println("1");
+			synchronized(lock)
+			{
+				try {
+					while(waitForImage)
+					{
+						lock.wait();
+					}
+				} catch (InterruptedException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			}
 		}
 	}
 	
@@ -896,13 +964,12 @@ public class MainGUI extends Application
 		{
 			currentImage = result.getImage();
 			displayImage = result.getImage();
-			System.out.println("RESIZE!!!!");
+			actualImage = result.getImage();
 			waitForImage = false;
 			synchronized(lock)
 			{
 				lock.notifyAll();
 			}
-			
 			return null;
 		}
 		
@@ -1005,6 +1072,55 @@ public class MainGUI extends Application
 				drawImageToCanvas(image);
 				
 				
+			}
+		}
+	}
+	
+	public class ThreadQueue implements Runnable
+	{
+		private ArrayBlockingQueue<CallableClass> queue;
+		private boolean terminate;
+		public ThreadQueue()
+		{
+			queue = new ArrayBlockingQueue<CallableClass>(100);
+			terminate = false;
+		}
+		
+		public void callLater(CallableClass callable)
+		{
+			/*Consider Changing to Put*/
+			queue.offer(callable);
+		}
+		
+		public void terminate()
+		{
+			terminate = true;
+			queue.offer(() -> {return true;});
+		}
+		
+		public ArrayBlockingQueue<CallableClass> getQueue()
+		{
+			return queue;
+		}
+
+		@Override
+		public void run()
+		{
+			try
+			{
+				while(!terminate)
+				{
+					CallableClass callable = queue.take();
+					if(callable.call())
+					{
+						return;
+					}
+				}
+			}
+			catch (InterruptedException e)
+			{
+				// TODO Auto-generated catch block
+				e.printStackTrace();
 			}
 		}
 	}
