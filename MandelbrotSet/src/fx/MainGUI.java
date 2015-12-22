@@ -44,7 +44,7 @@ public class MainGUI extends Application
 	ProgressIndicator progressIndicator;
 	Region<BigDecimal> currentRegion;
 	Region<Integer> viewerPixelRegion, previewPixelRegion;
-	WritableImage currentImage, displayImage, previewViewerImage, actualImage;
+	WritableImage currentImage,previewViewerImage, displayImage,  actualImage;
 	Calculator mainCalculator, previewCalculator;
 	ComplexBigDecimal juliaSeed;
 	ArrayList<PannedImage> pannedImages;
@@ -61,6 +61,7 @@ public class MainGUI extends Application
 	boolean skip = true;
 	boolean closed, idle, julia, arbitraryPrecision, autoIterations,resizable, waitForImage;
 	int width, height, previewWidth, previewHeight, iterations, precision, initX, initY, imageX, imageY, threadCount;
+	int scrollX, scrollY;
 	double zoomFactor;
 	
 	
@@ -417,26 +418,28 @@ public class MainGUI extends Application
 		});
 		
 		zoomFactor = 0;
+		
 		/*
 		 * Scroll Event:
 		 * Controls zooming in and out.
 		 */
 		viewerCanvas.setOnScroll(e ->{
+			if(timeline.getStatus())
+			scrollX = (int) e.getX();
+			scrollY = (int) e.getY();
 			threadQueue.callLater(() -> {
-				
 				
 				interrupt();
 				
 				zoomFactor = zoomFactor - e.getDeltaY();
-				int x = (int) e.getX();
-				int y = (int) e.getY();
+				
 				double scaleFactor = Math.pow(Math.E, zoomFactor/1000);
 				double scaleFactor2 = Math.pow(Math.E, -zoomFactor/1000);
 				Region<BigDecimal> temp = currentRegion.scale(scaleFactor2, scaleFactor2,
-						Calculator.pixelToPointX(x, currentRegion, viewerPixelRegion, precision),
-						Calculator.pixelToPointY(y, currentRegion, viewerPixelRegion, precision));
+						Calculator.pixelToPointX(scrollX, currentRegion, viewerPixelRegion, precision),
+						Calculator.pixelToPointY(scrollY, currentRegion, viewerPixelRegion, precision));
 				Affine transform = new Affine();
-				transform.appendScale(scaleFactor, scaleFactor,x,y);
+				transform.appendScale(scaleFactor, scaleFactor,scrollX,scrollY);
 				mainGC.setFill(Color.WHITE);
 				mainGC.fillRect(0, 0, width, height);
 				mainGC.setTransform(transform);
@@ -571,7 +574,7 @@ public class MainGUI extends Application
 					pannedImages.add(pi);
 				}
 				
-				/*try {
+				try {
 					FXUtilities.runAndWait(() ->{
 						for(PannedImage p: pannedImages)
 						{
@@ -581,15 +584,15 @@ public class MainGUI extends Application
 				} catch (Exception e1) {
 					// TODO Auto-generated catch block
 					e1.printStackTrace();
-				}*/
+				}
 				
 						
-				for(PannedImage p: pannedImages)
+				/*for(PannedImage p: pannedImages)
 				{
 					Platform.runLater(() ->{
 						mainGC.drawImage(p.image, imageX+p.relX, imageY + p.relY);
 					});
-				}
+				}*/
 				
 				
 				
@@ -599,8 +602,7 @@ public class MainGUI extends Application
 						actualImage = displayImage;
 					});
 				
-				updateTextArea();
-				
+					updateTextArea();
 				return false;
 			});
 			
@@ -700,16 +702,15 @@ public class MainGUI extends Application
 	
 	public void updateAfterResize()
 	{
-		progressBar.setPrefWidth(width+previewWidth-40);
-		juliaViewer.setHeight(previewHeight);
-		juliaViewer.setWidth(previewWidth);
 		
-		viewerCanvas.setHeight(height);
-		viewerCanvas.setWidth(width);
-		
-		textArea.setPrefWidth(previewWidth);
 		
 		Platform.runLater(()->{
+			progressBar.setPrefWidth(width+previewWidth-40);
+			juliaViewer.setHeight(previewHeight);
+			juliaViewer.setWidth(previewWidth);
+			viewerCanvas.setHeight(height);
+			viewerCanvas.setWidth(width);
+			textArea.setPrefWidth(previewWidth);
 			mainGC.drawImage(displayImage, 0, 0,width,height);
 			juliaGC.drawImage(previewViewerImage, 0, 0, previewWidth,previewHeight);
 			actualImage = viewerCanvas.snapshot(new SnapshotParameters(), null);
@@ -834,15 +835,18 @@ public class MainGUI extends Application
 	 */
 	public void updateTextArea()
 	{
-		textArea.setText("Magnification: " + format(magnification.setScale(1, BigDecimal.ROUND_HALF_UP))+ "x\n" + 
-				"Iterations: " + iterations + "\n"
-				+ "Precision: " + precision + "\n"
-				+ "Julia Set: " + julia + "\n"
-				+ "Center: " + currentRegion.getCenterX().setScale(6, BigDecimal.ROUND_HALF_UP).stripTrailingZeros().toPlainString() + " + "
-				+ currentRegion.getCenterY().setScale(6, BigDecimal.ROUND_HALF_UP).stripTrailingZeros().toPlainString() + "i" + "\n"
-				+ "Threads: " + threadCount + "\n"
-				+ "Color: " + mainCalculator.getColorFunction().toString() + "\n"
-				+ "Arbitrary Precision: " + arbitraryPrecision + "\n");
+		Platform.runLater(()->{
+			
+			textArea.setText("Magnification: " + format(magnification.setScale(1, BigDecimal.ROUND_HALF_UP))+ "x\n" + 
+					"Iterations: " + iterations + "\n"
+					+ "Precision: " + precision + "\n"
+					+ "Julia Set: " + julia + "\n"
+					+ "Center: " + currentRegion.getCenterX().setScale(6, BigDecimal.ROUND_HALF_UP).stripTrailingZeros().toPlainString() + " + "
+					+ currentRegion.getCenterY().setScale(6, BigDecimal.ROUND_HALF_UP).stripTrailingZeros().toPlainString() + "i" + "\n"
+					+ "Threads: " + threadCount + "\n"
+					+ "Color: " + mainCalculator.getColorFunction().toString() + "\n"
+					+ "Arbitrary Precision: " + arbitraryPrecision + "\n");
+		});
 	}
 	
 	/**

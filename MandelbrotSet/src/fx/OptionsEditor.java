@@ -328,15 +328,23 @@ public class OptionsEditor
 		});
 		
 		applyAndRerenderButton.setOnAction(e->{
-			if(!checkValues())
-			{
-				return;
-			}
-			gui.interrupt();
-			setValues();
-			gui.drawSet();
-			gui.updateJuliaSetViewer();
-			window.close();
+			gui.threadQueue.callLater(()->{
+				if(!checkValues())
+				{
+					return false;
+				}
+				gui.interrupt();
+				
+				Platform.runLater(()->{
+					setValues();
+					gui.drawSet();
+					gui.updateJuliaSetViewer();
+					window.close();
+				});
+				return false;
+				
+			});
+			
 		});
 		
 		cancelButton.setOnAction(e ->{
@@ -344,13 +352,21 @@ public class OptionsEditor
 		});
 		
 		applyButton.setOnAction(e ->{
-			if(!checkValues())
-			{
-				return;
-			}
-			gui.interrupt();
-			setValues();
-			window.close();
+			gui.threadQueue.callLater(()->{
+				if(!checkValues())
+				{
+					return false;
+				}
+				gui.interrupt();
+				
+				Platform.runLater(()->{
+					setValues();
+					window.close();
+					
+				});
+				
+				return false;
+			});
 		});
 		
 		threadCountField.setOnMouseClicked(e -> {
