@@ -514,10 +514,6 @@ public class MainGUI extends Application
 			
 		});
 		
-		/*skip = false;
-		Timeline timeline2 = new Timeline(new KeyFrame(Duration.millis(100),ae->{skip = false;}));
-		timeline2.setCycleCount(Timeline.INDEFINITE);
-		timeline2.play();*/
 		/*
 		 * KeyPressed Event:
 		 * Pans the image to the right.
@@ -527,15 +523,11 @@ public class MainGUI extends Application
 		 * The panned image object will render its sliver on its own time and then draw it relative to imageX and imageY.
 		 */
 		viewerCanvas.setOnKeyPressed(e ->{
-			/*System.out.println(skip);
-			if(skip)
+			
+			if(threadQueue.getQueue().size()>=2)
 			{
-				System.out.println("ABC");
 				return;
 			}
-			skip = true;*/
-			
-			
 			
 			
 			threadQueue.callLater(() -> {
@@ -579,7 +571,7 @@ public class MainGUI extends Application
 					pannedImages.add(pi);
 				}
 				
-				try {
+				/*try {
 					FXUtilities.runAndWait(() ->{
 						for(PannedImage p: pannedImages)
 						{
@@ -589,8 +581,15 @@ public class MainGUI extends Application
 				} catch (Exception e1) {
 					// TODO Auto-generated catch block
 					e1.printStackTrace();
-				}
+				}*/
+				
 						
+				for(PannedImage p: pannedImages)
+				{
+					Platform.runLater(() ->{
+						mainGC.drawImage(p.image, imageX+p.relX, imageY + p.relY);
+					});
+				}
 				
 				
 				
@@ -645,16 +644,6 @@ public class MainGUI extends Application
 					return false;
 				});
 			}
-		});
-		
-		viewerCanvas.widthProperty().addListener(new ChangeListener<Number>()
-		{
-			@Override
-			public void changed(ObservableValue<? extends Number> observableValue, Number oldValue, Number newValue)
-			{
-				System.out.println(newValue + "");
-			}
-			
 		});
 		
 		/*layout.setOnKeyTyped(e->{
@@ -875,6 +864,7 @@ public class MainGUI extends Application
 	 */
 	public void updateJuliaSetViewer()
 	{
+		previewCalculator.setInterrupt(false);
 		int h = (int) (previewHeight/threadCount);
 		for(int i = 0; i<threadCount; i++)
 		{
@@ -1099,13 +1089,18 @@ public class MainGUI extends Application
 		public void callLater(CallableClass callable)
 		{
 			/*Consider Changing to Put*/
-			System.out.println(queue.offer(callable) + ": " + queue.size());
+			queue.offer(callable);
 		}
 		
 		public void terminate()
 		{
 			terminate = true;
 			queue.offer(() -> {return true;});
+		}
+		
+		public ArrayBlockingQueue<CallableClass> getQueue()
+		{
+			return queue;
 		}
 
 		@Override
@@ -1115,11 +1110,9 @@ public class MainGUI extends Application
 			{
 				while(!terminate)
 				{
-					System.out.println(queue.size());
 					CallableClass callable = queue.take();
 					if(callable.call())
 					{
-						System.out.println("TERMINATED");
 						return;
 					}
 				}

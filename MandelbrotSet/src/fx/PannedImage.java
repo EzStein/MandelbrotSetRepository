@@ -68,7 +68,7 @@ public class PannedImage implements Runnable
 	{
 		Platform.runLater(() -> {
 			gc.drawImage(image, gui.imageX+relX, gui.imageY+relY);
-			gui.displayImage = gui.viewerCanvas.snapshot(new SnapshotParameters(), null);
+			//gui.displayImage = gui.viewerCanvas.snapshot(new SnapshotParameters(), null);
 		});
 	}
 }
