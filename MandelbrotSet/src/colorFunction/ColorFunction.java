@@ -25,6 +25,10 @@ public interface ColorFunction
 			COLOR_FUNCTIONS.put(new WinterWonderlandFunctionLinear().toString(), new WinterWonderlandFunctionLinear());
 			COLOR_FUNCTIONS.put(new YellowOrangeFunctionLinear().toString(), new YellowOrangeFunctionLinear());
 			COLOR_FUNCTIONS.put(new YellowOrangeFunctionLogarithmic().toString(), new YellowOrangeFunctionLogarithmic());
+			COLOR_FUNCTIONS.put(new BlueGodess().toString(), new BlueGodess());
+			COLOR_FUNCTIONS.put(new BubbleYum().toString(), new BubbleYum());
+			COLOR_FUNCTIONS.put(new Noir().toString(), new Noir());
+			COLOR_FUNCTIONS.put(new NameLater().toString(), new NameLater());
 		};
 	}
 }

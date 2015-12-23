@@ -1,16 +1,13 @@
 package fx;
 import javafx.animation.*;
-import javafx.animation.Animation.Status;
+import javafx.animation.Animation.*;
 import javafx.application.*;
-import javafx.beans.value.ChangeListener;
-import javafx.beans.value.ObservableValue;
-import javafx.geometry.Pos;
-import javafx.geometry.Rectangle2D;
+import javafx.beans.value.*;
+import javafx.geometry.*;
 import javafx.scene.*;
 import javafx.scene.canvas.*;
 import javafx.stage.*;
-import javafx.util.Callback;
-import javafx.util.Duration;
+import javafx.util.*;
 import javafx.scene.control.*;
 import javafx.scene.image.*;
 import javafx.scene.input.*;
@@ -18,10 +15,9 @@ import javafx.scene.layout.*;
 import javafx.scene.paint.*;
 import javafx.scene.transform.*;
 import java.math.*;
-import java.text.DecimalFormat;
-import java.text.NumberFormat;
+import java.text.*;
 import java.util.*;
-import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.*;
 
 import fx.Region;
 
@@ -33,7 +29,6 @@ import fx.Region;
  */
 public class MainGUI extends Application
 {
-	//This is the concurrencyBranch
 	Thread updater;
 	TextArea textArea;
 	Stage window;
@@ -99,7 +94,6 @@ public class MainGUI extends Application
 			/*Exits the program*/
 			return;
 		}
-		
 		
 		/*Creates two calculator objects. One for the preview viewer and one for the main viewer.*/
 		mainCalculator = new Calculator();
@@ -426,7 +420,6 @@ public class MainGUI extends Application
 		 */
 		viewerCanvas.setOnScroll(e ->{
 			
-			
 			threadQueue.callLater(() -> {
 				
 				interrupt();
@@ -451,7 +444,7 @@ public class MainGUI extends Application
 				mainGC.drawImage(actualImage, 0, 0);
 				mainGC.setTransform(new Affine());
 				timeline.stop();
-				timeline = new Timeline(new KeyFrame(Duration.millis(1000),ae->{
+				timeline = new Timeline(new KeyFrame(Duration.millis(500),ae->{
 					loggedRegions.add(currentRegion);
 					currentRegion = temp;
 					zoomFactor = 0;
@@ -707,8 +700,6 @@ public class MainGUI extends Application
 	
 	public void updateAfterResize()
 	{
-		
-		
 		Platform.runLater(()->{
 			progressBar.setPrefWidth(width+previewWidth-40);
 			juliaViewer.setHeight(previewHeight);
