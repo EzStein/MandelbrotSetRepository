@@ -34,8 +34,10 @@ public class MainGUI extends Application
 	Stage window;
 	Scene scene;
 	BorderPane layout;
-	Canvas viewerCanvas, juliaViewer;
-	GraphicsContext mainGC, juliaGC;
+	VBox vbox;
+	HBox hbox;
+	Canvas viewerCanvas, juliaViewer, orbitCanvas;
+	GraphicsContext mainGC, juliaGC, orbitGC;
 	ProgressBar progressBar;
 	ProgressIndicator progressIndicator;
 	Region<BigDecimal> currentRegion;
@@ -54,6 +56,7 @@ public class MainGUI extends Application
 			new BigDecimal("2"),
 			new BigDecimal("2"),
 			new BigDecimal("-2"));
+	Thread orbitThread;
 	boolean skip = true;
 	boolean closed, idle, julia, arbitraryPrecision, autoIterations,resizable, waitForImage;
 	int width, height, previewWidth, previewHeight, iterations, precision, initX, initY, imageX, imageY, threadCount;
@@ -80,7 +83,53 @@ public class MainGUI extends Application
 	@Override
 	public void start(Stage window)
 	{
+		showStartDialog();
+		initializeVariables();
 		
+		//Platform.runLater(() -> previewViewerImage = juliaViewer.snapshot(new SnapshotParameters(), null));
+		
+		/*Initializes Basic layout*/
+		this.window = window;
+		Group root = new Group();
+		layout = new BorderPane();
+		layout.setId("layout");
+		hbox = new HBox(10);
+		root.getChildren().add(layout);
+		scene = new Scene(root);
+		
+		
+		
+		/*close() method called when window is closed*/
+		window.setOnCloseRequest(e->{
+			e.consume();
+			close();
+			});
+		
+		
+		buildMenus();
+		buildProgressBar();
+		buildViewerCanvas();
+		buildPreviewCanvas();
+		buildTextArea();
+		buildOrbitCanvas();
+		
+		BorderPane.setAlignment(viewerCanvas, Pos.TOP_LEFT);
+		BorderPane.setAlignment(vbox, Pos.TOP_LEFT);
+		
+		/*Shows the window*/
+		/*Sets up style sheets*/
+		scene.getStylesheets().add(this.getClass().getResource("MainStyle.css").toExternalForm());
+		
+		window.setScene(scene);
+		window.show();
+		
+		/*Initializes the canvases*/
+		updateJuliaSetViewer();
+		drawSet();
+	}
+	
+	public void showStartDialog()
+	{
 		/*Opens the size chooser window.*/
 		SizeChooser sizeChooser = new SizeChooser();
 		Optional<Integer> result = sizeChooser.showAndWait();
@@ -92,16 +141,17 @@ public class MainGUI extends Application
 		else
 		{
 			/*Exits the program*/
-			return;
+			System.exit(0);
 		}
-		
+	}
+	
+	public void initializeVariables()
+	{
 		/*Creates two calculator objects. One for the preview viewer and one for the main viewer.*/
 		mainCalculator = new Calculator();
 		previewCalculator = new Calculator();
 		
-		
 		/*Initializes variables with the default value.*/
-		
 		currentImage = new WritableImage(width,height);
 		pannedImages = new ArrayList<PannedImage>();
 		juliaSeed = new ComplexBigDecimal("0","0",precision);
@@ -109,6 +159,7 @@ public class MainGUI extends Application
 		runningThreads = new ArrayList<Thread>();
 		timeline = new Timeline(new KeyFrame(Duration.millis(2000),ae->{}));
 		updater = new Thread();
+		orbitThread = new Thread();
 		magnification = new BigDecimal("1");
 		threadQueue = new ThreadQueue();
 		new Thread(threadQueue).start();
@@ -131,31 +182,27 @@ public class MainGUI extends Application
 		previewHeight = height/3;
 		viewerPixelRegion = new Region<Integer>(0,0,width,height);
 		previewPixelRegion = new Region<Integer>(0,0,previewWidth,previewHeight);
-		
-		Platform.runLater(() -> previewViewerImage = juliaViewer.snapshot(new SnapshotParameters(), null));
-		/*Initializes Basic layout*/
-		this.window = window;
-		layout = new BorderPane();
-		layout.setId("layout");
+	}
+ 
+	public void buildTextArea()
+	{
+		/*Create Text Area*/
+		textArea = new TextArea("");
+		updateTextArea();
+		textArea.setEditable(false);
+		textArea.setFocusTraversable(false);
+		textArea.setMaxWidth(previewWidth);
+		vbox.getChildren().add(textArea);
+		hbox.getChildren().add(vbox);
+		layout.setRight(hbox);
+	}
 	
-		Group rootGroup = new Group();
-		rootGroup.getChildren().add(layout);
-		scene = new Scene(rootGroup);
-		
-		/*Sets up style sheets*/
-		scene.getStylesheets().add(this.getClass().getResource("MainStyle.css").toExternalForm());
-		
-		/*close() method called when window is closed*/
-		window.setOnCloseRequest(e->{
-			e.consume();
-			close();
-			});
-		
-		
+	public void buildMenus()
+	{
 		/*Create MenuBar*/
 		MenuBar menuBar = new MenuBar();
 		menuBar.useSystemMenuBarProperty().set(true);
-		rootGroup.getChildren().add(menuBar);
+		layout.setBottom(menuBar);
 		
 		/*Builds File Menu*/
 		Menu fileMenu = new Menu("File");
@@ -320,23 +367,16 @@ public class MainGUI extends Application
 				return false;
 			});
 		});
-		
-		
-		/*Create Progress Bar*/
-		progressBar = new ProgressBar();
-		progressIndicator = new ProgressIndicator();
-		progressBar.setPrefWidth(width+previewWidth-40);
-		HBox hbox = new HBox(10);
-		hbox.getChildren().addAll(progressBar, progressIndicator);
-		layout.setTop(hbox);
-		
+	}
+	
+	public void buildViewerCanvas()
+	{
 		/*Create main canvas explorer*/
 		viewerCanvas = new Canvas(width,height);
 		viewerCanvas.setId("main-canvas");
 		
 		mainGC = viewerCanvas.getGraphicsContext2D();
 		layout.setCenter(viewerCanvas);
-		
 		
 		/*
 		 * Gives it focus so that whenever the mouse is on top of the canvas,
@@ -504,6 +544,16 @@ public class MainGUI extends Application
 				}
 				else
 				{
+					orbitThread.interrupt();
+					try {
+						orbitThread.join();
+					} catch (Exception e1) {
+						// TODO Auto-generated catch block
+						e1.printStackTrace();
+					}
+					
+					orbitThread = new Thread(new OrbitThread(Calculator.toComplexBigDecimal(x, y, currentRegion, viewerPixelRegion, precision)));
+					orbitThread.start();
 					if(!julia)
 					{
 						juliaSeed = Calculator.toComplexBigDecimal(x, y, currentRegion, viewerPixelRegion, precision);
@@ -661,41 +711,37 @@ public class MainGUI extends Application
 			}
 			
 		});*/
-		
+	}
+	
+	public void buildPreviewCanvas()
+	{
 		/*Preview Viewer*/
-		VBox vbox = new VBox();
+		vbox = new VBox(10);
 		juliaViewer = new Canvas(previewWidth,previewHeight);
 		juliaGC = juliaViewer.getGraphicsContext2D();
 		vbox.getChildren().add(juliaViewer);
-		
-		/*Create Text Area*/
-		textArea = new TextArea("Magnification: " + magnification.toString() + "x\n" + 
-				"Iterations: " + iterations + "\n"
-				+ "Precision: " + precision + "\n"
-				+ "Julia Set: " + julia + "\n"
-				+ "Center: " + currentRegion.getCenterX().setScale(6, BigDecimal.ROUND_HALF_UP).stripTrailingZeros().toPlainString() + " + "
-				+ currentRegion.getCenterY().setScale(6, BigDecimal.ROUND_HALF_UP).stripTrailingZeros().toPlainString() + "i" + "\n"
-				+ "Threads: " + threadCount + "\n"
-				+ "Color: " + mainCalculator.getColorFunction().toString() + "\n"
-				+ "Arbitrary Precision: " + arbitraryPrecision + "\n");
-		textArea.setEditable(false);
-		textArea.setFocusTraversable(false);
-		textArea.setMaxWidth(previewWidth);
-		vbox.getChildren().add(textArea);
-		layout.setRight(vbox);
-		
-		
-		BorderPane.setAlignment(viewerCanvas, Pos.TOP_LEFT);
-		BorderPane.setAlignment(juliaViewer, Pos.TOP_LEFT);
-		BorderPane.setAlignment(textArea, Pos.TOP_LEFT);
-		
-		/*Shows the window*/
-		window.setScene(scene);
-		window.show();
-		
-		/*Initializes the canvases*/
-		updateJuliaSetViewer();
-		drawSet();
+	}
+	
+	public void buildProgressBar()
+	{
+		/*Create Progress Bar*/
+		progressBar = new ProgressBar();
+		progressIndicator = new ProgressIndicator();
+		progressBar.setPrefWidth(width+previewWidth-40);
+		HBox hbox = new HBox(10);
+		hbox.getChildren().addAll(progressBar, progressIndicator);
+		layout.setTop(hbox);
+	}
+	
+	public void buildOrbitCanvas()
+	{
+		orbitCanvas = new Canvas();
+		orbitCanvas.setWidth(width);
+		orbitCanvas.setHeight(height);
+		orbitGC = orbitCanvas.getGraphicsContext2D();
+		hbox.getChildren().add(orbitCanvas);
+		orbitGC.setFill(Color.WHITE);
+		orbitGC.fillRect(0, 0, width, height);
 	}
 	
 	public void updateAfterResize()
@@ -764,6 +810,7 @@ public class MainGUI extends Application
 		threadQueue.callLater(()->{
 			interrupt();
 			closed = true;
+			orbitThread.interrupt();
 			//threadQueue.terminate();
 			Platform.runLater(()->{
 				window.close();
@@ -881,7 +928,78 @@ public class MainGUI extends Application
 		}
 	}
 	
-	
+	public class OrbitThread implements Runnable
+	{
+		private ComplexBigDecimal seed;
+		private int x,y, oldX, oldY;
+		public OrbitThread(ComplexBigDecimal seed)
+		{
+			this.seed = seed;
+		}
+		
+		@Override
+		public void run()
+		{
+			Region<Integer> pixelRegion = new Region<Integer>(
+					0,0,
+					(int) orbitCanvas.getWidth(),
+					(int) orbitCanvas.getHeight());
+			
+			x = Calculator.pointToPixelX(seed.getRealPart(), originalRegion, pixelRegion, precision);
+			y = -Calculator.pointToPixelY(seed.getImaginaryPart(), originalRegion, pixelRegion, precision);
+			oldX = x;
+			oldY = y;
+			Platform.runLater(()->{
+				orbitGC.setFill(Color.WHITE);
+				orbitGC.fillRect(0, 0, orbitCanvas.getWidth(), orbitCanvas.getHeight());
+			});
+			
+			int i = 0;
+			Complex newTerm = new Complex(0,0);
+			while(i<=iterations)
+			{
+				Platform.runLater(()->{
+					orbitGC.setStroke(Color.BLACK);
+					orbitGC.setFill(Color.BLACK);
+					orbitGC.strokeLine(oldX, oldY, x, y);
+					orbitGC.fillRect(x, y, 1, 1);
+					orbitGC.strokeOval(x-5, y-5, 10, 10);
+					
+					
+				});
+				newTerm = MandelbrotFunction.iterate(seed.toComplex(), newTerm);
+				
+				if(newTerm.ABS()>=10)
+				{
+					break;
+				}
+				
+				try {
+					Thread.sleep(20);
+				} catch (InterruptedException e)
+				{
+					break;
+				}
+				
+				oldX = x;
+				oldY = y;
+				x = Calculator.pointToPixelX(new BigDecimal(newTerm.getRealPart()), originalRegion, pixelRegion, precision);
+				y = -Calculator.pointToPixelY(new BigDecimal(newTerm.getImaginaryPart()), originalRegion, pixelRegion, precision);
+				i++;
+				
+			}
+			
+			Platform.runLater(()->{
+				orbitGC.setStroke(Color.BLACK);
+				orbitGC.setFill(Color.BLACK);
+				orbitGC.fillRect(x, y, 1, 1);
+				orbitGC.strokeOval(x-5, y-5, 10, 10);
+				orbitGC.strokeLine(oldX, oldY, x, y);
+			});
+			
+		}
+		
+	}
 	
 	/**
 	 * Updates the progress bar by continuously checking the number of pixels calculated by the main calculator

@@ -15,26 +15,37 @@ import javafx.geometry.*;
 import javafx.scene.*;
 import javafx.scene.control.*;
 import javafx.scene.control.Alert.AlertType;
+import javafx.scene.input.KeyCode;
 import javafx.scene.layout.*;
+import javafx.scene.paint.Color;
+import javafx.scene.paint.CycleMethod;
+import javafx.scene.paint.LinearGradient;
+import javafx.scene.paint.Stop;
+import javafx.scene.shape.Rectangle;
 import javafx.scene.text.Font;
 import javafx.stage.*;
+import javafx.util.Callback;
 import javafx.util.StringConverter;
 
 public class OptionsEditor
 {
 	MainGUI gui;
 	Stage window;
-	GridPane gridPane;
+	GridPane optionsGridPane, colorGridPane;
 	Label centerValue, set, seed;
 	Label boxValue;
 	TextField threadCountField;
 	TextField iterationsField;
 	TextField precisionField;
+	BorderPane layout;
+	HBox buttonBox;
 	CheckBox autoIterationsCheckBox;
 	ChoiceBox<SavedRegion> savedRegionsChoiceBox;
 	ChoiceBox<ColorFunction> colorChoiceBox;
 	RadioButton arbitraryPrecision;
 	RadioButton doublePrecision;
+	Rectangle gradientRectangle;
+	ColorPicker colorPicker;
 	ObjectInputStream in;
 	ObjectOutputStream out;
 	File file;
@@ -42,6 +53,7 @@ public class OptionsEditor
 	Region<BigDecimal> currentRegion;
 	boolean currentJulia;
 	ComplexBigDecimal currentSeed;
+	ArrayList<Stop> gradientStops;
 	
 	public OptionsEditor(MainGUI gui)
 	{
@@ -89,11 +101,29 @@ public class OptionsEditor
 		window = new Stage();
 		window.setTitle("Edit...");
 		window.initModality(Modality.APPLICATION_MODAL);
-		gridPane = new GridPane();
-		gridPane.setVgap(10);
-		gridPane.setHgap(10);
-		gridPane.setPadding(new Insets(30,30,30,30));
+		layout = new BorderPane();
+		buttonBox = new HBox(10);
+		TabPane tabPane = new TabPane();
+		Tab colorTab = new Tab("Color");
+		Tab optionsTab = new Tab("Options");
+		colorTab.setClosable(false);
+		optionsTab.setClosable(false);
+		tabPane.getTabs().add(optionsTab);
+		tabPane.getTabs().add(colorTab);
+		optionsGridPane= new GridPane();
+		optionsGridPane.setVgap(10);
+		optionsGridPane.setHgap(10);
+		optionsGridPane.setPadding(new Insets(30,30,30,30));
 		
+		colorGridPane= new GridPane();
+		colorGridPane.setVgap(10);
+		colorGridPane.setHgap(10);
+		colorGridPane.setPadding(new Insets(30,30,30,30));
+		colorTab.setContent(colorGridPane);
+		layout.setCenter(tabPane);
+		layout.setBottom(buttonBox);
+		//layout.setPadding(new Insets(20,20,20,20));
+		buttonBox.setPadding(new Insets(10,10,10,10));
 		/*Labels*/
 		Label threadCountLabel = new Label("Threads:");
 		Label iterationsLabel = new Label("Iterations:");
@@ -228,38 +258,146 @@ public class OptionsEditor
 			}
 		});
 		
-		gridPane.add(savedRegionsLabel, 0, 0,2,1);
-		gridPane.add(colorLabel, 0, 1);
-		gridPane.add(iterationsLabel, 0, 2);
-		gridPane.add(precisionLabel, 0, 4);
-		gridPane.add(threadCountLabel, 0,5);
-		
-		
-		gridPane.add(colorChoiceBox, 1, 1);
-		gridPane.add(autoIterationsCheckBox, 1, 2);
-		gridPane.add(iterationsField, 1, 3);
-		gridPane.add(precisionField, 1, 4);
-		gridPane.add(threadCountField, 1, 5);
-		gridPane.add(doublePrecision, 1, 6);
-		gridPane.add(arbitraryPrecision, 1, 7);
+		optionsGridPane.add(savedRegionsLabel, 0, 0,2,1);
+		optionsGridPane.add(iterationsLabel, 0, 1);
+		optionsGridPane.add(precisionLabel, 0, 3);
+		optionsGridPane.add(threadCountLabel, 0,4);
 		
 		
 		
-		gridPane.add(savedRegionsChoiceBox, 2, 0);
-		gridPane.add(set, 2, 2);
-		gridPane.add(centerLabel, 2, 3);
-		gridPane.add(boxLabel, 2, 4);
-		gridPane.add(applyButton, 2, 5);
-		gridPane.add(cancelButton, 2, 6);
-		
-		gridPane.add(removeButton, 3, 0);
-		gridPane.add(seed, 3, 2);
-		gridPane.add(centerValue, 3, 3);
-		gridPane.add(boxValue, 3, 4);
-		gridPane.add(saveButton, 3, 5);
-		gridPane.add(applyAndRerenderButton, 3, 6);
+		optionsGridPane.add(autoIterationsCheckBox, 1, 1);
+		optionsGridPane.add(iterationsField, 1, 2);
+		optionsGridPane.add(precisionField, 1, 3);
+		optionsGridPane.add(threadCountField, 1, 4);
+		optionsGridPane.add(doublePrecision, 1, 5);
+		optionsGridPane.add(arbitraryPrecision, 1, 6);
 		
 		
+		
+		optionsGridPane.add(savedRegionsChoiceBox, 2, 0);
+		optionsGridPane.add(set, 2, 1);
+		optionsGridPane.add(centerLabel, 2, 2);
+		optionsGridPane.add(boxLabel, 2, 3);
+		
+		optionsGridPane.add(removeButton, 3, 0);
+		optionsGridPane.add(seed, 3, 1);
+		optionsGridPane.add(centerValue, 3, 2);
+		optionsGridPane.add(boxValue, 3, 3);
+		
+		
+		
+		
+		gradientStops = new ArrayList<Stop>();
+		ListView<Stop> stopList = new ListView<Stop>();
+		/*stopList.setCellFactory(new Callback<ListView<Stop>, ListCell<Stop>>(){
+			@Override
+			public ListCell<Stop> call(ListView<Stop> param) {
+				// TODO Auto-generated method stub
+				return null;
+			}
+			
+		});*/
+		gradientStops.add(new Stop(0, Color.WHITE));
+		TextField colorPositionField = new TextField("1");
+		Button addStopButton = new Button("Add Color");
+		Button removeStopButton = new Button("Remove Color");
+		removeStopButton.setOnAction(ae->{
+			Stop stop = stopList.getSelectionModel().getSelectedItem();
+			gradientStops.remove(stop);
+			stopList.getItems().remove(stop);
+			System.out.println(gradientStops.toString());
+			gradientRectangle.setFill(new LinearGradient(0,0.5,1,0.5,true, CycleMethod.NO_CYCLE, gradientStops));
+			
+		});
+		addStopButton.setOnAction(ae->{
+			stopList.getItems().add(gradientStops.get(gradientStops.size()-1));
+			gradientStops.add(new Stop(0,Color.TRANSPARENT));
+		});
+		
+		Slider colorPositionSlider = new Slider(0,1,0.5);
+		colorPositionSlider.valueProperty().addListener(new ChangeListener<Number>(){
+
+			@Override
+			public void changed(ObservableValue<? extends Number> observable, Number oldValue, Number newValue)
+			{
+				Platform.runLater(()->{
+					colorPositionField.setStyle("-fx-background-color:white");
+					colorPositionField.setText(newValue.doubleValue() + "");
+					gradientStops.remove(gradientStops.size()-1);
+					gradientStops.add(new Stop(colorPositionSlider.getValue(), colorPicker.getValue()));
+					gradientRectangle.setFill(new LinearGradient(0,0.5,1,0.5,true, CycleMethod.NO_CYCLE, gradientStops));
+				});
+			}
+		});
+		
+		colorPositionField.setOnMouseDragEntered(ae->{
+			colorPositionField.requestFocus();
+		});
+		colorPositionField.setOnKeyReleased(ae ->{
+			if(ae.getCode() == KeyCode.ENTER)
+			{
+				double val;
+				try
+				{
+					val = Double.parseDouble(colorPositionField.getText());
+				}
+				catch(NumberFormatException nfe)
+				{
+					colorPositionField.setStyle("-fx-background-color:red");
+					return;
+				}
+				if(val >= 0 && val<=1)
+				{
+					Platform.runLater(()->{
+						colorPositionField.setStyle("-fx-background-color:white");
+						colorPositionSlider.setValue(val);
+					});
+				}
+				else
+				{
+					colorPositionField.setStyle("-fx-background-color:red");
+				}
+			}
+		});
+		
+		
+		
+		
+		
+		gradientRectangle = new Rectangle();
+		gradientRectangle.setWidth(200);
+		gradientRectangle.setHeight(200);
+		gradientRectangle.setFill(new LinearGradient(0,0.5,1,0.5,true, CycleMethod.NO_CYCLE, gradientStops));
+		
+		colorPicker = new ColorPicker(Color.BLACK);
+		colorPicker.valueProperty().addListener(new ChangeListener<Color>(){
+
+			@Override
+			public void changed(ObservableValue<? extends Color> observable, Color oldValue, Color newValue)
+			{
+				Platform.runLater(()->{
+					gradientStops.remove(gradientStops.size()-1);
+					gradientStops.add(new Stop(colorPositionSlider.getValue(), colorPicker.getValue()));
+					gradientRectangle.setFill(new LinearGradient(0,0.5,1,0.5,true, CycleMethod.NO_CYCLE, gradientStops));
+				});
+			}
+		});
+		
+		
+		
+		
+		colorGridPane.add(gradientRectangle, 0, 1, 2, 2);
+		colorGridPane.add(colorChoiceBox, 0, 0);
+		
+		colorGridPane.add(colorPositionSlider, 1, 1);
+		
+		colorGridPane.add(colorPositionField, 2, 1);
+		colorGridPane.add(colorPicker, 1, 0);
+		colorGridPane.add(stopList, 2, 2,2,1);
+		colorGridPane.add(removeStopButton, 3, 3);
+		colorGridPane.add(addStopButton, 2, 3);
+		
+		buttonBox.getChildren().addAll(saveButton, applyAndRerenderButton, applyButton, cancelButton);
 		
 		saveButton.setOnAction(e ->{
 			if(!checkValues())
@@ -389,7 +527,8 @@ public class OptionsEditor
 		});
 		
 		//gridPane.setGridLinesVisible(true);
-		Scene scene = new Scene(gridPane);
+		optionsTab.setContent(optionsGridPane);
+		Scene scene = new Scene(layout);
 		scene.getStylesheets().add(this.getClass().getResource("OptionsStyleSheet.css").toExternalForm());
 		window.setScene(scene);
 		window.show();

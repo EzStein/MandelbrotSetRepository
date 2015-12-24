@@ -82,4 +82,9 @@ public class MandelbrotFunction
 		return 0;
 	}
 	
+	public static Complex iterate(Complex z, Complex seed)
+	{
+		z = z.add(seed.square());
+		return z;
+	}
 }
