@@ -9,24 +9,24 @@ public class Calculator
 {
 	private boolean interrupted = false;
 	private int pixelsCalculated = 0;
-	private ColorFunction colorFunction;
+	private CustomColor colorFunction;
 	
 	public Calculator()
 	{
-		colorFunction = new RainbowFunctionLogarithmic();
+		colorFunction = ColorFunction.ColorInfo.COLOR_FUNCTIONS.get(0);
 	}
 	
-	public Calculator(ColorFunction cf)
+	public Calculator(CustomColor cf)
 	{
 		colorFunction = cf;
 	}
 	
-	public ColorFunction getColorFunction()
+	public CustomColor getColorFunction()
 	{
 		return colorFunction;
 	}
 	
-	public void setColorFunction(ColorFunction cf)
+	public void setColorFunction(CustomColor cf)
 	{
 		colorFunction = cf;
 	}

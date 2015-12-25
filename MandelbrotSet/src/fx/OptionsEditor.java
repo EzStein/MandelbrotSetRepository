@@ -5,6 +5,7 @@ import java.math.BigDecimal;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Optional;
 import colorFunction.*;
 import javafx.application.Platform;
@@ -42,7 +43,7 @@ public class OptionsEditor
 	HBox buttonBox;
 	CheckBox autoIterationsCheckBox;
 	ChoiceBox<SavedRegion> savedRegionsChoiceBox;
-	ChoiceBox<ColorFunction> colorChoiceBox;
+	ChoiceBox<CustomColor> colorChoiceBox;
 	RadioButton arbitraryPrecision;
 	RadioButton doublePrecision;
 	Rectangle gradientRectangle;
@@ -164,7 +165,7 @@ public class OptionsEditor
 		});
 		
 		
-		colorChoiceBox = new ChoiceBox<ColorFunction>(FXCollections.observableArrayList(ColorFunction.ColorInfo.COLOR_FUNCTIONS.values()));
+		colorChoiceBox = new ChoiceBox<CustomColor>(FXCollections.observableArrayList(ColorFunction.ColorInfo.COLOR_FUNCTIONS));
 		colorChoiceBox.setValue(gui.mainCalculator.getColorFunction());
 		
 		/*Buttons*/
@@ -318,6 +319,10 @@ public class OptionsEditor
 		Label rangeLabel = new Label("Range:");
 		TextField rangeField = new TextField();
 		saveColorButton.setOnAction(ae ->{
+			
+			
+			
+			
 			if(gradientStops.get(gradientStops.size()-1).getColor().equals(Color.TRANSPARENT))
 			{
 				gradientStops.remove(gradientStops.size()-1);
@@ -337,16 +342,41 @@ public class OptionsEditor
 				rangeField.setStyle("-fx-background-color:red");
 				return;
 			}
-			if(val >= 0)
+			if(val <= 10)
 			{
-					rangeField.setStyle("-fx-background-color:white");
-					colorChoiceBox.getItems().add(new CustomColor(gradientStops,val));
+				rangeField.setStyle("-fx-background-color:red");
+				return;
+			}
+			
+			String name;
+			TextInputDialog dialog = new TextInputDialog();
+			dialog.setTitle("Save Color");
+			dialog.setContentText("Enter a name:");
+			Optional<String> result = dialog.showAndWait();
+			if(result.isPresent())
+			{
+				name = result.get();
+				for(CustomColor c : colorChoiceBox.getItems())
+				{
+					if(c.getName().equals(name))
+					{
+						Alert alert = new Alert(AlertType.ERROR);
+						alert.setContentText("That name already exists");
+						alert.show();
+						return;
+					}
+				} 
+				/*Add in name validation here*/
 			}
 			else
 			{
-				rangeField.setStyle("-fx-background-color:red");
+				return;
 			}
-			
+			rangeField.setStyle("-fx-background-color:white");
+			CustomColor color = new CustomColor(new ArrayList<Stop>(stopList.getItems()),val, name);
+			colorChoiceBox.getItems().add(color);
+			colorChoiceBox.setValue(color);
+			ColorFunction.ColorInfo.COLOR_FUNCTIONS.add(color);
 			
 		});
 		
@@ -419,7 +449,16 @@ public class OptionsEditor
 		gradientRectangle = new Rectangle();
 		gradientRectangle.setWidth(200);
 		gradientRectangle.setHeight(200);
+	
+		gradientStops = ((CustomColor)colorChoiceBox.getValue()).getStops();
 		gradientRectangle.setFill(new LinearGradient(0,0.5,1,0.5,true, CycleMethod.NO_CYCLE, gradientStops));
+		
+		stopList.getItems().remove(0, stopList.getItems().size()-1);
+		for(Stop stop : gradientStops)
+		{
+			stopList.getItems().add(stop);
+		}
+		gradientStops.add(new Stop(0,Color.TRANSPARENT));
 		
 		colorPicker = new ColorPicker(Color.BLACK);
 		colorPicker.valueProperty().addListener(new ChangeListener<Color>(){
@@ -427,17 +466,32 @@ public class OptionsEditor
 			@Override
 			public void changed(ObservableValue<? extends Color> observable, Color oldValue, Color newValue)
 			{
-				Platform.runLater(()->{
-					if(gradientStops.size()>0)
-					{
-						gradientStops.remove(gradientStops.size()-1);
-					}
-					gradientStops.add(new Stop(colorPositionSlider.getValue(), colorPicker.getValue()));
-					gradientRectangle.setFill(new LinearGradient(0,0.5,1,0.5,true, CycleMethod.NO_CYCLE, gradientStops));
-				});
+				if(gradientStops.size()>0)
+				{
+					gradientStops.remove(gradientStops.size()-1);
+				}
+				gradientStops.add(new Stop(colorPositionSlider.getValue(), colorPicker.getValue()));
+				gradientRectangle.setFill(new LinearGradient(0,0.5,1,0.5,true, CycleMethod.NO_CYCLE, gradientStops));
 			}
 		});
 		
+		colorChoiceBox.getSelectionModel().selectedIndexProperty().addListener(new ChangeListener<Number>(){
+			@Override
+			public void changed(ObservableValue<? extends Number> observable, Number oldValue, Number newValue)
+			{
+				
+				CustomColor colorFunction = (CustomColor)colorChoiceBox.getItems().get(newValue.intValue());
+				rangeField.setText(colorFunction.getRange()+"");
+				gradientStops = colorFunction.getStops();
+				gradientRectangle.setFill(new LinearGradient(0,0.5,1,0.5,true, CycleMethod.NO_CYCLE, gradientStops));
+				stopList.getItems().remove(0, stopList.getItems().size()-1);
+				for(Stop stop : gradientStops)
+				{
+					stopList.getItems().add(stop);
+				}
+				gradientStops.add(new Stop(0,Color.TRANSPARENT));
+			}
+		});
 		
 		
 		colorGridPane.add(gradientRectangle, 0, 1, 2, 2);
@@ -494,7 +548,7 @@ public class OptionsEditor
 			SavedRegion savedRegion = new SavedRegion(name, autoIterationsCheckBox.isSelected(),
 					Integer.parseInt(iterationsField.getText()),
 					Integer.parseInt(precisionField.getText()), Integer.parseInt(threadCountField.getText()),
-					currentRegion,arbitraryPrecision.isSelected(),currentJulia,currentSeed,colorChoiceBox.getValue().toString());
+					currentRegion,arbitraryPrecision.isSelected(),currentJulia,currentSeed,colorChoiceBox.getValue());
 			savedRegions.add(savedRegion);
 			savedRegionsChoiceBox.getItems().add(savedRegion);
 			savedRegionsChoiceBox.setValue(savedRegion);
@@ -654,7 +708,18 @@ public class OptionsEditor
 		}
 		
 		
-		colorChoiceBox.setValue(ColorFunction.ColorInfo.COLOR_FUNCTIONS.get(sr.colorFunction));
+		if(colorChoiceBox.getItems().contains(sr.colorFunction))
+		{
+			colorChoiceBox.setValue(sr.colorFunction);
+		}
+		else
+		{
+			colorChoiceBox.getItems().add(sr.colorFunction);
+			ColorFunction.ColorInfo.COLOR_FUNCTIONS.add(sr.colorFunction);
+			colorChoiceBox.setValue(sr.colorFunction);
+		}
+		
+		
 		currentRegion = sr.region;
 		currentJulia = sr.julia;
 		currentSeed = sr.seed;

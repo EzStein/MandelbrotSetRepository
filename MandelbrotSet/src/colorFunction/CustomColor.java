@@ -1,5 +1,8 @@
 package colorFunction;
 
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.util.*;
 
@@ -7,14 +10,34 @@ import javafx.scene.paint.*;
 
 public class CustomColor implements ColorFunction, Serializable {
 
+	private String name;
 	private int range;
-	private ArrayList<ComparableStop> stops;
-	private HashMap<Integer, Color> colorMap;
-	public CustomColor(ArrayList<Stop> initialStops, int range)
+	private transient HashMap<Integer, Color> colorMap;
+	private transient ArrayList<Stop> initialStops;
+	
+	public CustomColor(int range, String name, Stop...initialStops)
 	{
-		stops = new ArrayList<ComparableStop>();
+		System.out.println(Arrays.asList(initialStops));
+		this.initialStops =new ArrayList<Stop>(Arrays.asList(initialStops));
 		this.range = range;
+		this.name = name;
+		
+		createColorMap(this.initialStops);
+	}
+	
+	public CustomColor(ArrayList<Stop> initialStops, int range, String name)
+	{
+		this.initialStops = initialStops;
+		this.range = range;
+		this.name = name;
+		
+		createColorMap(initialStops);
+	}
+	
+	public void createColorMap(ArrayList<Stop> initialStops)
+	{
 		colorMap = new HashMap<Integer, Color>();
+		ArrayList<ComparableStop> stops = new ArrayList<ComparableStop>();
 		double R,G,B;
 		for(Stop stop : initialStops)
 		{
@@ -79,7 +102,7 @@ public class CustomColor implements ColorFunction, Serializable {
 		Color c = colorMap.get(((int) (Math.sqrt(100*iterations)*Math.log(iterations))%range));
 		if(c== null)
 		{
-			System.out.println(iterations);
+			System.out.println(iterations + " " + colorMap.keySet().size());
 			return Color.WHITE;
 		}
 		else
@@ -91,6 +114,88 @@ public class CustomColor implements ColorFunction, Serializable {
 	@Override
 	public String toString()
 	{
-		return "Custom Color";
+		return name;
+	}
+	
+	@Override
+	public boolean equals(Object o)
+	{
+		if(o == null)
+		{
+			return false;
+		}
+		if(o == this)
+		{
+			return true;
+		}
+		if(o instanceof CustomColor)
+		{
+			CustomColor other = (CustomColor) o;
+			if(other.getRange() == range && other.getName().equals(name) && other.getColorMap().equals(colorMap))
+			{
+				return true;
+			}
+			else
+			{
+				return false;
+			}
+		}
+		else
+		{
+			return false;
+		}
+	}
+	
+	@Override
+	public int hashCode()
+	{
+		return name.hashCode()*range + colorMap.hashCode();
+	}
+	
+	public int getRange()
+	{
+		return range;
+	}
+	
+	public String getName()
+	{
+		return name;
+	}
+	
+	public HashMap<Integer, Color> getColorMap()
+	{
+		return colorMap;
+	}
+	public ArrayList<Stop> getStops()
+	{
+		ArrayList<Stop> returnValue = new ArrayList<Stop>();
+		for(Stop s: initialStops)
+		{
+			returnValue.add(s);
+		}
+		return returnValue;
+	}
+
+	private void writeObject(ObjectOutputStream out) throws IOException
+	{
+		out.defaultWriteObject();
+		ArrayList<ComparableStop> stops = new ArrayList<ComparableStop>();
+		for(Stop stop : initialStops)
+		{
+			stops.add(new ComparableStop(stop));
+		}
+		out.writeObject(stops);
+	}
+	
+	private void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException
+	{
+		in.defaultReadObject();
+		ArrayList<ComparableStop> stops = (ArrayList<ComparableStop>)in.readObject();
+		initialStops = new ArrayList<Stop>();
+		for(ComparableStop comparableStop: stops)
+		{
+			initialStops.add(comparableStop.getStop());
+		}
+		createColorMap(initialStops);
 	}
 }

@@ -8,10 +8,10 @@ public class SavedRegion implements Serializable
 {
 	public final String name;
 	public final int iterations, precision, threadCount;
-	public final String colorFunction;
 	public final Region<BigDecimal> region;
 	public final boolean julia, arbitraryPrecision, autoIterations;
 	public final ComplexBigDecimal seed;
+	public final CustomColor colorFunction;
 	
 	/**
 	 * @param name
@@ -29,7 +29,7 @@ public class SavedRegion implements Serializable
 			int iterations, int precision, int threadCount,
 			Region<BigDecimal> region,
 			boolean arbitraryPrecision,  boolean julia,
-			ComplexBigDecimal seed, String colorFunction)
+			ComplexBigDecimal seed, CustomColor colorFunction)
 	{
 		this.name = name;
 		this.autoIterations = autoIterations;
