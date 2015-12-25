@@ -15,6 +15,7 @@ import javafx.geometry.*;
 import javafx.scene.*;
 import javafx.scene.control.*;
 import javafx.scene.control.Alert.AlertType;
+import javafx.scene.control.cell.TextFieldListCell;
 import javafx.scene.input.KeyCode;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
@@ -289,18 +290,66 @@ public class OptionsEditor
 		
 		gradientStops = new ArrayList<Stop>();
 		ListView<Stop> stopList = new ListView<Stop>();
-		/*stopList.setCellFactory(new Callback<ListView<Stop>, ListCell<Stop>>(){
+		stopList.setCellFactory(new Callback<ListView<Stop>, ListCell<Stop>>(){
 			@Override
 			public ListCell<Stop> call(ListView<Stop> param) {
-				// TODO Auto-generated method stub
-				return null;
+				return new TextFieldListCell<Stop>(new StringConverter<Stop>(){
+
+					@Override
+					public String toString(Stop stop) {
+						return stop.getOffset()+", " + stop.getColor().toString();
+					}
+
+					@Override
+					public Stop fromString(String string) {
+						// TODO Auto-generated method stub
+						return null;
+					}
+					
+				});
 			}
 			
-		});*/
-		gradientStops.add(new Stop(0, Color.WHITE));
-		TextField colorPositionField = new TextField("1");
+		});
+		
+		TextField colorPositionField = new TextField("0.5");
 		Button addStopButton = new Button("Add Color");
 		Button removeStopButton = new Button("Remove Color");
+		Button saveColorButton = new Button("Save Color");
+		Label rangeLabel = new Label("Range:");
+		TextField rangeField = new TextField();
+		saveColorButton.setOnAction(ae ->{
+			if(gradientStops.get(gradientStops.size()-1).getColor().equals(Color.TRANSPARENT))
+			{
+				gradientStops.remove(gradientStops.size()-1);
+			}
+			for(Stop stop:gradientStops)
+			{
+				System.out.println(stop.getOffset() + ", " + stop.getColor().toString());
+			}
+			
+			int val;
+			try
+			{
+				val = Integer.parseInt(rangeField.getText());
+			}
+			catch(NumberFormatException nfe)
+			{
+				rangeField.setStyle("-fx-background-color:red");
+				return;
+			}
+			if(val >= 0)
+			{
+					rangeField.setStyle("-fx-background-color:white");
+					colorChoiceBox.getItems().add(new CustomColor(gradientStops,val));
+			}
+			else
+			{
+				rangeField.setStyle("-fx-background-color:red");
+			}
+			
+			
+		});
+		
 		removeStopButton.setOnAction(ae->{
 			Stop stop = stopList.getSelectionModel().getSelectedItem();
 			gradientStops.remove(stop);
@@ -323,7 +372,10 @@ public class OptionsEditor
 				Platform.runLater(()->{
 					colorPositionField.setStyle("-fx-background-color:white");
 					colorPositionField.setText(newValue.doubleValue() + "");
-					gradientStops.remove(gradientStops.size()-1);
+					if(gradientStops.size()>0)
+					{
+						gradientStops.remove(gradientStops.size()-1);
+					}
 					gradientStops.add(new Stop(colorPositionSlider.getValue(), colorPicker.getValue()));
 					gradientRectangle.setFill(new LinearGradient(0,0.5,1,0.5,true, CycleMethod.NO_CYCLE, gradientStops));
 				});
@@ -376,13 +428,15 @@ public class OptionsEditor
 			public void changed(ObservableValue<? extends Color> observable, Color oldValue, Color newValue)
 			{
 				Platform.runLater(()->{
-					gradientStops.remove(gradientStops.size()-1);
+					if(gradientStops.size()>0)
+					{
+						gradientStops.remove(gradientStops.size()-1);
+					}
 					gradientStops.add(new Stop(colorPositionSlider.getValue(), colorPicker.getValue()));
 					gradientRectangle.setFill(new LinearGradient(0,0.5,1,0.5,true, CycleMethod.NO_CYCLE, gradientStops));
 				});
 			}
 		});
-		
 		
 		
 		
@@ -396,7 +450,10 @@ public class OptionsEditor
 		colorGridPane.add(stopList, 2, 2,2,1);
 		colorGridPane.add(removeStopButton, 3, 3);
 		colorGridPane.add(addStopButton, 2, 3);
-		
+		colorGridPane.add(saveColorButton, 0, 3);
+		colorGridPane.add(rangeLabel, 2, 0);
+		colorGridPane.add(rangeField, 3, 0);
+		//colorGridPane.setGridLinesVisible(true);
 		buttonBox.getChildren().addAll(saveButton, applyAndRerenderButton, applyButton, cancelButton);
 		
 		saveButton.setOnAction(e ->{

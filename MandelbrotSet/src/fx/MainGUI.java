@@ -258,6 +258,14 @@ public class MainGUI extends Application
 			{
 				threadQueue.callLater(() -> {
 					interrupt();
+					orbitThread.interrupt();
+					try {
+						orbitThread.join();
+					} catch (Exception e1) {
+						// TODO Auto-generated catch block
+						e1.printStackTrace();
+					}
+					
 					loggedRegions = new ArrayList<>();
 					currentRegion = originalRegion;
 					julia = false;
@@ -279,6 +287,14 @@ public class MainGUI extends Application
 			{
 				threadQueue.callLater(() -> {
 					interrupt();
+					orbitThread.interrupt();
+					try {
+						orbitThread.join();
+					} catch (Exception e1) {
+						// TODO Auto-generated catch block
+						e1.printStackTrace();
+					}
+					
 					loggedRegions = new ArrayList<>();
 					currentRegion = originalRegion;
 					julia = true;
@@ -956,18 +972,30 @@ public class MainGUI extends Application
 			
 			int i = 0;
 			Complex newTerm = new Complex(0,0);
+			if(julia)
+			{
+				newTerm = seed.toComplex();
+			}
 			while(i<=iterations)
 			{
 				Platform.runLater(()->{
-					orbitGC.setStroke(Color.BLACK);
-					orbitGC.setFill(Color.BLACK);
+					orbitGC.drawImage(previewViewerImage, 0, 0, orbitCanvas.getWidth(), orbitCanvas.getHeight());
+					orbitGC.setStroke(Color.RED);
+					orbitGC.setFill(Color.RED);
 					orbitGC.strokeLine(oldX, oldY, x, y);
 					orbitGC.fillRect(x, y, 1, 1);
 					orbitGC.strokeOval(x-5, y-5, 10, 10);
 					
 					
 				});
-				newTerm = MandelbrotFunction.iterate(seed.toComplex(), newTerm);
+				if(julia)
+				{
+					newTerm = MandelbrotFunction.iterate(juliaSeed.toComplex(),newTerm);
+				}
+				else
+				{
+					newTerm = MandelbrotFunction.iterate(seed.toComplex(), newTerm);
+				}
 				
 				if(newTerm.ABS()>=10)
 				{
@@ -975,7 +1003,7 @@ public class MainGUI extends Application
 				}
 				
 				try {
-					Thread.sleep(20);
+					Thread.sleep(100);
 				} catch (InterruptedException e)
 				{
 					break;
@@ -990,8 +1018,9 @@ public class MainGUI extends Application
 			}
 			
 			Platform.runLater(()->{
-				orbitGC.setStroke(Color.BLACK);
-				orbitGC.setFill(Color.BLACK);
+				orbitGC.drawImage(previewViewerImage, 0, 0, orbitCanvas.getWidth(), orbitCanvas.getHeight());
+				orbitGC.setStroke(Color.RED);
+				orbitGC.setFill(Color.RED);
 				orbitGC.fillRect(x, y, 1, 1);
 				orbitGC.strokeOval(x-5, y-5, 10, 10);
 				orbitGC.strokeLine(oldX, oldY, x, y);
