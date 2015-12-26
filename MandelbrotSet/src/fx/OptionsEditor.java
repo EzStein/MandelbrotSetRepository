@@ -12,8 +12,11 @@ import javafx.application.Platform;
 import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
 import javafx.collections.FXCollections;
+import javafx.collections.ListChangeListener;
 import javafx.geometry.*;
 import javafx.scene.*;
+import javafx.scene.canvas.Canvas;
+import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.control.*;
 import javafx.scene.control.Alert.AlertType;
 import javafx.scene.control.cell.TextFieldListCell;
@@ -294,7 +297,7 @@ public class OptionsEditor
 		stopList.setCellFactory(new Callback<ListView<Stop>, ListCell<Stop>>(){
 			@Override
 			public ListCell<Stop> call(ListView<Stop> param) {
-				return new TextFieldListCell<Stop>(new StringConverter<Stop>(){
+				/*return new TextFieldListCell<Stop>(new StringConverter<Stop>(){
 
 					@Override
 					public String toString(Stop stop) {
@@ -307,7 +310,8 @@ public class OptionsEditor
 						return null;
 					}
 					
-				});
+				});*/
+				return new CustomListCell();
 			}
 			
 		});
@@ -321,15 +325,37 @@ public class OptionsEditor
 		saveColorButton.setOnAction(ae ->{
 			
 			
-			
-			
 			if(gradientStops.get(gradientStops.size()-1).getColor().equals(Color.TRANSPARENT))
 			{
 				gradientStops.remove(gradientStops.size()-1);
 			}
-			for(Stop stop:gradientStops)
+			
+			if(stopList.getItems().size()<2)
 			{
-				System.out.println(stop.getOffset() + ", " + stop.getColor().toString());
+				Alert alert = new Alert(AlertType.ERROR);
+				alert.setContentText("There must be atleast two colors positioned at 0 and 1 (beginning and end)");
+				alert.show();
+				return;
+			}
+			boolean validStart = false;
+			boolean validEnd = false;
+			for(Stop stop : stopList.getItems())
+			{
+				if(stop.getOffset() == 0)
+				{
+					validStart = true;
+				}
+				if(stop.getOffset() == 1)
+				{
+					validEnd = true;
+				}
+			}
+			if(!(validStart && validEnd))
+			{
+				Alert alert = new Alert(AlertType.ERROR);
+				alert.setContentText("There must be atleast two colors positioned at 0 and 1 (beginning and end)");
+				alert.show();
+				return;
 			}
 			
 			int val;
@@ -379,12 +405,19 @@ public class OptionsEditor
 			ColorFunction.ColorInfo.COLOR_FUNCTIONS.add(color);
 			
 		});
-		
+		stopList.getItems().addListener(new ListChangeListener<Stop>(){
+
+			@Override
+			public void onChanged(javafx.collections.ListChangeListener.Change<? extends Stop> c)
+			{
+				System.out.println(stopList.getItems().toString());
+			}
+			
+		});
 		removeStopButton.setOnAction(ae->{
 			Stop stop = stopList.getSelectionModel().getSelectedItem();
 			gradientStops.remove(stop);
 			stopList.getItems().remove(stop);
-			System.out.println(gradientStops.toString());
 			gradientRectangle.setFill(new LinearGradient(0,0.5,1,0.5,true, CycleMethod.NO_CYCLE, gradientStops));
 			
 		});
@@ -443,14 +476,12 @@ public class OptionsEditor
 		});
 		
 		
-		
-		
-		
 		gradientRectangle = new Rectangle();
 		gradientRectangle.setWidth(200);
 		gradientRectangle.setHeight(200);
 	
-		gradientStops = ((CustomColor)colorChoiceBox.getValue()).getStops();
+		rangeField.setText(colorChoiceBox.getValue().getRange()+"");
+		gradientStops = colorChoiceBox.getValue().getStops();
 		gradientRectangle.setFill(new LinearGradient(0,0.5,1,0.5,true, CycleMethod.NO_CYCLE, gradientStops));
 		
 		stopList.getItems().remove(0, stopList.getItems().size()-1);
@@ -810,5 +841,41 @@ public class OptionsEditor
 		}
 		
 		return returnValue;
+	}
+	
+	public class CustomListCell extends ListCell<Stop>
+	{
+		HBox hbox;
+		Canvas canvas;
+		Label label;
+		public CustomListCell()
+		{
+			super();
+			hbox = new HBox(10);
+			canvas = new Canvas();
+			canvas.setHeight(10);
+			canvas.setWidth(30);
+			label = new Label();
+			hbox.getChildren().addAll(label, canvas);
+		}
+		
+		@Override
+		protected void updateItem(Stop item, boolean empty)
+		{
+			super.updateItem(item, empty);
+			setText(null);
+			if(empty)
+			{
+				setGraphic(null);
+			}
+			else
+			{
+				label.setText(item.getOffset()*100 + "%");
+				GraphicsContext gc = canvas.getGraphicsContext2D();
+				gc.setFill(item.getColor());
+				gc.fillRect(0, 0, canvas.getWidth(), canvas.getHeight());
+				setGraphic(hbox);
+			}
+		}
 	}
 }
