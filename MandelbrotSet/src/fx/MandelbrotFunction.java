@@ -82,6 +82,14 @@ public class MandelbrotFunction
 		return 0;
 	}
 	
+	/**
+	 * Performs one iteration over the complex numbers z and seed.
+	 * Returns the next value in the orbit of this function:
+	 * returns c = seed^2+z
+	 * @param z			The number added to seed^2
+	 * @param seed		The initial seed used to start the iteration.
+	 * @return			Returns the next value in the iteration sequence.
+	 */
 	public static Complex iterate(Complex z, Complex seed)
 	{
 		z = z.add(seed.square());

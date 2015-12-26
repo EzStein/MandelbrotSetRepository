@@ -15,17 +15,30 @@ import javafx.scene.image.WritableImage;
 import javafx.scene.layout.*;
 import javafx.stage.*;
 
+/**
+ * A dialog box that will save the current image.
+ * @author Ezra
+ *
+ */
 public class ImageSaverDialog
 {
 	private TextField sizeField;
 	private ChoiceBox<String> typeChooser;
 	private MainGUI gui;
 	private Stage window;
+	
+	/**
+	 * Initializes this dialog box with a reference to the mainGui.
+	 * @param gui	A reference to the main gui.
+	 */
 	public ImageSaverDialog(MainGUI gui)
 	{
 		this.gui = gui;
 	}
 	
+	/**
+	 * Constructs this dialog box.
+	 */
 	public void showSaverDialog()
 	{
 		window = new Stage();
@@ -67,6 +80,9 @@ public class ImageSaverDialog
 		window.show();
 	}
 	
+	/**
+	 * Opens a file chooser and initializes an image saver thread and an updater thread to mark the progress.
+	 */
 	public void saveImage()
 	{
 		FileChooser fc = new FileChooser();
@@ -89,6 +105,10 @@ public class ImageSaverDialog
 		new Thread(updater).start();
 	}
 	
+	/**
+	 * Validates the values. Returns true only if all values are valid.
+	 * @return true if all values are valid. False otherwise.
+	 */
 	public boolean checkValues()
 	{
 		int size = 0;
@@ -110,6 +130,13 @@ public class ImageSaverDialog
 		return returnValue;
 	}
 	
+	/**
+	 * A class that updates the progress monitor and when it is done, it calls the getImage method and writes it to a file.
+	 * @author Ezra Stein
+	 * @version 1.0
+	 * @since 2015
+	 *
+	 */
 	private class Updater implements Runnable
 	{
 		private Calculator calc;
@@ -129,7 +156,7 @@ public class ImageSaverDialog
 			Platform.runLater(()->{
 				pm.show();
 				});
-			while(calc.getPixelsCalculated()<Math.pow(Integer.parseInt(sizeField.getText()),2))
+			while(calc.getPixelsCalculated() < Math.pow(Integer.parseInt(sizeField.getText()),2))
 			{
 				if(pm.isCanceled())
 				{
@@ -157,6 +184,13 @@ public class ImageSaverDialog
 		}
 	}
 	
+	/**
+	 * A progress monitor that displays the progress of the image saver.
+	 * @author Ezra Stein
+	 * @version 1.0
+	 * @since 2015
+	 *
+	 */
 	private class ProgressMonitor
 	{	
 		private boolean canceled = false;
@@ -215,6 +249,13 @@ public class ImageSaverDialog
 		}
 	}
 	
+	/**
+	 * A runnable that calculates the image. The getImage() method may be used to access this image.
+	 * @author Ezra Stein
+	 * @version 1.0
+	 * @since 2015.
+	 *
+	 */
 	private class ImageGenerator implements Runnable
 	{
 		private Calculator calc;

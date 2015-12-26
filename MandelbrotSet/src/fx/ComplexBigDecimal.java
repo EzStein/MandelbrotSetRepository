@@ -15,6 +15,10 @@ import java.math.*;
 public class ComplexBigDecimal implements Serializable
 {
 	/**
+	 * The serial ID.
+	 */
+	private static final long serialVersionUID = 1L;
+	/**
 	 * Holds the real part of the complex number in a BigDecimal object
 	 */
 	BigDecimal real;
@@ -124,6 +128,10 @@ public class ComplexBigDecimal implements Serializable
 		return real.stripTrailingZeros().toPlainString() + "+" + imaginary.stripTrailingZeros().toPlainString() + "i";
 	}
 	
+	/**
+	 * Converts this complexBigDecimal to a less precise complex.
+	 * @return a complex representing this complexBigDecimal.
+	 */
 	public Complex toComplex()
 	{
 		return new Complex(real.doubleValue(), imaginary.doubleValue());

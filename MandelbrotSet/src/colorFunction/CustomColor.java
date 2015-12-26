@@ -9,9 +9,11 @@ import java.util.*;
 import javafx.scene.paint.*;
 
 public class CustomColor implements ColorFunction, Serializable {
-
-	private String name;
-	private int range;
+	/*
+	 *Consider making these fields final. 
+	 */
+	private final String name;
+	private final int range;
 	private transient HashMap<Integer, Color> colorMap;
 	private transient ArrayList<Stop> initialStops;
 	

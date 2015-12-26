@@ -1,13 +1,25 @@
 package fx;
 
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.PrintWriter;
-import java.io.UnsupportedEncodingException;
+import java.io.*;
 
+/**
+ * A class used to locate files in a file structure in an OS independent way.
+ * For mac, it creates a directory ~/Library/Application\ support/FractalApp which contains all the files for saved colors and regions.
+ * For windows, it creates a directory in the appData data folder.
+ * For linux, it will create a hidden directory .FractalApp in the home folder.
+ * @author Ezra
+ *
+ */
 public class Locator
 {
-	public static final String OS_NAME = System.getProperty("os.name");
+	/**
+	 * Contains the name of the current operating system.
+	 */
+	public static final String OS_NAME = System.getProperty("os.name").toLowerCase();
+	
+	/**
+	 * Contains the name of this program.
+	 */
 	public static final String appTitle = "FractalApp";
 	
 	/**
@@ -21,7 +33,7 @@ public class Locator
 	public static String locateFile(String pathName) throws FileNotFoundException
 	{
 		File file = new File("");
-		if(OS_NAME.equals("Mac OS X"))
+		if(OS_NAME.indexOf("mac")>=0)
 		{
 			File dir = new File(System.getProperty("user.home")+"/Library/Application Support/" + appTitle);
 			if(!dir.exists())
@@ -31,9 +43,60 @@ public class Locator
 			file = new File(dir.getAbsolutePath() + "/" + pathName);
 			if(!file.exists())
 			{
+				/*Creates the file and overwrites it*/
 				PrintWriter writer = new PrintWriter(file);
 				writer.close();
 			}
+		}
+		else if(OS_NAME.indexOf("win")>=0)
+		{
+			File dir = new File(System.getenv("APPDATA")+ File.pathSeparator + appTitle);
+			if(!dir.exists())
+			{
+				dir.mkdirs();
+			}
+			file = new File(dir.getAbsolutePath() + File.pathSeparator + pathName);
+			if(!file.exists())
+			{
+				/*Creates the file and overwrites it*/
+				PrintWriter writer = new PrintWriter(file);
+				writer.close();
+			}
+		}
+		else if(OS_NAME.indexOf("nix") >= 0 || OS_NAME.indexOf("nux") >= 0 || OS_NAME.indexOf("aix") > 0 )
+		{
+			File dir = new File(System.getProperty("user.home") + "/." + appTitle);
+			if(!dir.exists())
+			{
+				dir.mkdirs();
+			}
+			file = new File(dir.getAbsolutePath() + "/" + pathName);
+			if(!file.exists())
+			{
+				/*Creates the file and overwrites it*/
+				PrintWriter writer = new PrintWriter(file);
+				writer.close();
+			}
+			
+		}
+		else if(OS_NAME.indexOf("sunos") >= 0)
+		{
+			File dir = new File(System.getProperty("user.home") + "/." + appTitle);
+			if(!dir.exists())
+			{
+				dir.mkdirs();
+			}
+			file = new File(dir.getAbsolutePath() + "/" + pathName);
+			if(!file.exists())
+			{
+				/*Creates the file and overwrites it*/
+				PrintWriter writer = new PrintWriter(file);
+				writer.close();
+			}
+		}
+		else
+		{
+			System.out.println("Unknown OS!");
 		}
 		
 		return file.getAbsolutePath();

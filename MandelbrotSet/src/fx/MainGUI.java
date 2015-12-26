@@ -865,7 +865,8 @@ public class MainGUI extends Application
 		pannedImages = new ArrayList<PannedImage>();
 		imageX = 0;
 		imageY = 0;
-		mainCalculator.setPixelsCalculated(0);
+		//mainCalculator.setPixelsCalculated(0);
+		mainCalculator.resetPixelsCalculated();
 		updater = (new Thread(new Updater()));
 		updater.start();
 		int h = (int) height/threadCount;
