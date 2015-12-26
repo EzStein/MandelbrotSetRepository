@@ -46,7 +46,7 @@ public class OptionsEditor
 	HBox buttonBox;
 	CheckBox autoIterationsCheckBox;
 	ChoiceBox<SavedRegion> savedRegionsChoiceBox;
-	ChoiceBox<CustomColor> colorChoiceBox;
+	ChoiceBox<CustomColorFunction> colorChoiceBox;
 	RadioButton arbitraryPrecision;
 	RadioButton doublePrecision;
 	Rectangle gradientRectangle;
@@ -75,13 +75,13 @@ public class OptionsEditor
 			
 			colorFile = new File(Locator.locateFile("SavedColors.txt"));
 			colorIn = new ObjectInputStream(new FileInputStream(colorFile));
-			ArrayList<CustomColor> savedColors = (ArrayList<CustomColor>) colorIn.readObject();
+			ArrayList<CustomColorFunction> savedColors = (ArrayList<CustomColorFunction>) colorIn.readObject();
 			ColorFunction.ColorInfo.COLOR_FUNCTIONS = savedColors;
 		}
 		catch(EOFException eofe)
 		{
 			/*File Empty And inputStream is null*/
-			ColorFunction.ColorInfo.COLOR_FUNCTIONS = new ArrayList<CustomColor>();
+			ColorFunction.ColorInfo.COLOR_FUNCTIONS = new ArrayList<CustomColorFunction>();
 			savedRegions = new ArrayList<SavedRegion>();
 		}
 		catch (IOException | ClassNotFoundException e)
@@ -182,7 +182,7 @@ public class OptionsEditor
 		});
 		
 		
-		colorChoiceBox = new ChoiceBox<CustomColor>(FXCollections.observableArrayList(ColorFunction.ColorInfo.COLOR_FUNCTIONS));
+		colorChoiceBox = new ChoiceBox<CustomColorFunction>(FXCollections.observableArrayList(ColorFunction.ColorInfo.COLOR_FUNCTIONS));
 		colorChoiceBox.setValue(gui.mainCalculator.getColorFunction());
 		
 		/*Buttons*/
@@ -394,7 +394,7 @@ public class OptionsEditor
 			if(result.isPresent())
 			{
 				name = result.get();
-				for(CustomColor c : colorChoiceBox.getItems())
+				for(CustomColorFunction c : colorChoiceBox.getItems())
 				{
 					if(c.getName().equals(name))
 					{
@@ -411,7 +411,7 @@ public class OptionsEditor
 				return;
 			}
 			rangeField.setStyle("-fx-background-color:white");
-			CustomColor color = new CustomColor(new ArrayList<Stop>(stopList.getItems()),val, name);
+			CustomColorFunction color = new CustomColorFunction(new ArrayList<Stop>(stopList.getItems()),val, name);
 			colorChoiceBox.getItems().add(color);
 			colorChoiceBox.setValue(color);
 			ColorFunction.ColorInfo.COLOR_FUNCTIONS.add(color);
@@ -554,7 +554,7 @@ public class OptionsEditor
 			public void changed(ObservableValue<? extends Number> observable, Number oldValue, Number newValue)
 			{
 				
-				CustomColor colorFunction = (CustomColor)colorChoiceBox.getItems().get(newValue.intValue());
+				CustomColorFunction colorFunction = (CustomColorFunction)colorChoiceBox.getItems().get(newValue.intValue());
 				rangeField.setText(colorFunction.getRange()+"");
 				gradientStops = colorFunction.getStops();
 				gradientRectangle.setFill(new LinearGradient(0,0.5,1,0.5,true, CycleMethod.NO_CYCLE, gradientStops));

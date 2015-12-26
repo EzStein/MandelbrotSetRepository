@@ -11,7 +11,7 @@ public class SavedRegion implements Serializable
 	public final Region<BigDecimal> region;
 	public final boolean julia, arbitraryPrecision, autoIterations;
 	public final ComplexBigDecimal seed;
-	public final CustomColor colorFunction;
+	public final CustomColorFunction colorFunction;
 	
 	/**
 	 * @param name
@@ -29,7 +29,7 @@ public class SavedRegion implements Serializable
 			int iterations, int precision, int threadCount,
 			Region<BigDecimal> region,
 			boolean arbitraryPrecision,  boolean julia,
-			ComplexBigDecimal seed, CustomColor colorFunction)
+			ComplexBigDecimal seed, CustomColorFunction colorFunction)
 	{
 		this.name = name;
 		this.autoIterations = autoIterations;

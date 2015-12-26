@@ -15,7 +15,7 @@ public class Calculator
 {
 	private boolean interrupted;
 	private int pixelsCalculated;
-	private CustomColor colorFunction;
+	private CustomColorFunction colorFunction;
 	
 	/**
 	 * Constructs a Calculator whose color function will be the first color function in COLOR_FUNTIONS
@@ -31,7 +31,7 @@ public class Calculator
 	 * Constructs a Calculator whose color function is provided.
 	 * @param cf
 	 */
-	public Calculator(CustomColor cf)
+	public Calculator(CustomColorFunction cf)
 	{
 		this();
 		colorFunction = cf;
@@ -41,7 +41,7 @@ public class Calculator
 	 * Returns the color function of this calculator.
 	 * @return the color function of this calculator
 	 */
-	public CustomColor getColorFunction()
+	public CustomColorFunction getColorFunction()
 	{
 		return colorFunction;
 	}
@@ -50,7 +50,7 @@ public class Calculator
 	 * Sets the color function of this calculator.
 	 * @param cf	The new color function.
 	 */
-	public void setColorFunction(CustomColor cf)
+	public void setColorFunction(CustomColorFunction cf)
 	{
 		colorFunction = cf;
 	}

@@ -8,7 +8,17 @@ import java.util.*;
 
 import javafx.scene.paint.*;
 
-public class CustomColor implements ColorFunction, Serializable {
+/**
+ * Represents a serializable color function that is generated from Stops.
+ * @author Ezra Stein
+ * @version 1.0.
+ * @since 2015.
+ */
+public class CustomColorFunction implements ColorFunction, Serializable {
+	/**
+	 * Serial id.
+	 */
+	private static final long serialVersionUID = 1L;
 	/*
 	 *Consider making these fields final. 
 	 */
@@ -17,8 +27,16 @@ public class CustomColor implements ColorFunction, Serializable {
 	private transient HashMap<Integer, Color> colorMap;
 	private transient ArrayList<Stop> initialStops;
 	
-	public CustomColor(int range, String name, Stop...initialStops)
+	/**
+	 * Creates a colorFunction with these parameters.
+	 * @param range			The range over which the the color changes. Repeats over each range.
+	 * @param name			The name of this color function.
+	 * @param initialStops	A list of stops. Each stop must range from zero to one.
+	 * 						No two stops can have the same offset. The list may not be ordered.
+	 */
+	public CustomColorFunction(int range, String name, Stop...initialStops)
 	{
+		/*Consider making initial stops a set.*/
 		this.initialStops =new ArrayList<Stop>(Arrays.asList(initialStops));
 		this.range = range;
 		this.name = name;
@@ -26,8 +44,16 @@ public class CustomColor implements ColorFunction, Serializable {
 		createColorMap(this.initialStops);
 	}
 	
-	public CustomColor(ArrayList<Stop> initialStops, int range, String name)
+	/**
+	 * Creates a colorFunction with these parameters.
+	 * @param range			The range over which the the color changes. Repeats over each range.
+	 * @param name			The name of this color function.
+	 * @param initialStops	A list of stops. Each stop must range from zero to one.
+	 * 						No two stops can have the same offset. The list may not be ordered.
+	 */
+	public CustomColorFunction(ArrayList<Stop> initialStops, int range, String name)
 	{
+		/*Consider making initial stops a set.*/
 		this.initialStops = initialStops;
 		this.range = range;
 		this.name = name;
@@ -35,6 +61,10 @@ public class CustomColor implements ColorFunction, Serializable {
 		createColorMap(initialStops);
 	}
 	
+	/**
+	 * Generates a hash map that maps iteration number to color using initialStops/
+	 * @param initialStops the stops used. 
+	 */
 	public void createColorMap(ArrayList<Stop> initialStops)
 	{
 		colorMap = new HashMap<Integer, Color>();
@@ -127,9 +157,9 @@ public class CustomColor implements ColorFunction, Serializable {
 		{
 			return true;
 		}
-		if(o instanceof CustomColor)
+		if(o instanceof CustomColorFunction)
 		{
-			CustomColor other = (CustomColor) o;
+			CustomColorFunction other = (CustomColorFunction) o;
 			if(other.getRange() == range && other.getName().equals(name) && other.getColorMap().equals(colorMap))
 			{
 				return true;
@@ -151,20 +181,37 @@ public class CustomColor implements ColorFunction, Serializable {
 		return name.hashCode()*range + colorMap.hashCode();
 	}
 	
+	/**
+	 * Returns the range.
+	 * @return the range.
+	 */
 	public int getRange()
 	{
 		return range;
 	}
 	
+	/**
+	 * Returns the name.
+	 * @return the name.
+	 */
 	public String getName()
 	{
 		return name;
 	}
 	
+	/**
+	 * Returns the color map.
+	 * @return the color map.
+	 */
 	public HashMap<Integer, Color> getColorMap()
 	{
 		return colorMap;
 	}
+	
+	/**
+	 * Returns a deep copy of initial stops.
+	 * @return a deep copy of initial stops.
+	 */
 	public ArrayList<Stop> getStops()
 	{
 		ArrayList<Stop> returnValue = new ArrayList<Stop>();
