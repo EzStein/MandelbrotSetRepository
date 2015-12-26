@@ -17,7 +17,6 @@ public class CustomColor implements ColorFunction, Serializable {
 	
 	public CustomColor(int range, String name, Stop...initialStops)
 	{
-		System.out.println(Arrays.asList(initialStops));
 		this.initialStops =new ArrayList<Stop>(Arrays.asList(initialStops));
 		this.range = range;
 		this.name = name;
@@ -52,10 +51,8 @@ public class CustomColor implements ColorFunction, Serializable {
 		colorMap.put(0, new Color(R,G,B,1));
 		for(int j = 1; j<stops.size(); j++)
 		{
-			System.out.println(stops.get(j).getOffset());
 			double a = stops.get(j).getOffset()*range;
 			double b = stops.get(j-1).getOffset()*range;
-			System.out.println(a + " " + b);
 			double rIncrement = (stops.get(j).getColor().getRed()-stops.get(j-1).getColor().getRed())/(a-b);
 			double bIncrement = (stops.get(j).getColor().getBlue()-stops.get(j-1).getColor().getBlue())/(a-b);
 			double gIncrement = (stops.get(j).getColor().getGreen()-stops.get(j-1).getColor().getGreen())/(a-b);

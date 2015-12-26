@@ -191,7 +191,6 @@ public class MainGUI extends Application
 		updateTextArea();
 		textArea.setEditable(false);
 		textArea.setFocusTraversable(false);
-		textArea.setMaxWidth(previewWidth);
 		vbox.getChildren().add(textArea);
 		hbox.getChildren().add(vbox);
 		layout.setRight(hbox);
@@ -752,10 +751,10 @@ public class MainGUI extends Application
 	public void buildOrbitCanvas()
 	{
 		orbitCanvas = new Canvas();
-		orbitCanvas.setWidth(width);
-		orbitCanvas.setHeight(height);
+		orbitCanvas.setWidth(previewWidth);
+		orbitCanvas.setHeight(previewHeight);
 		orbitGC = orbitCanvas.getGraphicsContext2D();
-		hbox.getChildren().add(orbitCanvas);
+		vbox.getChildren().add(orbitCanvas);
 		orbitGC.setFill(Color.WHITE);
 		orbitGC.fillRect(0, 0, width, height);
 	}
@@ -979,7 +978,11 @@ public class MainGUI extends Application
 			while(i<=iterations)
 			{
 				Platform.runLater(()->{
-					orbitGC.drawImage(previewViewerImage, 0, 0, orbitCanvas.getWidth(), orbitCanvas.getHeight());
+					/*orbitGC.setGlobalAlpha(1);
+					orbitGC.setFill(Color.WHITE);
+					orbitGC.fillRect(0, 0, orbitCanvas.getWidth(), orbitCanvas.getHeight());
+					orbitGC.setGlobalAlpha(0.5);
+					orbitGC.drawImage(previewViewerImage, 0, 0, orbitCanvas.getWidth(), orbitCanvas.getHeight());*/
 					orbitGC.setStroke(Color.RED);
 					orbitGC.setFill(Color.RED);
 					orbitGC.strokeLine(oldX, oldY, x, y);
@@ -1018,7 +1021,11 @@ public class MainGUI extends Application
 			}
 			
 			Platform.runLater(()->{
-				orbitGC.drawImage(previewViewerImage, 0, 0, orbitCanvas.getWidth(), orbitCanvas.getHeight());
+				/*orbitGC.setGlobalAlpha(1);
+				orbitGC.setFill(Color.WHITE);
+				orbitGC.fillRect(0, 0, orbitCanvas.getWidth(), orbitCanvas.getHeight());
+				orbitGC.setGlobalAlpha(0.5);
+				orbitGC.drawImage(previewViewerImage, 0, 0, orbitCanvas.getWidth(), orbitCanvas.getHeight());*/
 				orbitGC.setStroke(Color.RED);
 				orbitGC.setFill(Color.RED);
 				orbitGC.fillRect(x, y, 1, 1);

@@ -51,9 +51,9 @@ public class OptionsEditor
 	RadioButton doublePrecision;
 	Rectangle gradientRectangle;
 	ColorPicker colorPicker;
-	ObjectInputStream in;
-	ObjectOutputStream out;
-	File file;
+	
+	ObjectOutputStream out, colorOut;
+	File file, colorFile;
 	ArrayList<SavedRegion> savedRegions;
 	Region<BigDecimal> currentRegion;
 	boolean currentJulia;
@@ -62,6 +62,9 @@ public class OptionsEditor
 	
 	public OptionsEditor(MainGUI gui)
 	{
+		ObjectInputStream in = null;
+		ObjectInputStream colorIn = null;
+		
 		savedRegions = new ArrayList<SavedRegion>();
 		
 		try
@@ -69,10 +72,16 @@ public class OptionsEditor
 			file = new File(Locator.locateFile("SavedRegions.txt"));
 			in = new ObjectInputStream(new FileInputStream(file));
 			savedRegions = (ArrayList<SavedRegion>)in.readObject();
+			
+			colorFile = new File(Locator.locateFile("SavedColors.txt"));
+			colorIn = new ObjectInputStream(new FileInputStream(colorFile));
+			ArrayList<CustomColor> savedColors = (ArrayList<CustomColor>) colorIn.readObject();
+			ColorFunction.ColorInfo.COLOR_FUNCTIONS = savedColors;
 		}
 		catch(EOFException eofe)
 		{
-			/*File Empty And in is null*/
+			/*File Empty And inputStream is null*/
+			ColorFunction.ColorInfo.COLOR_FUNCTIONS = new ArrayList<CustomColor>();
 			savedRegions = new ArrayList<SavedRegion>();
 		}
 		catch (IOException | ClassNotFoundException e)
@@ -85,7 +94,12 @@ public class OptionsEditor
 			{
 				if(in!=null)
 				{
+					
 					in.close();
+				}
+				if(colorIn != null)
+				{
+					colorIn.close();
 				}
 			}
 			catch (IOException e)
@@ -268,8 +282,6 @@ public class OptionsEditor
 		optionsGridPane.add(precisionLabel, 0, 3);
 		optionsGridPane.add(threadCountLabel, 0,4);
 		
-		
-		
 		optionsGridPane.add(autoIterationsCheckBox, 1, 1);
 		optionsGridPane.add(iterationsField, 1, 2);
 		optionsGridPane.add(precisionField, 1, 3);
@@ -403,9 +415,29 @@ public class OptionsEditor
 			colorChoiceBox.getItems().add(color);
 			colorChoiceBox.setValue(color);
 			ColorFunction.ColorInfo.COLOR_FUNCTIONS.add(color);
-			
+			try
+			{
+				colorOut = new ObjectOutputStream(new FileOutputStream(colorFile));
+				colorOut.writeObject(ColorFunction.ColorInfo.COLOR_FUNCTIONS);
+			}
+			catch(IOException ioe)
+			{
+				ioe.printStackTrace();
+			}
+			finally
+			{
+				try
+				{
+					
+					colorOut.close();
+				}
+				catch (IOException e1) {
+					// TODO Auto-generated catch block
+					e1.printStackTrace();
+				}
+			}
 		});
-		stopList.getItems().addListener(new ListChangeListener<Stop>(){
+		/*stopList.getItems().addListener(new ListChangeListener<Stop>(){
 
 			@Override
 			public void onChanged(javafx.collections.ListChangeListener.Change<? extends Stop> c)
@@ -413,7 +445,7 @@ public class OptionsEditor
 				System.out.println(stopList.getItems().toString());
 			}
 			
-		});
+		});*/
 		removeStopButton.setOnAction(ae->{
 			Stop stop = stopList.getSelectionModel().getSelectedItem();
 			gradientStops.remove(stop);
@@ -422,7 +454,18 @@ public class OptionsEditor
 			
 		});
 		addStopButton.setOnAction(ae->{
-			stopList.getItems().add(gradientStops.get(gradientStops.size()-1));
+			Stop stopToAdd = gradientStops.get(gradientStops.size()-1);
+			for(Stop stop : stopList.getItems())
+			{
+				if(stop.getOffset() == stopToAdd.getOffset())
+				{
+					Alert alert = new Alert(AlertType.ERROR);
+					alert.setContentText("That color has the same position as another!");
+					alert.show();
+					return;
+				}
+			}
+			stopList.getItems().add(stopToAdd);
 			gradientStops.add(new Stop(0,Color.TRANSPARENT));
 		});
 		
