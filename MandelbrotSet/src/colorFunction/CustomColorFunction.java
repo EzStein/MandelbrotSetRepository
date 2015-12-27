@@ -233,9 +233,11 @@ public class CustomColorFunction implements ColorFunction, Serializable {
 		out.writeObject(stops);
 	}
 	
+	@SuppressWarnings("unchecked")
 	private void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException
 	{
 		in.defaultReadObject();
+		
 		ArrayList<ComparableStop> stops = (ArrayList<ComparableStop>)in.readObject();
 		initialStops = new ArrayList<Stop>();
 		for(ComparableStop comparableStop: stops)

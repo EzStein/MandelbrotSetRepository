@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Optional;
 import colorFunction.*;
+import colorFunction.ColorFunction.ColorInfo;
 import javafx.application.Platform;
 import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
@@ -69,20 +70,22 @@ public class OptionsEditor
 		
 		try
 		{
-			file = new File(Locator.locateFile("SavedRegions.txt"));
-			in = new ObjectInputStream(new FileInputStream(file));
-			savedRegions = (ArrayList<SavedRegion>)in.readObject();
+			
 			
 			colorFile = new File(Locator.locateFile("SavedColors.txt"));
 			colorIn = new ObjectInputStream(new FileInputStream(colorFile));
 			ArrayList<CustomColorFunction> savedColors = (ArrayList<CustomColorFunction>) colorIn.readObject();
 			ColorFunction.ColorInfo.COLOR_FUNCTIONS = savedColors;
+			
+			file = new File(Locator.locateFile("SavedRegions.txt"));
+			in = new ObjectInputStream(new FileInputStream(file));
+			savedRegions = (ArrayList<SavedRegion>)in.readObject();
 		}
 		catch(EOFException eofe)
 		{
 			/*File Empty And inputStream is null*/
-			ColorFunction.ColorInfo.COLOR_FUNCTIONS = new ArrayList<CustomColorFunction>();
 			savedRegions = new ArrayList<SavedRegion>();
+			//eofe.printStackTrace();
 		}
 		catch (IOException | ClassNotFoundException e)
 		{
@@ -170,7 +173,7 @@ public class OptionsEditor
 			@Override
 			public String toString(SavedRegion sr)
 			{
-				return sr.getName();
+				return sr.name;
 			}
 
 			@Override
@@ -599,7 +602,7 @@ public class OptionsEditor
 				name = result.get();
 				for(SavedRegion sr : savedRegionsChoiceBox.getItems())
 				{
-					if(sr.getName().equals(name))
+					if(sr.name.equals(name))
 					{
 						Alert alert = new Alert(AlertType.ERROR);
 						alert.setContentText("That Name Already Exists");

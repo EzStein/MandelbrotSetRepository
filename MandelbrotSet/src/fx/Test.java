@@ -4,8 +4,17 @@ import java.io.*;
 
 import colorFunction.ColorFunction;
 
+/**
+ * A test class
+ * @author Ezra
+ *
+ */
 public class Test
 {
+	/**
+	 * The main method
+	 * @param args		unused.
+	 */
 	public static void main(String[] args)
 	{
 		ObjectOutputStream out = null;

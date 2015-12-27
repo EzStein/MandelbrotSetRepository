@@ -4,14 +4,25 @@ import java.io.*;
 import java.math.*;
 import colorFunction.*;
 
+/**
+ * A data structure container that contains all the information necessary to reconstruct the state of the program.
+ * @author Ezra Stein
+ * @version 1.0
+ * @since 2015
+ *
+ */
 public class SavedRegion implements Serializable
 {
-	public final String name;
-	public final int iterations, precision, threadCount;
-	public final Region<BigDecimal> region;
-	public final boolean julia, arbitraryPrecision, autoIterations;
-	public final ComplexBigDecimal seed;
-	public final CustomColorFunction colorFunction;
+	/**
+	 * Version ID.
+	 */
+	private static final long serialVersionUID = 1L;
+	final String name;
+	final int iterations, precision, threadCount;
+	final Region<BigDecimal> region;
+	final boolean julia, arbitraryPrecision, autoIterations;
+	final ComplexBigDecimal seed;
+	final CustomColorFunction colorFunction;
 	
 	/**
 	 * @param name
@@ -43,10 +54,6 @@ public class SavedRegion implements Serializable
 		this.seed = seed;
 	}
 	
-	public String getName()
-	{
-		return name;
-	}
 	
 	@Override
 	public boolean equals(Object object)
@@ -65,7 +72,7 @@ public class SavedRegion implements Serializable
 		}
 		
 		SavedRegion sr = (SavedRegion) object;
-		if(sr.getName().equals(name))
+		if(sr.name.equals(name))
 		{
 			return true;
 		}

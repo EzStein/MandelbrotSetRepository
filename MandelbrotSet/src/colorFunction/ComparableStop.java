@@ -5,31 +5,54 @@ import java.io.*;
 
 import javafx.scene.paint.*;
 
-public class ComparableStop implements Comparable, Serializable
+/**
+ * A class that is essentially identical to Stop except it is comparable and serializable.
+ * Used to make ordered lists of stops.
+ * @author Ezra Stein
+ * @version 1.0
+ * @since 2015
+ *
+ */
+public class ComparableStop implements Comparable<ComparableStop>, Serializable
 {
+	/**
+	 * Version ID
+	 */
+	private static final long serialVersionUID = 1L;
 	private double offset;
 	private transient Color color;
 	
+	/**
+	 * Constructs this object with a stop argument.
+	 * @param stop	The stop used to construct the offset and the color.
+	 */
 	public ComparableStop(Stop stop)
 	{
 		offset = stop.getOffset();
 		color = stop.getColor();
 	}
 	
+	/**
+	 * Returns the color of this stop.
+	 * @return the color of this stop.
+	 */
 	public Color getColor()
 	{
 		return color;
 	}
 	
+	/**
+	 * Returns the offset.
+	 * @return the offset.
+	 */
 	public double getOffset()
 	{
 		return offset;
 	}
 	
 	@Override
-	public int compareTo(Object o)
+	public int compareTo(ComparableStop other)
 	{
-		ComparableStop other = (ComparableStop) o;
 		if(other.getOffset()>offset)
 		{
 			return -1;
@@ -44,6 +67,10 @@ public class ComparableStop implements Comparable, Serializable
 		}
 	}
 	
+	/**
+	 * Returns a stop with the same color and offset of this object.
+	 * @return a stop with the same color and offset of this object.
+	 */
 	public Stop getStop()
 	{
 		return new Stop(offset, color);

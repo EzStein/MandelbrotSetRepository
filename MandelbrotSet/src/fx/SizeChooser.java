@@ -8,10 +8,24 @@ import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.stage.*;
 
+/**
+ * A dialog box used at the beginning of the program to choose the size of the mainCanvas
+ * @author Ezra Stein
+ * @version 1.0
+ * @since
+ *
+ */
 public class SizeChooser
 {
 	Optional<Integer> result;
 	TextField inputField;
+	
+	
+	/**
+	 * Shows the dialog box which prompts the user for the size.
+	 * Will block until it closes.
+	 * @return an optional which is empty if the user exits the dialog box and contains the size otherwise.
+	 */
 	public Optional<Integer> showAndWait()
 	{
 		Stage window = new Stage();
@@ -58,6 +72,10 @@ public class SizeChooser
 		return result;
 	}
 	
+	/**
+	 * Validates the input values.
+	 * @return false if the values are not valid, true otherwise.
+	 */
 	public boolean checkValues()
 	{
 		int input;
