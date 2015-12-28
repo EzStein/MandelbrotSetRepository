@@ -12,7 +12,6 @@ import javafx.scene.*;
 import javafx.scene.canvas.*;
 import javafx.scene.control.*;
 import javafx.scene.control.Alert.AlertType;
-import javafx.scene.control.cell.*;
 import javafx.scene.input.*;
 import javafx.scene.layout.*;
 import javafx.scene.paint.*;
@@ -23,31 +22,30 @@ import javafx.util.*;
 
 public class OptionsEditor
 {
-	MainGUI gui;
-	Stage window;
-	GridPane optionsGridPane, colorGridPane;
-	Label centerValue, set, seed;
-	Label boxValue;
-	TextField threadCountField;
-	TextField iterationsField;
-	TextField precisionField;
-	BorderPane layout;
-	HBox buttonBox;
-	CheckBox autoIterationsCheckBox;
-	ChoiceBox<SavedRegion> savedRegionsChoiceBox;
-	ChoiceBox<CustomColorFunction> colorChoiceBox;
-	RadioButton arbitraryPrecision;
-	RadioButton doublePrecision;
-	Rectangle gradientRectangle;
-	ColorPicker colorPicker;
-	
-	ObjectOutputStream out, colorOut;
-	File file, colorFile;
-	ArrayList<SavedRegion> savedRegions;
-	Region<BigDecimal> currentRegion;
-	boolean currentJulia;
-	ComplexBigDecimal currentSeed;
-	ArrayList<Stop> gradientStops;
+	private MainGUI gui;
+	private Stage window;
+	private Label centerValue, set, seed;
+	private Label boxValue;
+	private TextField threadCountField;
+	private TextField iterationsField;
+	private TextField precisionField;
+	private CheckBox autoIterationsCheckBox;
+	private ChoiceBox<SavedRegion> savedRegionsChoiceBox;
+	private ChoiceBox<CustomColorFunction> colorChoiceBox;
+	private TextField colorPositionField;
+	private TextField rangeField;
+	private Slider colorPositionSlider;
+	private ListView<Stop> stopList;
+	private RadioButton arbitraryPrecision;
+	private RadioButton doublePrecision;
+	private Rectangle gradientRectangle;
+	private ColorPicker colorPicker;
+	private ObjectOutputStream out, colorOut;
+	private File file, colorFile;
+	private ArrayList<SavedRegion> savedRegions;
+	private Region<BigDecimal> currentRegion;
+	private boolean currentJulia;
+	private ComplexBigDecimal currentSeed;
 	
 	public OptionsEditor(MainGUI gui)
 	{
@@ -109,38 +107,35 @@ public class OptionsEditor
 		window = new Stage();
 		window.setTitle("Edit...");
 		window.initModality(Modality.APPLICATION_MODAL);
-		layout = new BorderPane();
-		buttonBox = new HBox(10);
+		BorderPane layout = new BorderPane();
+		
 		TabPane tabPane = new TabPane();
-		Tab colorTab = new Tab("Color");
+		tabPane.getTabs().add(buildOptionsTab());
+		tabPane.getTabs().add(buildColorTab());
+		layout.setCenter(tabPane);
+		
+		
+		HBox buttonBox = new HBox(10);
+		buttonBox.setPadding(new Insets(10,10,10,10));
+		buttonBox.getChildren().addAll(buildSaveButton(), buildApplyAndRerenderButton(), buildApplyButton(), buildCancelButton());
+		layout.setBottom(buttonBox);
+		
+		Scene scene = new Scene(layout);
+		scene.getStylesheets().add(this.getClass().getResource("OptionsStyleSheet.css").toExternalForm());
+		window.setScene(scene);
+		window.show();
+	}
+	
+	private Tab buildOptionsTab()
+	{
 		Tab optionsTab = new Tab("Options");
-		colorTab.setClosable(false);
 		optionsTab.setClosable(false);
-		tabPane.getTabs().add(optionsTab);
-		tabPane.getTabs().add(colorTab);
+		GridPane optionsGridPane;
 		optionsGridPane= new GridPane();
 		optionsGridPane.setVgap(10);
 		optionsGridPane.setHgap(10);
 		optionsGridPane.setPadding(new Insets(30,30,30,30));
 		
-		colorGridPane= new GridPane();
-		colorGridPane.setVgap(10);
-		colorGridPane.setHgap(10);
-		colorGridPane.setPadding(new Insets(30,30,30,30));
-		colorTab.setContent(colorGridPane);
-		layout.setCenter(tabPane);
-		layout.setBottom(buttonBox);
-		//layout.setPadding(new Insets(20,20,20,20));
-		buttonBox.setPadding(new Insets(10,10,10,10));
-		/*Labels*/
-		Label threadCountLabel = new Label("Threads:");
-		Label iterationsLabel = new Label("Iterations:");
-		Label precisionLabel = new Label("Precision:");
-		Label colorLabel = new Label("Color:");
-		Label savedRegionsLabel = new Label("Saved Regions:");
-		savedRegionsLabel.setFont(new Font(20));
-		Label centerLabel = new Label("Center:");
-		Label boxLabel = new Label("Box Dimensions:");
 		
 		centerValue = new Label(gui.currentRegion.getCenterX().setScale(5, BigDecimal.ROUND_HALF_UP).stripTrailingZeros().toPlainString()
 				+ " + "
@@ -153,6 +148,112 @@ public class OptionsEditor
 		threadCountField = new TextField(""+gui.threadCount);
 		iterationsField = new TextField("" +gui.iterations);
 		precisionField = new TextField("" + gui.precision);
+		
+		arbitraryPrecision = new RadioButton("Arbitrary Precision");
+		doublePrecision = new RadioButton("Double Precision");
+		ToggleGroup precisionGroup = new ToggleGroup();
+		arbitraryPrecision.setToggleGroup(precisionGroup);
+		doublePrecision.setToggleGroup(precisionGroup);
+		if(gui.arbitraryPrecision)
+		{
+			arbitraryPrecision.setSelected(true);
+		}
+		else
+		{
+			doublePrecision.setSelected(true);
+		}
+		
+		
+		
+		
+		
+		Label savedRegionsLabel = new Label("Saved Regions:");
+		savedRegionsLabel.setFont(new Font(20));
+		optionsGridPane.add(savedRegionsLabel, 0, 0,2,1);
+		optionsGridPane.add(new Label("Iterations:"), 0, 1);
+		optionsGridPane.add(new Label("Precision:"), 0, 3);
+		optionsGridPane.add(new Label("Threads:"), 0,4);
+		
+		optionsGridPane.add(buildAutoIterationsCheckBox(), 1, 1);
+		optionsGridPane.add(iterationsField, 1, 2);
+		optionsGridPane.add(precisionField, 1, 3);
+		optionsGridPane.add(threadCountField, 1, 4);
+		optionsGridPane.add(doublePrecision, 1, 5);
+		optionsGridPane.add(arbitraryPrecision, 1, 6);
+		
+		optionsGridPane.add(buildSavedRegionsChoiceBox(), 2, 0);
+		optionsGridPane.add(buildSetLabel(), 2, 1);
+		optionsGridPane.add(new Label("Center:"), 2, 2);
+		optionsGridPane.add(new Label("Box Dimensions:"), 2, 3);
+		
+		optionsGridPane.add(buildRegionRemoveButton(), 3, 0);
+		optionsGridPane.add(buildSeedLabel(), 3, 1);
+		optionsGridPane.add(centerValue, 3, 2);
+		optionsGridPane.add(boxValue, 3, 3);
+		
+		
+		optionsTab.setContent(optionsGridPane);
+		return optionsTab;
+	}
+	
+	private Label buildSetLabel()
+	{
+		set = new Label();
+		if(gui.julia)
+		{
+			set.setText("Julia set: ");
+		}
+		else
+		{
+			set.setText("Mandelbrot set: ");
+		}
+		return set;
+	}
+	
+	private Label buildSeedLabel()
+	{
+		seed = new Label();
+		if(gui.julia)
+		{
+			seed.setText(gui.juliaSeed.toString());
+		}
+		else
+		{
+			seed.setText("0+0i");
+		}
+		return seed;
+	}
+	
+	private CheckBox buildAutoIterationsCheckBox()
+	{
+		autoIterationsCheckBox = new CheckBox("Auto Iterations");
+		if(gui.autoIterations)
+		{
+			autoIterationsCheckBox.setSelected(true);
+			iterationsField.setDisable(true);
+		}
+		else
+		{
+			autoIterationsCheckBox.setSelected(false);
+			iterationsField.setDisable(false);
+		}
+		
+		autoIterationsCheckBox.setOnAction(e ->{
+			if(autoIterationsCheckBox.isSelected())
+			{
+				iterationsField.setDisable(true);
+				iterationsField.setText(gui.calcAutoIterations(gui.magnification) + "");
+			}
+			else
+			{
+				iterationsField.setDisable(false);
+			}
+		});
+		return autoIterationsCheckBox;
+	}
+	
+	private ChoiceBox<SavedRegion> buildSavedRegionsChoiceBox()
+	{
 		savedRegionsChoiceBox = new ChoiceBox<SavedRegion>(FXCollections.observableArrayList(savedRegions));
 		savedRegionsChoiceBox.setConverter(new StringConverter<SavedRegion>(){
 
@@ -169,67 +270,19 @@ public class OptionsEditor
 			
 			
 		});
-		
-		
-		colorChoiceBox = new ChoiceBox<CustomColorFunction>(FXCollections.observableArrayList(CustomColorFunction.COLOR_FUNCTIONS));
-		colorChoiceBox.setValue(gui.mainCalculator.getColorFunction());
-		
-		/*Buttons*/
-		Button applyButton = new Button("Apply");
-		Button cancelButton = new Button("Cancel");
-		Button applyAndRerenderButton = new Button("Apply And Rerender");
-		Button saveButton = new Button("Save As...");
-		
-		arbitraryPrecision = new RadioButton("Arbitrary Precision");
-		doublePrecision = new RadioButton("Double Precision");
-		ToggleGroup precisionGroup = new ToggleGroup();
-		arbitraryPrecision.setToggleGroup(precisionGroup);
-		doublePrecision.setToggleGroup(precisionGroup);
-		if(gui.arbitraryPrecision)
-		{
-			arbitraryPrecision.setSelected(true);
-		}
-		else
-		{
-			doublePrecision.setSelected(true);
-		}
-		
-		set = new Label();
-		seed = new Label();
-		if(gui.julia)
-		{
-			set.setText("Julia set: ");
-			seed.setText(gui.juliaSeed.toString());
-		}
-		else
-		{
-			set.setText("Mandelbrot set: ");
-			seed.setText("0+0i");
-		}
-		
-		autoIterationsCheckBox = new CheckBox("Auto Iterations");
-		if(gui.autoIterations)
-		{
-			autoIterationsCheckBox.setSelected(true);
-			iterationsField.setDisable(true);
-		}
-		else
-		{
-			autoIterationsCheckBox.setSelected(false);
-			iterationsField.setDisable(false);
-		}
-		autoIterationsCheckBox.setOnAction(e ->{
-			if(autoIterationsCheckBox.isSelected())
-			{
-				iterationsField.setDisable(true);
-				iterationsField.setText(gui.calcAutoIterations(gui.magnification) + "");
-			}
-			else
-			{
-				iterationsField.setDisable(false);
-			}
+		savedRegionsChoiceBox.getSelectionModel().selectedIndexProperty().addListener(new ChangeListener<Number>(){
+			@Override
+			public void changed(ObservableValue<? extends Number> observable, Number oldValue, Number newValue) {
+				Platform.runLater(() -> {
+					loadRegion();
+					});
+				}
 		});
-		
+		return savedRegionsChoiceBox;
+	}
+	
+	private Button buildRegionRemoveButton()
+	{
 		Button removeButton = new Button("Remove");
 		removeButton.setOnAction(e ->{
 			SavedRegion deletedRegion = savedRegionsChoiceBox.getValue();
@@ -265,36 +318,168 @@ public class OptionsEditor
 				}
 			}
 		});
+		return removeButton;
+	}
+	
+	private Tab buildColorTab()
+	{
+		Tab colorTab = new Tab("Color");
+		colorTab.setClosable(false);
 		
-		optionsGridPane.add(savedRegionsLabel, 0, 0,2,1);
-		optionsGridPane.add(iterationsLabel, 0, 1);
-		optionsGridPane.add(precisionLabel, 0, 3);
-		optionsGridPane.add(threadCountLabel, 0,4);
+		GridPane colorGridPane= new GridPane();
+		colorGridPane.setVgap(10);
+		colorGridPane.setHgap(10);
+		colorGridPane.setPadding(new Insets(30,30,30,30));
 		
-		optionsGridPane.add(autoIterationsCheckBox, 1, 1);
-		optionsGridPane.add(iterationsField, 1, 2);
-		optionsGridPane.add(precisionField, 1, 3);
-		optionsGridPane.add(threadCountField, 1, 4);
-		optionsGridPane.add(doublePrecision, 1, 5);
-		optionsGridPane.add(arbitraryPrecision, 1, 6);
+		colorGridPane.add(buildGradientRectangle(), 0, 1, 2, 2);
+		colorGridPane.add(buildColorChoiceBox(), 0, 0);
 		
+		colorGridPane.add(buildColorPositionSlider(), 1, 1);
+		colorGridPane.add(buildColorPositionField(), 2, 1);
+		colorGridPane.add(buildColorPicker(), 1, 0);
+		colorGridPane.add(buildStopList(), 2, 2,2,1);
+		colorGridPane.add(buildRemoveStopButton(), 3, 3);
+		colorGridPane.add(buildAddStopButton(), 2, 3);
+		colorGridPane.add(buildSaveColorButton(), 0, 3);
+		colorGridPane.add(new Label("Range:"), 2, 0);
+		rangeField = new TextField();
+		colorGridPane.add(rangeField, 3, 0);
 		
-		
-		optionsGridPane.add(savedRegionsChoiceBox, 2, 0);
-		optionsGridPane.add(set, 2, 1);
-		optionsGridPane.add(centerLabel, 2, 2);
-		optionsGridPane.add(boxLabel, 2, 3);
-		
-		optionsGridPane.add(removeButton, 3, 0);
-		optionsGridPane.add(seed, 3, 1);
-		optionsGridPane.add(centerValue, 3, 2);
-		optionsGridPane.add(boxValue, 3, 3);
+		colorTab.setContent(colorGridPane);
 		
 		
+		initializeValues();
+		return colorTab;
+	}
+	
+	private void initializeValues()
+	{
+		rangeField.setText(colorChoiceBox.getValue().getRange()+"");
 		
+		stopList.getItems().remove(0, stopList.getItems().size());
+		for(Stop stop : colorChoiceBox.getValue().getStops())
+		{
+			stopList.getItems().add(stop);
+		}
 		
-		gradientStops = new ArrayList<Stop>();
-		ListView<Stop> stopList = new ListView<Stop>();
+		gradientRectangle.setFill(new LinearGradient(0,0.5,1,0.5,true, CycleMethod.NO_CYCLE, createGradientStops()));
+		
+	}
+	
+	private Rectangle buildGradientRectangle()
+	{
+		gradientRectangle = new Rectangle();
+		gradientRectangle.setWidth(200);
+		gradientRectangle.setHeight(200);
+		
+		return gradientRectangle;
+	}
+	
+	private ColorPicker buildColorPicker()
+	{
+		colorPicker = new ColorPicker(Color.BLACK);
+		colorPicker.valueProperty().addListener(new ChangeListener<Color>(){
+
+			@Override
+			public void changed(ObservableValue<? extends Color> observable, Color oldValue, Color newValue)
+			{
+				gradientRectangle.setFill(new LinearGradient(0,0.5,1,0.5,true, CycleMethod.NO_CYCLE, createGradientStops()));
+			}
+		});
+		return colorPicker;
+	}
+	
+	private ArrayList<Stop> createGradientStops()
+	{
+		
+		ArrayList<Stop> returnValue = new ArrayList<Stop>(Arrays.asList(stopList.getItems().toArray(new Stop[1])));
+		returnValue.add(new Stop(colorPositionSlider.getValue(),colorPicker.getValue()));
+		return returnValue;
+	}
+	
+	private ChoiceBox<CustomColorFunction> buildColorChoiceBox()
+	{
+		colorChoiceBox = new ChoiceBox<CustomColorFunction>(FXCollections.observableArrayList(CustomColorFunction.COLOR_FUNCTIONS));
+		colorChoiceBox.setValue(gui.mainCalculator.getColorFunction());
+		
+		colorChoiceBox.getSelectionModel().selectedIndexProperty().addListener(new ChangeListener<Number>(){
+			@Override
+			public void changed(ObservableValue<? extends Number> observable, Number oldValue, Number newValue)
+			{
+				
+				CustomColorFunction colorFunction = (CustomColorFunction)colorChoiceBox.getItems().get(newValue.intValue());
+				rangeField.setText(colorFunction.getRange()+"");
+				
+				stopList.getItems().remove(0, stopList.getItems().size());
+				for(Stop stop : colorFunction.getStops())
+				{
+					stopList.getItems().add(stop);
+				}
+				
+				gradientRectangle.setFill(new LinearGradient(0,0.5,1,0.5,true, CycleMethod.NO_CYCLE, createGradientStops()));
+				
+			}
+		});
+		return colorChoiceBox;
+	}
+	
+	private TextField buildColorPositionField()
+	{
+		colorPositionField = new TextField("0.5");
+		colorPositionField.setOnMouseDragEntered(ae->{
+			colorPositionField.requestFocus();
+		});
+		colorPositionField.setOnKeyReleased(ae ->{
+			if(ae.getCode() == KeyCode.ENTER)
+			{
+				double val;
+				try
+				{
+					val = Double.parseDouble(colorPositionField.getText());
+				}
+				catch(NumberFormatException nfe)
+				{
+					colorPositionField.setStyle("-fx-background-color:red");
+					return;
+				}
+				if(val >= 0 && val<=1)
+				{
+					Platform.runLater(()->{
+						colorPositionField.setStyle("-fx-background-color:white");
+						colorPositionSlider.setValue(val);
+					});
+				}
+				else
+				{
+					colorPositionField.setStyle("-fx-background-color:red");
+				}
+			}
+		});
+		return colorPositionField;
+	}
+	
+	private Slider buildColorPositionSlider()
+	{
+		colorPositionSlider = new Slider(0,1,0.5);
+		colorPositionSlider.valueProperty().addListener(new ChangeListener<Number>(){
+
+			@Override
+			public void changed(ObservableValue<? extends Number> observable, Number oldValue, Number newValue)
+			{
+				Platform.runLater(()->{
+					colorPositionField.setStyle("-fx-background-color:white");
+					colorPositionField.setText(newValue.doubleValue() + "");
+					
+					gradientRectangle.setFill(new LinearGradient(0,0.5,1,0.5,true, CycleMethod.NO_CYCLE, createGradientStops()));
+				});
+			}
+		});
+		return colorPositionSlider;
+	}
+	
+	private ListView<Stop> buildStopList()
+	{
+		stopList = new ListView<Stop>();
 		stopList.setCellFactory(new Callback<ListView<Stop>, ListCell<Stop>>(){
 			@Override
 			public ListCell<Stop> call(ListView<Stop> param) {
@@ -317,19 +502,13 @@ public class OptionsEditor
 			
 		});
 		
-		TextField colorPositionField = new TextField("0.5");
-		Button addStopButton = new Button("Add Color");
-		Button removeStopButton = new Button("Remove Color");
+		return stopList;
+	}
+	
+	private Button buildSaveColorButton()
+	{
 		Button saveColorButton = new Button("Save Color");
-		Label rangeLabel = new Label("Range:");
-		TextField rangeField = new TextField();
 		saveColorButton.setOnAction(ae ->{
-			
-			
-			if(gradientStops.get(gradientStops.size()-1).getColor().equals(Color.TRANSPARENT))
-			{
-				gradientStops.remove(gradientStops.size()-1);
-			}
 			
 			if(stopList.getItems().size()<2)
 			{
@@ -426,23 +605,24 @@ public class OptionsEditor
 				}
 			}
 		});
-		/*stopList.getItems().addListener(new ListChangeListener<Stop>(){
-
-			@Override
-			public void onChanged(javafx.collections.ListChangeListener.Change<? extends Stop> c)
-			{
-				System.out.println(stopList.getItems().toString());
-			}
-			
-		});*/
-		Slider colorPositionSlider = new Slider(0,1,0.5);
+		return saveColorButton;
+	}
+	
+	private Button buildRemoveStopButton()
+	{
+		Button removeStopButton = new Button("Remove Color");
 		removeStopButton.setOnAction(ae->{
 			Stop stop = stopList.getSelectionModel().getSelectedItem();
-			gradientStops.remove(stop);
 			stopList.getItems().remove(stop);
-			gradientRectangle.setFill(new LinearGradient(0,0.5,1,0.5,true, CycleMethod.NO_CYCLE, gradientStops));
+			gradientRectangle.setFill(new LinearGradient(0,0.5,1,0.5,true, CycleMethod.NO_CYCLE, createGradientStops()));
 			
 		});
+		return removeStopButton;
+	}
+	
+	private Button buildAddStopButton()
+	{
+		Button addStopButton = new Button("Add Color");
 		addStopButton.setOnAction(ae->{
 			Stop stopToAdd = new Stop(colorPositionSlider.getValue(), colorPicker.getValue());
 			for(Stop stop : stopList.getItems())
@@ -456,124 +636,38 @@ public class OptionsEditor
 				}
 			}
 			stopList.getItems().add(stopToAdd);
-			gradientStops.add(new Stop(0,Color.TRANSPARENT));
 		});
-		
-		
-		colorPositionSlider.valueProperty().addListener(new ChangeListener<Number>(){
-
-			@Override
-			public void changed(ObservableValue<? extends Number> observable, Number oldValue, Number newValue)
-			{
-				Platform.runLater(()->{
-					colorPositionField.setStyle("-fx-background-color:white");
-					colorPositionField.setText(newValue.doubleValue() + "");
-					if(gradientStops.size()>0)
-					{
-						gradientStops.remove(gradientStops.size()-1);
-					}
-					gradientStops.add(new Stop(colorPositionSlider.getValue(), colorPicker.getValue()));
-					gradientRectangle.setFill(new LinearGradient(0,0.5,1,0.5,true, CycleMethod.NO_CYCLE, gradientStops));
-				});
-			}
-		});
-		
-		colorPositionField.setOnMouseDragEntered(ae->{
-			colorPositionField.requestFocus();
-		});
-		colorPositionField.setOnKeyReleased(ae ->{
-			if(ae.getCode() == KeyCode.ENTER)
-			{
-				double val;
-				try
-				{
-					val = Double.parseDouble(colorPositionField.getText());
-				}
-				catch(NumberFormatException nfe)
-				{
-					colorPositionField.setStyle("-fx-background-color:red");
-					return;
-				}
-				if(val >= 0 && val<=1)
-				{
-					Platform.runLater(()->{
-						colorPositionField.setStyle("-fx-background-color:white");
-						colorPositionSlider.setValue(val);
-					});
-				}
-				else
-				{
-					colorPositionField.setStyle("-fx-background-color:red");
-				}
-			}
-		});
-		
-		
-		gradientRectangle = new Rectangle();
-		gradientRectangle.setWidth(200);
-		gradientRectangle.setHeight(200);
+		return addStopButton;
+	}
 	
-		rangeField.setText(colorChoiceBox.getValue().getRange()+"");
-		gradientStops = colorChoiceBox.getValue().getStops();
-		gradientRectangle.setFill(new LinearGradient(0,0.5,1,0.5,true, CycleMethod.NO_CYCLE, gradientStops));
-		
-		stopList.getItems().remove(0, stopList.getItems().size()-1);
-		for(Stop stop : gradientStops)
-		{
-			stopList.getItems().add(stop);
-		}
-		gradientStops.add(new Stop(0,Color.TRANSPARENT));
-		
-		colorPicker = new ColorPicker(Color.BLACK);
-		colorPicker.valueProperty().addListener(new ChangeListener<Color>(){
-
-			@Override
-			public void changed(ObservableValue<? extends Color> observable, Color oldValue, Color newValue)
-			{
-				if(gradientStops.size()>0)
+	private Button buildApplyAndRerenderButton()
+	{
+		Button applyAndRerenderButton = new Button("Apply And Rerender");
+		applyAndRerenderButton.setOnAction(e->{
+			gui.threadQueue.callLater(()->{
+				if(!checkValues())
 				{
-					gradientStops.remove(gradientStops.size()-1);
+					return false;
 				}
-				gradientStops.add(new Stop(colorPositionSlider.getValue(), colorPicker.getValue()));
-				gradientRectangle.setFill(new LinearGradient(0,0.5,1,0.5,true, CycleMethod.NO_CYCLE, gradientStops));
-			}
-		});
-		
-		colorChoiceBox.getSelectionModel().selectedIndexProperty().addListener(new ChangeListener<Number>(){
-			@Override
-			public void changed(ObservableValue<? extends Number> observable, Number oldValue, Number newValue)
-			{
+				gui.interrupt();
 				
-				CustomColorFunction colorFunction = (CustomColorFunction)colorChoiceBox.getItems().get(newValue.intValue());
-				rangeField.setText(colorFunction.getRange()+"");
-				gradientStops = colorFunction.getStops();
-				gradientRectangle.setFill(new LinearGradient(0,0.5,1,0.5,true, CycleMethod.NO_CYCLE, gradientStops));
-				stopList.getItems().remove(0, stopList.getItems().size()-1);
-				for(Stop stop : gradientStops)
-				{
-					stopList.getItems().add(stop);
-				}
-				gradientStops.add(new Stop(0,Color.TRANSPARENT));
-			}
+				Platform.runLater(()->{
+					setValues();
+					gui.drawSet();
+					gui.updateJuliaSetViewer();
+					window.close();
+				});
+				return false;
+				
+			});
 		});
 		
-		
-		colorGridPane.add(gradientRectangle, 0, 1, 2, 2);
-		colorGridPane.add(colorChoiceBox, 0, 0);
-		
-		colorGridPane.add(colorPositionSlider, 1, 1);
-		
-		colorGridPane.add(colorPositionField, 2, 1);
-		colorGridPane.add(colorPicker, 1, 0);
-		colorGridPane.add(stopList, 2, 2,2,1);
-		colorGridPane.add(removeStopButton, 3, 3);
-		colorGridPane.add(addStopButton, 2, 3);
-		colorGridPane.add(saveColorButton, 0, 3);
-		colorGridPane.add(rangeLabel, 2, 0);
-		colorGridPane.add(rangeField, 3, 0);
-		//colorGridPane.setGridLinesVisible(true);
-		buttonBox.getChildren().addAll(saveButton, applyAndRerenderButton, applyButton, cancelButton);
-		
+		return applyAndRerenderButton;
+	}
+	
+	private Button buildSaveButton()
+	{
+		Button saveButton = new Button("Save As...");
 		saveButton.setOnAction(e ->{
 			if(!checkValues())
 			{
@@ -639,31 +733,12 @@ public class OptionsEditor
 				}
 			}
 		});
-		
-		applyAndRerenderButton.setOnAction(e->{
-			gui.threadQueue.callLater(()->{
-				if(!checkValues())
-				{
-					return false;
-				}
-				gui.interrupt();
-				
-				Platform.runLater(()->{
-					setValues();
-					gui.drawSet();
-					gui.updateJuliaSetViewer();
-					window.close();
-				});
-				return false;
-				
-			});
-			
-		});
-		
-		cancelButton.setOnAction(e ->{
-			window.close();
-		});
-		
+		return saveButton;
+	}
+	
+	private Button buildApplyButton()
+	{
+		Button applyButton = new Button("Apply");
 		applyButton.setOnAction(e ->{
 			gui.threadQueue.callLater(()->{
 				if(!checkValues())
@@ -681,32 +756,16 @@ public class OptionsEditor
 				return false;
 			});
 		});
-		
-		threadCountField.setOnMouseClicked(e -> {
-			threadCountField.setStyle("-fx-background-color:white");
+		return applyButton;
+	}
+	
+	private Button buildCancelButton()
+	{
+		Button cancelButton = new Button("Cancel");
+		cancelButton.setOnAction(e ->{
+			window.close();
 		});
-		iterationsField.setOnMouseClicked(e -> {
-			iterationsField.setStyle("-fx-background-color:white");
-		});
-		precisionField.setOnMouseClicked(e -> {
-			precisionField.setStyle("-fx-background-color:white");
-		});
-		savedRegionsChoiceBox.getSelectionModel().selectedIndexProperty().addListener(new ChangeListener<Number>(){
-			@Override
-			public void changed(ObservableValue<? extends Number> observable, Number oldValue, Number newValue) {
-				Platform.runLater(() -> {
-					loadRegion();
-					});
-				}
-			
-		});
-		
-		//gridPane.setGridLinesVisible(true);
-		optionsTab.setContent(optionsGridPane);
-		Scene scene = new Scene(layout);
-		scene.getStylesheets().add(this.getClass().getResource("OptionsStyleSheet.css").toExternalForm());
-		window.setScene(scene);
-		window.show();
+		return cancelButton;
 	}
 	
 	public void resetValues()

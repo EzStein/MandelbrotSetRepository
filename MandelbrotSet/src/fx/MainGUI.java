@@ -79,8 +79,8 @@ public class MainGUI extends Application
 	public void start(Stage window)
 	{
 		//showStartDialog();
-		width = 400;
-		height = 400;
+		width = 800;
+		height = 800;
 		initializeVariables();
 		
 		/*Sets the root*/
@@ -831,7 +831,7 @@ public class MainGUI extends Application
 		});
 	}
 	
-	public void updateAfterResize()
+	private void updateAfterResize()
 	{
 		Platform.runLater(()->{
 			progressBar.setPrefWidth(width+previewWidth-40);

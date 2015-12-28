@@ -194,11 +194,11 @@ public class CustomColorFunction implements Serializable {
 		{
 			double a = stops.get(j).getOffset()*range;
 			double b = stops.get(j-1).getOffset()*range;
-			double rIncrement = (stops.get(j).getColor().getRed()-stops.get(j-1).getColor().getRed())/(a-b);
-			double bIncrement = (stops.get(j).getColor().getBlue()-stops.get(j-1).getColor().getBlue())/(a-b);
-			double gIncrement = (stops.get(j).getColor().getGreen()-stops.get(j-1).getColor().getGreen())/(a-b);
+			double rIncrement = (stops.get(j).getColor().getRed()-stops.get(j-1).getColor().getRed())/(a-b-1);
+			double bIncrement = (stops.get(j).getColor().getBlue()-stops.get(j-1).getColor().getBlue())/(a-b-1);
+			double gIncrement = (stops.get(j).getColor().getGreen()-stops.get(j-1).getColor().getGreen())/(a-b-1);
 			
-			while(i<=a)
+			while(i<a-1)
 			{
 				B+=bIncrement;
 				R+=rIncrement;
@@ -236,8 +236,16 @@ public class CustomColorFunction implements Serializable {
 	
 	
 	public Color getColor(int iterations) {
-
-		Color c = colorMap.get(((int) (Math.sqrt(100*iterations)*Math.log(iterations))%range));
+		Color c;
+		if(name.equals("Dr. Seuss"))
+		{
+			c = colorMap.get( iterations%range);
+		}
+		else
+		{
+			c = colorMap.get(((int) (Math.sqrt(100*iterations)*Math.log(iterations))%range));
+		}
+		
 		if(c== null)
 		{
 			System.out.println(iterations + " " + colorMap.keySet().size());
