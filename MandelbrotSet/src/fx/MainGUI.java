@@ -32,10 +32,6 @@ public class MainGUI extends Application
 	Thread updater;
 	TextArea textArea;
 	Stage window;
-	Scene scene;
-	BorderPane layout;
-	VBox vbox;
-	HBox hbox;
 	Canvas viewerCanvas, juliaViewer, orbitCanvas;
 	GraphicsContext mainGC, juliaGC, orbitGC;
 	ProgressBar progressBar;
@@ -65,12 +61,11 @@ public class MainGUI extends Application
 	
 	
 	/**
-	 * The main method that launches this gui.
-	 * @param args
+	 * The main method that launches this GUI.
+	 * @param args		Passed directly to the launch method of application.
 	 */
 	public static void main(String[] args)
 	{
-		
 		launch(args);
 	}
 	
@@ -83,52 +78,59 @@ public class MainGUI extends Application
 	@Override
 	public void start(Stage window)
 	{
-		showStartDialog();
+		//showStartDialog();
+		width = 400;
+		height = 400;
 		initializeVariables();
 		
-		//Platform.runLater(() -> previewViewerImage = juliaViewer.snapshot(new SnapshotParameters(), null));
-		
-		/*Initializes Basic layout*/
+		/*Sets the root*/
 		this.window = window;
 		Group root = new Group();
-		layout = new BorderPane();
+		Scene scene = new Scene(root);
+		scene.getStylesheets().add(this.getClass().getResource("MainStyle.css").toExternalForm());
+		window.setScene(scene);
+		
+		/*Fills the root entirely with a border pane layout*/
+		BorderPane layout = new BorderPane();
 		layout.setId("layout");
-		hbox = new HBox(10);
 		root.getChildren().add(layout);
-		scene = new Scene(root);
+		VBox vbox = new VBox(10);
 		
+		layout.setBottom(buildMenus());
+		layout.setTop(buildProgressBar());
+		layout.setCenter(buildViewerCanvas());
+		BorderPane.setAlignment(viewerCanvas, Pos.TOP_LEFT);
 		
+		vbox.getChildren().add(buildPreviewCanvas());
+		vbox.getChildren().add(buildTextArea());
+		vbox.getChildren().add(buildOrbitCanvas());
+		layout.setRight(vbox);
+		BorderPane.setAlignment(vbox, Pos.TOP_LEFT);
 		
+		/*Add Listeners*/
+		addKeyPanListener();
+		addMouseListeners();
+		addScrollListener();
+		addResizeListeners();
+		addWindowListener();
+		
+		window.show();
+		
+		/*Initializes the program by drawing the mandelbrot set*/
+		updateJuliaSetViewer();
+		drawSet();
+	}
+	
+	private void addWindowListener()
+	{
 		/*close() method called when window is closed*/
 		window.setOnCloseRequest(e->{
 			e.consume();
 			close();
 			});
-		
-		
-		buildMenus();
-		buildProgressBar();
-		buildViewerCanvas();
-		buildPreviewCanvas();
-		buildTextArea();
-		buildOrbitCanvas();
-		
-		BorderPane.setAlignment(viewerCanvas, Pos.TOP_LEFT);
-		BorderPane.setAlignment(vbox, Pos.TOP_LEFT);
-		
-		/*Shows the window*/
-		/*Sets up style sheets*/
-		scene.getStylesheets().add(this.getClass().getResource("MainStyle.css").toExternalForm());
-		
-		window.setScene(scene);
-		window.show();
-		
-		/*Initializes the canvases*/
-		updateJuliaSetViewer();
-		drawSet();
 	}
 	
-	public void showStartDialog()
+	private void showStartDialog()
 	{
 		/*Opens the size chooser window.*/
 		SizeChooser sizeChooser = new SizeChooser();
@@ -145,7 +147,7 @@ public class MainGUI extends Application
 		}
 	}
 	
-	public void initializeVariables()
+	private void initializeVariables()
 	{
 		/*Creates two calculator objects. One for the preview viewer and one for the main viewer.*/
 		mainCalculator = new Calculator();
@@ -184,70 +186,52 @@ public class MainGUI extends Application
 		previewPixelRegion = new Region<Integer>(0,0,previewWidth,previewHeight);
 	}
  
-	public void buildTextArea()
+	private TextArea buildTextArea()
 	{
 		/*Create Text Area*/
 		textArea = new TextArea("");
 		updateTextArea();
 		textArea.setEditable(false);
 		textArea.setFocusTraversable(false);
-		vbox.getChildren().add(textArea);
-		hbox.getChildren().add(vbox);
-		layout.setRight(hbox);
+		return textArea;	
 	}
 	
-	public void buildMenus()
+	private MenuBar buildMenus()
 	{
 		/*Create MenuBar*/
 		MenuBar menuBar = new MenuBar();
-		menuBar.useSystemMenuBarProperty().set(true);
-		layout.setBottom(menuBar);
+		//menuBar.useSystemMenuBarProperty().set(true);
 		
 		/*Builds File Menu*/
 		Menu fileMenu = new Menu("File");
-		MenuItem saveMenu = new MenuItem("Save Image...");
-		MenuItem aboutMenu = new MenuItem("About");
-		fileMenu.getItems().addAll(saveMenu,aboutMenu);
-		menuBar.getMenus().add(fileMenu);
+		fileMenu.getItems().addAll(buildSaveMenuItem(),buildAboutMenuItem());
 		
-		/*About Menu Item*/
-		aboutMenu.setOnAction(e -> {
-			Alert alert = new Alert(Alert.AlertType.INFORMATION);
-			alert.setTitle("About");
-			alert.setHeaderText("About This Program");
-			alert.setContentText("FractalApp\nVersion 1.1\n©Ezra Stein\n");
-			alert.show();
-		});
 		
-		/*
-		 * Save Menu Item:
-		 * Opens up the image saver dialog.
-		 */
-		saveMenu.setOnAction(e->{
-				new ImageSaverDialog(this).showSaverDialog();
-			});
 		
+		RadioMenuItem mset = buildMandelbrotSetMenuItem();
+		RadioMenuItem jset = buildJuliaSetMenuItem();
+		ToggleGroup toggleGroup = new ToggleGroup();
+		mset.setToggleGroup(toggleGroup);
+		jset.setToggleGroup(toggleGroup);
 		
 		/*Build Edit Menu*/
 		Menu editMenu = new Menu("Edit");
+		editMenu.getItems().addAll(mset,jset,
+				new SeparatorMenuItem(),
+				buildResetMenuItem(),buildRerenderMenuItem(), buildUndoMenuItem(),buildInterruptMenuItem(),
+				new SeparatorMenuItem(),
+				buildEditMenuItem());
 		
-		ToggleGroup toggleGroup = new ToggleGroup();
-		RadioMenuItem mandelbrotSetMenu = new RadioMenuItem("Mandelbrot Set");
-		mandelbrotSetMenu.setToggleGroup(toggleGroup);
-		mandelbrotSetMenu.setSelected(true);
-		
-		RadioMenuItem juliaSetMenu = new RadioMenuItem("Julia Set");
-		juliaSetMenu.setToggleGroup(toggleGroup);
-		
-		MenuItem reset = new MenuItem("Reset");
-		MenuItem rerender = new MenuItem("Rerender");
-		MenuItem undo = new MenuItem("Undo");
-		MenuItem interrupt = new MenuItem("Interrupt");
-		MenuItem editMenuItem = new MenuItem("Edit...");
-		editMenu.getItems().addAll(mandelbrotSetMenu, juliaSetMenu,new SeparatorMenuItem(),
-				reset,rerender, undo,interrupt, new SeparatorMenuItem(), editMenuItem);
+		menuBar.getMenus().add(fileMenu);
 		menuBar.getMenus().add(editMenu);
 		
+		return menuBar;
+	}
+	
+	private RadioMenuItem buildMandelbrotSetMenuItem()
+	{
+		RadioMenuItem mandelbrotSetMenu = new RadioMenuItem("Mandelbrot Set");
+		mandelbrotSetMenu.setSelected(true);
 		/*
 		 * Mandelbrot Set Menu; Switches view to Mandelbrot set iff 
 		 * you are currently viewing the Julia set.
@@ -275,7 +259,12 @@ public class MainGUI extends Application
 				
 			}
 		});
-		
+		return mandelbrotSetMenu;
+	}
+	
+	private RadioMenuItem buildJuliaSetMenuItem()
+	{
+		RadioMenuItem juliaSetMenu = new RadioMenuItem("Julia Set");
 		/*
 		 * Julia Set Menu:
 		 * Switches view to Julia Set iff you are currently
@@ -303,7 +292,12 @@ public class MainGUI extends Application
 				});
 			}
 		});
-		
+		return juliaSetMenu;
+	}
+	
+	private MenuItem buildResetMenuItem()
+	{
+		MenuItem reset = new MenuItem("Reset");
 		/*
 		 * Reset Menu:
 		 * Resets the view to the original region.
@@ -321,7 +315,12 @@ public class MainGUI extends Application
 				return false;
 			});
 		});
-		
+		return reset;
+	}
+	
+	private MenuItem buildRerenderMenuItem()
+	{
+		MenuItem rerender = new MenuItem("Rerender");
 		/*
 		 * Rerender Menu:
 		 * Redraws the current region. 
@@ -333,7 +332,12 @@ public class MainGUI extends Application
 				return false;
 			});
 		});
-		
+		return rerender;
+	}
+	
+	private MenuItem buildUndoMenuItem()
+	{
+		MenuItem undo = new MenuItem("Undo");
 		/*
 		 * Undo menu:
 		 * Moves to the last previously logged region;
@@ -361,15 +365,12 @@ public class MainGUI extends Application
 			}
 		});
 		
-		/*
-		 * Edit Menu Item:
-		 * Opens the edit dialog 
-		 */
-		editMenuItem.setOnAction(e -> {
-				new OptionsEditor(this).showEditDialog();
-			});
-		
-		
+		return undo;
+	}
+	
+	private MenuItem buildInterruptMenuItem()
+	{
+		MenuItem interrupt = new MenuItem("Interrupt");
 		/*
 		 * Interrupt Menu Item:
 		 * Interrupts the render.
@@ -382,212 +383,148 @@ public class MainGUI extends Application
 				return false;
 			});
 		});
+		return interrupt;
 	}
 	
-	public void buildViewerCanvas()
+	private MenuItem buildEditMenuItem()
+	{
+		MenuItem edit = new MenuItem("Edit...");
+		/*
+		 * Edit Menu Item:
+		 * Opens the edit dialog 
+		 */
+		edit.setOnAction(e -> {
+				new OptionsEditor(this).showEditDialog();
+			});
+		return edit;
+	}
+
+	/**
+	 * Save Menu Item:
+	 * Opens up the image saver dialog.
+	 * @return Returns the created menuItem
+	 */
+	private MenuItem buildSaveMenuItem()
+	{
+		MenuItem saveMenu = new MenuItem("Save Image...");
+		
+		saveMenu.setOnAction(e->{
+				new ImageSaverDialog(this).showSaverDialog();
+			});
+		return saveMenu;
+	}
+	
+	/**
+	 * Builds an about menu item which will open an alert describing the program.
+	 * @return the build menu item.
+	 */
+	private MenuItem buildAboutMenuItem()
+	{
+		MenuItem aboutMenu = new MenuItem("About");
+		aboutMenu.setOnAction(e -> {
+			Alert alert = new Alert(Alert.AlertType.INFORMATION);
+			alert.setTitle("About");
+			alert.setHeaderText("About This Program");
+			alert.setContentText("FractalApp\nVersion 1.1\n©Ezra Stein\n");
+			alert.show();
+		});
+		return aboutMenu;
+	}
+	
+	private Canvas buildViewerCanvas()
 	{
 		/*Create main canvas explorer*/
 		viewerCanvas = new Canvas(width,height);
-		viewerCanvas.setId("main-canvas");
-		
 		mainGC = viewerCanvas.getGraphicsContext2D();
-		layout.setCenter(viewerCanvas);
 		
-		/*
-		 * Gives it focus so that whenever the mouse is on top of the canvas,
-		 * it will be able to receive mouse events.
-		 */
-		viewerCanvas.setOnMouseEntered(e ->{
-			viewerCanvas.requestFocus();
-		});
+		return viewerCanvas;
+	}
+	
+	private Canvas buildPreviewCanvas()
+	{
+		/*Preview Viewer*/
+		juliaViewer = new Canvas(previewWidth,previewHeight);
+		juliaGC = juliaViewer.getGraphicsContext2D();
+		return juliaViewer;
 		
-		/*
-		 * Mouse Pressed Event:
-		 * Records the initial position of the mouse to be used for rendering a zoom box under the mouseDragged listener.
-		 */
-		viewerCanvas.setOnMousePressed(e->{
-			if(e.getButton() == MouseButton.PRIMARY)
+	}
+	
+	private HBox buildProgressBar()
+	{
+		/*Create Progress Bar*/
+		progressBar = new ProgressBar();
+		progressIndicator = new ProgressIndicator();
+		progressBar.setPrefWidth(width+previewWidth-40);
+		HBox hbox = new HBox(10);
+		hbox.getChildren().addAll(progressBar, progressIndicator);
+		return hbox;
+	}
+	
+	private Canvas buildOrbitCanvas()
+	{
+		orbitCanvas = new Canvas();
+		orbitCanvas.setWidth(previewWidth);
+		orbitCanvas.setHeight(previewHeight);
+		orbitGC = orbitCanvas.getGraphicsContext2D();
+		orbitGC.setFill(Color.WHITE);
+		orbitGC.fillRect(0, 0, width, height);
+		return orbitCanvas;
+	}
+	
+	private void addResizeListeners()
+	{
+		Scene scene = window.getScene();
+		scene.widthProperty().addListener(new ChangeListener<Number>(){
+			@Override
+			public void changed(ObservableValue<? extends Number> observableValue, Number oldValue, Number newValue)
 			{
-				int x = (int)e.getX(), y = (int)e.getY();
-				initX = x;
-				initY = y;
-				Platform.runLater(() -> displayImage = viewerCanvas.snapshot(new SnapshotParameters(), null));
+				threadQueue.callLater(() -> {
+					
+					if(resizable)
+					{
+						interrupt();
+						width = (int) Math.min(scene.getHeight()-50, scene.getWidth()-width/3);
+						height = width;
+						previewWidth = width/3;
+						previewHeight = height/3;
+						updateAfterResize();
+					}
+					return false;
+				});
 			}
 		});
 		
-		/*
-		 * Mouse Dragged Event:
-		 * Renders a square box on the screen.
-		 */
-		viewerCanvas.setOnMouseDragged(e ->{
-			threadQueue.callLater(() -> {
-				interrupt();
-				if(e.getButton() == MouseButton.PRIMARY)
-				{				
-					int x = (int)e.getX(), y = (int)e.getY();
-					int max = Math.max(Math.abs(initX-x), Math.abs(initY-y));
-					if(x<initX && y>initY)
+		scene.heightProperty().addListener(new ChangeListener<Number>(){
+			@Override
+			public void changed(ObservableValue<? extends Number> observableValue, Number oldValue, Number newValue)
+			{
+				threadQueue.callLater(() -> {
+					if(resizable)
 					{
-						Platform.runLater(() ->{
-							mainGC.drawImage(displayImage, 0, 0);
-							mainGC.setStroke(Color.WHITE);
-							mainGC.strokeRect(initX-max, initY, max, max);
-						
-						});
+						interrupt();
+						height = (int) Math.min(scene.getHeight()-50, scene.getWidth()-width/3);
+						width = height;
+						previewWidth = width/3;
+						previewHeight = height/3;
+						updateAfterResize();
 					}
-					else if(x < initX && y< initY)
-					{
-						Platform.runLater(() ->{
-							mainGC.drawImage(displayImage, 0, 0);
-							mainGC.setStroke(Color.WHITE);
-							mainGC.strokeRect(initX-max, initY-max, max, max);
-						
-						});
-					}
-					else if(x>initX && y>initY)
-					{
-						Platform.runLater(() ->{
-							mainGC.drawImage(displayImage, 0, 0);
-							mainGC.setStroke(Color.WHITE);
-							mainGC.strokeRect(initX, initY, max, max);
-						
-						});
-					}
-					else if(x>initX && y<initY)
-					{
-						Platform.runLater(() ->{
-							mainGC.drawImage(displayImage, 0, 0);
-							mainGC.setStroke(Color.WHITE);
-							mainGC.strokeRect(initX, initY-max, max, max);
-						
-						});
-					}
-				}
-				return false;
-			});
+					return false;
+				});
+			}
 		});
+	}
+	
+	/**
+	 * KeyPressed Event:
+	 * Pans the image to the right.
+	 * ImageX and imageY refer to the position of the original image that has been panned.
+	 * It will then update the current region and calculate create a panned image object for the void that was left
+	 * when the image was panned.
+	 * The panned image object will render its sliver on its own time and then draw it relative to imageX and imageY.
+	 */
+	private void addKeyPanListener()
+	{
 		
-		zoomFactor = 0;
-		
-		/*
-		 * Scroll Event:
-		 * Controls zooming in and out.
-		 */
-		viewerCanvas.setOnScroll(e ->{
-			
-			threadQueue.callLater(() -> {
-				
-				interrupt();
-				
-				if(timeline.getStatus()==Status.STOPPED)
-				{
-					scrollX = (int) e.getX();
-					scrollY = (int) e.getY();
-				}
-				
-				zoomFactor = zoomFactor - e.getDeltaY();
-				double scaleFactor = Math.pow(Math.E, zoomFactor/1000);
-				double scaleFactor2 = Math.pow(Math.E, -zoomFactor/1000);
-				Region<BigDecimal> temp = currentRegion.scale(scaleFactor2, scaleFactor2,
-						Calculator.pixelToPointX(scrollX, currentRegion, viewerPixelRegion, precision),
-						Calculator.pixelToPointY(scrollY, currentRegion, viewerPixelRegion, precision));
-				Affine transform = new Affine();
-				transform.appendScale(scaleFactor, scaleFactor,scrollX,scrollY);
-				mainGC.setFill(Color.WHITE);
-				mainGC.fillRect(0, 0, width, height);
-				mainGC.setTransform(transform);
-				mainGC.drawImage(actualImage, 0, 0);
-				mainGC.setTransform(new Affine());
-				timeline.stop();
-				timeline = new Timeline(new KeyFrame(Duration.millis(500),ae->{
-					loggedRegions.add(currentRegion);
-					currentRegion = temp;
-					zoomFactor = 0;
-					drawSet();
-				}));
-				timeline.play();
-				
-				return false;
-			});
-		});
-		
-		
-		/*
-		 * Mouse Released Event:
-		 * Uses initX and initY as well as the current mouse position to
-		 * zoom into a new Region of the set.
-		 * If a right click occurred then it will update the previewViewer with a julia set image
-		 * whose seed is the position of the mouse.
-		 */
-		viewerCanvas.setOnMouseReleased(e ->{
-			
-			threadQueue.callLater(() -> {
-				interrupt();
-				int x = (int)e.getX(), y = (int)e.getY();
-				if(e.getButton() == MouseButton.PRIMARY)
-				{
-					int max = Math.max(Math.abs(initX-x), Math.abs(initY-y));
-					loggedRegions.add(currentRegion);
-					if(initX==x&&initY==y)
-					{
-						int length = (int) width/50;
-						currentRegion = Calculator.toBigDecimalRegion(new Region<Integer>(initX-length,initY-length,initX+length,initY+length),
-								currentRegion, viewerPixelRegion, precision);
-					}
-					else if(x<initX&&y<initY)
-					{
-						currentRegion = Calculator.toBigDecimalRegion(new Region<Integer>(initX-max,initY-max,initX,initY),
-								currentRegion, viewerPixelRegion, precision);
-					}
-					else if(x<initX&&y>initY)
-					{
-						currentRegion = Calculator.toBigDecimalRegion(new Region<Integer>(initX-max,initY,initX,initY+max),
-								currentRegion, viewerPixelRegion, precision);
-					}
-					else if(x>initX&&y<initY)
-					{
-						currentRegion = Calculator.toBigDecimalRegion(new Region<Integer>(initX,initY-max,initX+max,initY),
-								currentRegion, viewerPixelRegion, precision);
-					}
-					else if(x>initX&&y>initY)
-					{
-						currentRegion = Calculator.toBigDecimalRegion(new Region<Integer>(initX,initY,initX+max,initY+max),
-								currentRegion, viewerPixelRegion, precision);
-					}
-					drawSet();
-				
-				}
-				else
-				{
-					orbitThread.interrupt();
-					try {
-						orbitThread.join();
-					} catch (Exception e1) {
-						// TODO Auto-generated catch block
-						e1.printStackTrace();
-					}
-					
-					orbitThread = new Thread(new OrbitThread(Calculator.toComplexBigDecimal(x, y, currentRegion, viewerPixelRegion, precision)));
-					orbitThread.start();
-					if(!julia)
-					{
-						juliaSeed = Calculator.toComplexBigDecimal(x, y, currentRegion, viewerPixelRegion, precision);
-						updateJuliaSetViewer();
-					}
-				}
-				return false;
-			});
-			
-		});
-		
-		/*
-		 * KeyPressed Event:
-		 * Pans the image to the right.
-		 * ImageX and imageY refer to the position of the original image that has been panned.
-		 * It will then update the current region and calculate create a panned image object for the void that was left
-		 * when the image was panned.
-		 * The panned image object will render its sliver on its own time and then draw it relative to imageX and imageY.
-		 */
 		viewerCanvas.setOnKeyPressed(e ->{
 			
 			if(threadQueue.getQueue().size()>=2)
@@ -669,94 +606,229 @@ public class MainGUI extends Application
 				return false;
 			});
 			
+		});
+	}
+	
+	/**
+	 * Scroll Event:
+	 * Controls zooming in and out.
+	 */
+	private void addScrollListener()
+	{
+		zoomFactor = 0;
+		
+		
+		viewerCanvas.setOnScroll(e ->{
 			
-		});
-		
-		scene.widthProperty().addListener(new ChangeListener<Number>(){
-			@Override
-			public void changed(ObservableValue<? extends Number> observableValue, Number oldValue, Number newValue)
-			{
-				threadQueue.callLater(() -> {
-					
-					if(resizable)
-					{
-						interrupt();
-						width = (int) Math.min(scene.getHeight()-50, scene.getWidth()-width/3);
-						height = width;
-						previewWidth = width/3;
-						previewHeight = height/3;
-						updateAfterResize();
-					}
-					return false;
-				});
-			}
-		});
-		
-		scene.heightProperty().addListener(new ChangeListener<Number>(){
-			@Override
-			public void changed(ObservableValue<? extends Number> observableValue, Number oldValue, Number newValue)
-			{
-				threadQueue.callLater(() -> {
-					if(resizable)
-					{
-						interrupt();
-						height = (int) Math.min(scene.getHeight()-50, scene.getWidth()-width/3);
-						width = height;
-						previewWidth = width/3;
-						previewHeight = height/3;
-						updateAfterResize();
-					}
-					return false;
-				});
-			}
-		});
-		
-		/*layout.setOnKeyTyped(e->{
-			if(e.getCode() == KeyCode.ESCAPE)
-			{
-				Alert alert = new Alert(AlertType.CONFIRMATION);
-				alert.setContentText("Are you sure you want to quit?");
-				Optional<ButtonType> response = alert.showAndWait();
-				if(response.isPresent())
+			threadQueue.callLater(() -> {
+				
+				interrupt();
+				
+				if(timeline.getStatus()==Status.STOPPED)
 				{
-					interrupt();
-					close();
+					scrollX = (int) e.getX();
+					scrollY = (int) e.getY();
 				}
 				
+				zoomFactor = zoomFactor - e.getDeltaY();
+				double scaleFactor = Math.pow(Math.E, zoomFactor/1000);
+				double scaleFactor2 = Math.pow(Math.E, -zoomFactor/1000);
+				Region<BigDecimal> temp = currentRegion.scale(scaleFactor2, scaleFactor2,
+						Calculator.pixelToPointX(scrollX, currentRegion, viewerPixelRegion, precision),
+						Calculator.pixelToPointY(scrollY, currentRegion, viewerPixelRegion, precision));
+				
+				
+				
+				
+				
+				
+				Affine transform = new Affine();
+				transform.appendScale(scaleFactor, scaleFactor,scrollX,scrollY);
+				mainGC.setFill(Color.WHITE);
+				mainGC.fillRect(0, 0, width, height);
+				mainGC.setTransform(transform);
+				mainGC.drawImage(actualImage, 0, 0);
+				mainGC.setTransform(new Affine());
+				
+				
+				/*Calculator calc = new Calculator(mainCalculator.getColorFunction());
+				WritableImage im;
+				Region<Integer> pixelRegionSection = new Region<Integer>(0,0, width, 20);
+				
+				if(julia)
+				{
+					im = calc.generateJuliaSet(juliaSeed, pixelRegionSection, temp, viewerPixelRegion, iterations, arbitraryPrecision, precision);
+				}
+				else
+				{
+					im = calc.generateSet(pixelRegionSection, temp, viewerPixelRegion, iterations, arbitraryPrecision, precision);
+				}
+				mainGC.drawImage(im, 0, 0);
+				Platform.runLater(()->{
+					actualImage = viewerCanvas.snapshot(new SnapshotParameters(), null);
+				});*/
+				
+				
+				
+				
+				
+				timeline.stop();
+				timeline = new Timeline(new KeyFrame(Duration.millis(500),ae->{
+					loggedRegions.add(currentRegion);
+					currentRegion = temp;
+					zoomFactor = 0;
+					drawSet();
+				}));
+				timeline.play();
+				
+				return false;
+			});
+		});
+	}
+	
+	private void addMouseListeners()
+	{
+		/*
+		 * Gives it focus so that whenever the mouse is on top of the canvas,
+		 * it will be able to receive mouse events.
+		 */
+		viewerCanvas.setOnMouseEntered(e ->{
+			viewerCanvas.requestFocus();
+		});
+		
+		/*
+		 * Mouse Pressed Event:
+		 * Records the initial position of the mouse to be used for rendering a zoom box under the mouseDragged listener.
+		 */
+		viewerCanvas.setOnMousePressed(e->{
+			if(e.getButton() == MouseButton.PRIMARY)
+			{
+				int x = (int)e.getX(), y = (int)e.getY();
+				initX = x;
+				initY = y;
+				Platform.runLater(() -> displayImage = viewerCanvas.snapshot(new SnapshotParameters(), null));
 			}
+		});
+		
+		/*
+		 * Mouse Dragged Event:
+		 * Renders a square box on the screen.
+		 */
+		viewerCanvas.setOnMouseDragged(e ->{
+			threadQueue.callLater(() -> {
+				interrupt();
+				if(e.getButton() == MouseButton.PRIMARY)
+				{				
+					int x = (int)e.getX(), y = (int)e.getY();
+					int max = Math.max(Math.abs(initX-x), Math.abs(initY-y));
+					if(x<initX && y>initY)
+					{
+						Platform.runLater(() ->{
+							mainGC.drawImage(displayImage, 0, 0);
+							mainGC.setStroke(Color.WHITE);
+							mainGC.strokeRect(initX-max, initY, max, max);
+						
+						});
+					}
+					else if(x < initX && y< initY)
+					{
+						Platform.runLater(() ->{
+							mainGC.drawImage(displayImage, 0, 0);
+							mainGC.setStroke(Color.WHITE);
+							mainGC.strokeRect(initX-max, initY-max, max, max);
+						
+						});
+					}
+					else if(x>initX && y>initY)
+					{
+						Platform.runLater(() ->{
+							mainGC.drawImage(displayImage, 0, 0);
+							mainGC.setStroke(Color.WHITE);
+							mainGC.strokeRect(initX, initY, max, max);
+						
+						});
+					}
+					else if(x>initX && y<initY)
+					{
+						Platform.runLater(() ->{
+							mainGC.drawImage(displayImage, 0, 0);
+							mainGC.setStroke(Color.WHITE);
+							mainGC.strokeRect(initX, initY-max, max, max);
+						
+						});
+					}
+				}
+				return false;
+			});
+		});
+		
+		/*
+		 * Mouse Released Event:
+		 * Uses initX and initY as well as the current mouse position to
+		 * zoom into a new Region of the set.
+		 * If a right click occurred then it will update the previewViewer with a julia set image
+		 * whose seed is the position of the mouse.
+		 */
+		viewerCanvas.setOnMouseReleased(e ->{
 			
-		});*/
-	}
-	
-	public void buildPreviewCanvas()
-	{
-		/*Preview Viewer*/
-		vbox = new VBox(10);
-		juliaViewer = new Canvas(previewWidth,previewHeight);
-		juliaGC = juliaViewer.getGraphicsContext2D();
-		vbox.getChildren().add(juliaViewer);
-	}
-	
-	public void buildProgressBar()
-	{
-		/*Create Progress Bar*/
-		progressBar = new ProgressBar();
-		progressIndicator = new ProgressIndicator();
-		progressBar.setPrefWidth(width+previewWidth-40);
-		HBox hbox = new HBox(10);
-		hbox.getChildren().addAll(progressBar, progressIndicator);
-		layout.setTop(hbox);
-	}
-	
-	public void buildOrbitCanvas()
-	{
-		orbitCanvas = new Canvas();
-		orbitCanvas.setWidth(previewWidth);
-		orbitCanvas.setHeight(previewHeight);
-		orbitGC = orbitCanvas.getGraphicsContext2D();
-		vbox.getChildren().add(orbitCanvas);
-		orbitGC.setFill(Color.WHITE);
-		orbitGC.fillRect(0, 0, width, height);
+			threadQueue.callLater(() -> {
+				interrupt();
+				int x = (int)e.getX(), y = (int)e.getY();
+				if(e.getButton() == MouseButton.PRIMARY)
+				{
+					int max = Math.max(Math.abs(initX-x), Math.abs(initY-y));
+					loggedRegions.add(currentRegion);
+					if(initX==x&&initY==y)
+					{
+						int length = (int) width/50;
+						currentRegion = Calculator.toBigDecimalRegion(new Region<Integer>(initX-length,initY-length,initX+length,initY+length),
+								currentRegion, viewerPixelRegion, precision);
+					}
+					else if(x<initX&&y<initY)
+					{
+						currentRegion = Calculator.toBigDecimalRegion(new Region<Integer>(initX-max,initY-max,initX,initY),
+								currentRegion, viewerPixelRegion, precision);
+					}
+					else if(x<initX&&y>initY)
+					{
+						currentRegion = Calculator.toBigDecimalRegion(new Region<Integer>(initX-max,initY,initX,initY+max),
+								currentRegion, viewerPixelRegion, precision);
+					}
+					else if(x>initX&&y<initY)
+					{
+						currentRegion = Calculator.toBigDecimalRegion(new Region<Integer>(initX,initY-max,initX+max,initY),
+								currentRegion, viewerPixelRegion, precision);
+					}
+					else if(x>initX&&y>initY)
+					{
+						currentRegion = Calculator.toBigDecimalRegion(new Region<Integer>(initX,initY,initX+max,initY+max),
+								currentRegion, viewerPixelRegion, precision);
+					}
+					drawSet();
+				
+				}
+				else
+				{
+					orbitThread.interrupt();
+					try {
+						orbitThread.join();
+					} catch (Exception e1) {
+						// TODO Auto-generated catch block
+						e1.printStackTrace();
+					}
+					
+					orbitThread = new Thread(new OrbitThread(Calculator.toComplexBigDecimal(x, y, currentRegion, viewerPixelRegion, precision)));
+					orbitThread.start();
+					if(!julia)
+					{
+						juliaSeed = Calculator.toComplexBigDecimal(x, y, currentRegion, viewerPixelRegion, precision);
+						updateJuliaSetViewer();
+					}
+				}
+				return false;
+			});
+			
+		});
 	}
 	
 	public void updateAfterResize()
@@ -837,9 +909,15 @@ public class MainGUI extends Application
 		
 	}
 	
+	/**
+	 * Calculates the iterations that should be used based on the magnification.
+	 * Only used when auto-iterations is turned on.
+	 * @param mag		The magnification of the viewer
+	 * @return			The number of iterations to use.
+	 */
 	public int calcAutoIterations(BigDecimal mag)
 	{
-		int returnValue = (int) (300+2000*Math.log10(magnification.longValue()));
+		int returnValue = (int) (300+2000*Math.log10(mag.longValue()));
 		if(returnValue<=100)
 		{
 			returnValue = 100;

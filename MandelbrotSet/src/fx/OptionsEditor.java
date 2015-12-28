@@ -1,37 +1,25 @@
 package fx;
 
 import java.io.*;
-import java.math.BigDecimal;
-import java.net.URISyntaxException;
-import java.net.URL;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Optional;
+import java.math.*;
+import java.util.*;
 import colorFunction.*;
-import colorFunction.ColorFunction.ColorInfo;
-import javafx.application.Platform;
-import javafx.beans.value.ChangeListener;
-import javafx.beans.value.ObservableValue;
-import javafx.collections.FXCollections;
-import javafx.collections.ListChangeListener;
+import javafx.application.*;
+import javafx.beans.value.*;
+import javafx.collections.*;
 import javafx.geometry.*;
 import javafx.scene.*;
-import javafx.scene.canvas.Canvas;
-import javafx.scene.canvas.GraphicsContext;
+import javafx.scene.canvas.*;
 import javafx.scene.control.*;
 import javafx.scene.control.Alert.AlertType;
-import javafx.scene.control.cell.TextFieldListCell;
-import javafx.scene.input.KeyCode;
+import javafx.scene.control.cell.*;
+import javafx.scene.input.*;
 import javafx.scene.layout.*;
-import javafx.scene.paint.Color;
-import javafx.scene.paint.CycleMethod;
-import javafx.scene.paint.LinearGradient;
-import javafx.scene.paint.Stop;
-import javafx.scene.shape.Rectangle;
-import javafx.scene.text.Font;
+import javafx.scene.paint.*;
+import javafx.scene.shape.*;
+import javafx.scene.text.*;
 import javafx.stage.*;
-import javafx.util.Callback;
-import javafx.util.StringConverter;
+import javafx.util.*;
 
 public class OptionsEditor
 {
@@ -70,12 +58,10 @@ public class OptionsEditor
 		
 		try
 		{
-			
-			
 			colorFile = new File(Locator.locateFile("SavedColors.txt"));
 			colorIn = new ObjectInputStream(new FileInputStream(colorFile));
 			ArrayList<CustomColorFunction> savedColors = (ArrayList<CustomColorFunction>) colorIn.readObject();
-			ColorFunction.ColorInfo.COLOR_FUNCTIONS = savedColors;
+			CustomColorFunction.COLOR_FUNCTIONS = savedColors;
 			
 			file = new File(Locator.locateFile("SavedRegions.txt"));
 			in = new ObjectInputStream(new FileInputStream(file));
@@ -185,7 +171,7 @@ public class OptionsEditor
 		});
 		
 		
-		colorChoiceBox = new ChoiceBox<CustomColorFunction>(FXCollections.observableArrayList(ColorFunction.ColorInfo.COLOR_FUNCTIONS));
+		colorChoiceBox = new ChoiceBox<CustomColorFunction>(FXCollections.observableArrayList(CustomColorFunction.COLOR_FUNCTIONS));
 		colorChoiceBox.setValue(gui.mainCalculator.getColorFunction());
 		
 		/*Buttons*/
@@ -417,11 +403,11 @@ public class OptionsEditor
 			CustomColorFunction color = new CustomColorFunction(new ArrayList<Stop>(stopList.getItems()),val, name);
 			colorChoiceBox.getItems().add(color);
 			colorChoiceBox.setValue(color);
-			ColorFunction.ColorInfo.COLOR_FUNCTIONS.add(color);
+			CustomColorFunction.COLOR_FUNCTIONS.add(color);
 			try
 			{
 				colorOut = new ObjectOutputStream(new FileOutputStream(colorFile));
-				colorOut.writeObject(ColorFunction.ColorInfo.COLOR_FUNCTIONS);
+				colorOut.writeObject(CustomColorFunction.COLOR_FUNCTIONS);
 			}
 			catch(IOException ioe)
 			{
@@ -449,6 +435,7 @@ public class OptionsEditor
 			}
 			
 		});*/
+		Slider colorPositionSlider = new Slider(0,1,0.5);
 		removeStopButton.setOnAction(ae->{
 			Stop stop = stopList.getSelectionModel().getSelectedItem();
 			gradientStops.remove(stop);
@@ -457,7 +444,7 @@ public class OptionsEditor
 			
 		});
 		addStopButton.setOnAction(ae->{
-			Stop stopToAdd = gradientStops.get(gradientStops.size()-1);
+			Stop stopToAdd = new Stop(colorPositionSlider.getValue(), colorPicker.getValue());
 			for(Stop stop : stopList.getItems())
 			{
 				if(stop.getOffset() == stopToAdd.getOffset())
@@ -472,7 +459,7 @@ public class OptionsEditor
 			gradientStops.add(new Stop(0,Color.TRANSPARENT));
 		});
 		
-		Slider colorPositionSlider = new Slider(0,1,0.5);
+		
 		colorPositionSlider.valueProperty().addListener(new ChangeListener<Number>(){
 
 			@Override
@@ -792,7 +779,7 @@ public class OptionsEditor
 		else
 		{
 			colorChoiceBox.getItems().add(sr.colorFunction);
-			ColorFunction.ColorInfo.COLOR_FUNCTIONS.add(sr.colorFunction);
+			CustomColorFunction.COLOR_FUNCTIONS.add(sr.colorFunction);
 			colorChoiceBox.setValue(sr.colorFunction);
 		}
 		

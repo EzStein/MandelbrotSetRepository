@@ -2,7 +2,7 @@ package fx;
 
 import java.io.*;
 
-import colorFunction.ColorFunction;
+import colorFunction.*;
 
 /**
  * A test class
@@ -21,7 +21,7 @@ public class Test
 		try {
 			File file = new File(Locator.locateFile("SavedColors.txt"));
 			 out = new ObjectOutputStream(new FileOutputStream(file));
-			out.writeObject(ColorFunction.ColorInfo.COLOR_FUNCTIONS);
+			out.writeObject(CustomColorFunction.COLOR_FUNCTIONS);
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();

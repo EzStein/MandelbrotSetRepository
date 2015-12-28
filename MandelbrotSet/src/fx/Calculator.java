@@ -22,7 +22,7 @@ public class Calculator
 	 */
 	public Calculator()
 	{
-		colorFunction = ColorFunction.ColorInfo.COLOR_FUNCTIONS.get(0);
+		colorFunction = CustomColorFunction.COLOR_FUNCTIONS.get(0);
 		pixelsCalculated = 0;
 		interrupted = false;
 	}
