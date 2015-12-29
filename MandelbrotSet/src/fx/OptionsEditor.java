@@ -44,11 +44,18 @@ public class OptionsEditor
 	private File file, colorFile;
 	private ArrayList<SavedRegion> savedRegions;
 	private Region<BigDecimal> currentRegion;
-	private boolean currentJulia;
+	private boolean currentJulia, showNewColor;
 	private ComplexBigDecimal currentSeed;
+	private int tabNumber;
 	
-	public OptionsEditor(MainGUI gui)
+	/**
+	 * 
+	 * @param gui
+	 * @param tabNumber		The index of the tab that should be initially displayed.
+	 */
+	public OptionsEditor(MainGUI gui, int tabNumber)
 	{
+		this.tabNumber = tabNumber;
 		ObjectInputStream in = null;
 		ObjectInputStream colorIn = null;
 		
@@ -113,6 +120,7 @@ public class OptionsEditor
 		tabPane.getTabs().add(buildOptionsTab());
 		tabPane.getTabs().add(buildColorTab());
 		layout.setCenter(tabPane);
+		tabPane.getSelectionModel().select(tabNumber);
 		
 		
 		HBox buttonBox = new HBox(10);
@@ -331,22 +339,24 @@ public class OptionsEditor
 		colorGridPane.setHgap(10);
 		colorGridPane.setPadding(new Insets(30,30,30,30));
 		
-		colorGridPane.add(buildGradientRectangle(), 0, 1, 2, 2);
+		
 		colorGridPane.add(buildColorChoiceBox(), 0, 0);
+		colorGridPane.add(buildGradientCheckBox(), 0, 1);
+		colorGridPane.add(buildGradientRectangle(), 0, 2, 2, 2);
 		
 		colorGridPane.add(buildColorPositionSlider(), 1, 1);
 		colorGridPane.add(buildColorPositionField(), 2, 1);
 		colorGridPane.add(buildColorPicker(), 1, 0);
+		
 		colorGridPane.add(buildStopList(), 2, 2,2,1);
-		colorGridPane.add(buildRemoveStopButton(), 3, 3);
 		colorGridPane.add(buildAddStopButton(), 2, 3);
 		colorGridPane.add(buildSaveColorButton(), 0, 3);
 		colorGridPane.add(new Label("Range:"), 2, 0);
 		rangeField = new TextField();
 		colorGridPane.add(rangeField, 3, 0);
+		colorGridPane.add(buildRemoveStopButton(), 3, 3);
 		
 		colorTab.setContent(colorGridPane);
-		
 		
 		initializeValues();
 		return colorTab;
@@ -393,7 +403,10 @@ public class OptionsEditor
 	{
 		
 		ArrayList<Stop> returnValue = new ArrayList<Stop>(Arrays.asList(stopList.getItems().toArray(new Stop[1])));
-		returnValue.add(new Stop(colorPositionSlider.getValue(),colorPicker.getValue()));
+		if(showNewColor)
+		{
+			returnValue.add(new Stop(colorPositionSlider.getValue(),colorPicker.getValue()));
+		}
 		return returnValue;
 	}
 	
@@ -548,7 +561,7 @@ public class OptionsEditor
 				rangeField.setStyle("-fx-background-color:red");
 				return;
 			}
-			if(val <= 10)
+			if(val <= 1)
 			{
 				rangeField.setStyle("-fx-background-color:red");
 				return;
@@ -640,6 +653,18 @@ public class OptionsEditor
 		return addStopButton;
 	}
 	
+	private CheckBox buildGradientCheckBox()
+	{
+		CheckBox checkBox = new CheckBox("Show New Color");
+		checkBox.setSelected(false);
+		showNewColor = false;
+		checkBox.setOnAction(e ->{
+			showNewColor = checkBox.isSelected();
+			gradientRectangle.setFill(new LinearGradient(0,0.5,1,0.5,true, CycleMethod.NO_CYCLE, createGradientStops()));
+		});
+		return checkBox;
+	}
+
 	private Button buildApplyAndRerenderButton()
 	{
 		Button applyAndRerenderButton = new Button("Apply And Rerender");
@@ -767,6 +792,7 @@ public class OptionsEditor
 		});
 		return cancelButton;
 	}
+	
 	
 	public void resetValues()
 	{

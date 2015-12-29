@@ -19,6 +19,7 @@ import java.text.*;
 import java.util.*;
 import java.util.concurrent.*;
 
+import colorFunction.CustomColorFunction;
 import fx.Region;
 
 /**
@@ -30,8 +31,10 @@ import fx.Region;
 public class MainGUI extends Application
 {
 	Thread updater;
+	BorderPane layout;
 	TextArea textArea;
 	Stage window;
+	FlowPane flowPane;
 	Canvas viewerCanvas, juliaViewer, orbitCanvas;
 	GraphicsContext mainGC, juliaGC, orbitGC;
 	ProgressBar progressBar;
@@ -91,21 +94,34 @@ public class MainGUI extends Application
 		window.setScene(scene);
 		
 		/*Fills the root entirely with a border pane layout*/
-		BorderPane layout = new BorderPane();
-		layout.setId("layout");
+		layout = new BorderPane();
+		layout.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
 		root.getChildren().add(layout);
+		
+		flowPane = new FlowPane();
+		flowPane.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
+		
 		VBox vbox = new VBox(10);
+		vbox.getChildren().addAll(buildMenus(),buildProgressBar());
+		layout.setTop(vbox);
+		layout.setCenter(new Pane(buildViewerCanvas()));
 		
-		layout.setBottom(buildMenus());
-		layout.setTop(buildProgressBar());
-		layout.setCenter(buildViewerCanvas());
-		BorderPane.setAlignment(viewerCanvas, Pos.TOP_LEFT);
 		
-		vbox.getChildren().add(buildPreviewCanvas());
-		vbox.getChildren().add(buildTextArea());
-		vbox.getChildren().add(buildOrbitCanvas());
-		layout.setRight(vbox);
-		BorderPane.setAlignment(vbox, Pos.TOP_LEFT);
+		flowPane.getChildren().add(new Pane(buildPreviewCanvas()));
+		flowPane.getChildren().add(buildTextArea());
+		flowPane.getChildren().add(new Pane(buildOrbitCanvas()));
+		layout.setRight(flowPane);
+		BorderPane.setAlignment(flowPane, Pos.TOP_LEFT);
+		
+		layout.getCenter().boundsInParentProperty().addListener(new ChangeListener<Bounds>(){
+
+
+			@Override
+			public void changed(ObservableValue<? extends Bounds> observable, Bounds oldValue, Bounds newValue) {
+				System.out.println(newValue.getHeight());
+			}
+			
+		});
 		
 		/*Add Listeners*/
 		addKeyPanListener();
@@ -114,11 +130,17 @@ public class MainGUI extends Application
 		addResizeListeners();
 		addWindowListener();
 		
-		window.show();
 		
+		window.show();
+		initializeMoreValues();
 		/*Initializes the program by drawing the mandelbrot set*/
 		updateJuliaSetViewer();
 		drawSet();
+	}
+	
+	private void initializeMoreValues()
+	{
+		progressBar.setPrefWidth(window.getScene().getWidth()-50);
 	}
 	
 	private void addWindowListener()
@@ -190,6 +212,8 @@ public class MainGUI extends Application
 	{
 		/*Create Text Area*/
 		textArea = new TextArea("");
+		textArea.setPrefWidth(previewWidth);
+		textArea.setPrefHeight(previewHeight);
 		updateTextArea();
 		textArea.setEditable(false);
 		textArea.setFocusTraversable(false);
@@ -198,23 +222,25 @@ public class MainGUI extends Application
 	
 	private MenuBar buildMenus()
 	{
+		
+		
 		/*Create MenuBar*/
 		MenuBar menuBar = new MenuBar();
-		//menuBar.useSystemMenuBarProperty().set(true);
+		menuBar.useSystemMenuBarProperty().set(true);
 		
 		/*Builds File Menu*/
 		Menu fileMenu = new Menu("File");
 		fileMenu.getItems().addAll(buildSaveMenuItem(),buildAboutMenuItem());
 		
 		
-		
+		/*Build Edit Menu*/
 		RadioMenuItem mset = buildMandelbrotSetMenuItem();
 		RadioMenuItem jset = buildJuliaSetMenuItem();
 		ToggleGroup toggleGroup = new ToggleGroup();
 		mset.setToggleGroup(toggleGroup);
 		jset.setToggleGroup(toggleGroup);
 		
-		/*Build Edit Menu*/
+		
 		Menu editMenu = new Menu("Edit");
 		editMenu.getItems().addAll(mset,jset,
 				new SeparatorMenuItem(),
@@ -222,10 +248,49 @@ public class MainGUI extends Application
 				new SeparatorMenuItem(),
 				buildEditMenuItem());
 		
+		
+		/*Color Menu*/
+		Menu colorMenu = new Menu("Colors");
+		colorMenu.getItems().add(buildDefaultColorsMenuItem());
+		colorMenu.getItems().add(buildColorEditMenuItem());
+		
 		menuBar.getMenus().add(fileMenu);
 		menuBar.getMenus().add(editMenu);
+		menuBar.getMenus().add(colorMenu);
 		
 		return menuBar;
+	}
+	
+	private Menu buildDefaultColorsMenuItem()
+	{
+		Menu defaultColorsMenu = new Menu("Default Colors");
+		
+		for(CustomColorFunction cf: CustomColorFunction.COLOR_FUNCTIONS)
+		{
+			MenuItem colorMenuItem = new MenuItem(cf.getName());
+			colorMenuItem.setOnAction(e ->{
+				threadQueue.callLater(()->{
+					interrupt();
+					previewCalculator.setColorFunction(cf);
+					mainCalculator.setColorFunction(cf);
+					drawSet();
+					updateJuliaSetViewer();
+					return false;
+				});
+				
+			});
+			defaultColorsMenu.getItems().add(colorMenuItem);
+		}
+		return defaultColorsMenu;
+	}
+	
+	private MenuItem buildColorEditMenuItem()
+	{
+		MenuItem menuItem = new MenuItem("Make Your Own...");
+		menuItem.setOnAction(e ->{
+			new OptionsEditor(this,1).showEditDialog();
+		});
+		return menuItem;
 	}
 	
 	private RadioMenuItem buildMandelbrotSetMenuItem()
@@ -394,7 +459,7 @@ public class MainGUI extends Application
 		 * Opens the edit dialog 
 		 */
 		edit.setOnAction(e -> {
-				new OptionsEditor(this).showEditDialog();
+				new OptionsEditor(this,0).showEditDialog();
 			});
 		return edit;
 	}
@@ -436,7 +501,7 @@ public class MainGUI extends Application
 		/*Create main canvas explorer*/
 		viewerCanvas = new Canvas(width,height);
 		mainGC = viewerCanvas.getGraphicsContext2D();
-		
+		BorderPane.setAlignment(viewerCanvas, Pos.TOP_LEFT);
 		return viewerCanvas;
 	}
 	
@@ -454,7 +519,7 @@ public class MainGUI extends Application
 		/*Create Progress Bar*/
 		progressBar = new ProgressBar();
 		progressIndicator = new ProgressIndicator();
-		progressBar.setPrefWidth(width+previewWidth-40);
+		
 		HBox hbox = new HBox(10);
 		hbox.getChildren().addAll(progressBar, progressIndicator);
 		return hbox;
@@ -483,10 +548,8 @@ public class MainGUI extends Application
 					if(resizable)
 					{
 						interrupt();
-						width = (int) Math.min(scene.getHeight()-50, scene.getWidth()-width/3);
+						width = (int) Math.min(scene.getHeight()-70, scene.getWidth()-width/3);
 						height = width;
-						previewWidth = width/3;
-						previewHeight = height/3;
 						updateAfterResize();
 					}
 					return false;
@@ -502,10 +565,8 @@ public class MainGUI extends Application
 					if(resizable)
 					{
 						interrupt();
-						height = (int) Math.min(scene.getHeight()-50, scene.getWidth()-width/3);
+						height = (int) Math.min(scene.getHeight()-70, scene.getWidth()-width/3);
 						width = height;
-						previewWidth = width/3;
-						previewHeight = height/3;
 						updateAfterResize();
 					}
 					return false;
@@ -526,12 +587,14 @@ public class MainGUI extends Application
 	{
 		
 		viewerCanvas.setOnKeyPressed(e ->{
-			
+			if(isScrolling())
+			{
+				return;
+			}
 			if(threadQueue.getQueue().size()>=2)
 			{
 				return;
 			}
-			
 			
 			threadQueue.callLater(() -> {
 				interrupt();
@@ -574,6 +637,12 @@ public class MainGUI extends Application
 					pannedImages.add(pi);
 				}
 				
+				
+				
+				
+				Platform.runLater(() ->{
+					mainGC.drawImage(currentImage, imageX, imageY);
+				});
 				try {
 					FXUtilities.runAndWait(() ->{
 						for(PannedImage p: pannedImages)
@@ -594,13 +663,12 @@ public class MainGUI extends Application
 					});
 				}*/
 				
+				Platform.runLater(() ->{
+					displayImage = viewerCanvas.snapshot(new SnapshotParameters(), null);
+					actualImage = displayImage;
+				});
 				
-				
-					Platform.runLater(() ->{
-						mainGC.drawImage(currentImage, imageX, imageY);
-						displayImage = viewerCanvas.snapshot(new SnapshotParameters(), null);
-						actualImage = displayImage;
-					});
+					
 				
 					updateTextArea();
 				return false;
@@ -623,6 +691,8 @@ public class MainGUI extends Application
 			threadQueue.callLater(() -> {
 				
 				interrupt();
+				
+				
 				
 				if(timeline.getStatus()==Status.STOPPED)
 				{
@@ -833,15 +903,34 @@ public class MainGUI extends Application
 	
 	private void updateAfterResize()
 	{
+		/*previewWidth = width/3;
+		previewHeight = height/3;*/
+		orbitThread.interrupt();
+		try {
+			orbitThread.join();
+		} catch (Exception e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		}
 		Platform.runLater(()->{
-			progressBar.setPrefWidth(width+previewWidth-40);
-			juliaViewer.setHeight(previewHeight);
-			juliaViewer.setWidth(previewWidth);
+			progressBar.setPrefWidth(window.getScene().getWidth()-50);
 			viewerCanvas.setHeight(height);
 			viewerCanvas.setWidth(width);
-			textArea.setPrefWidth(previewWidth);
-			mainGC.drawImage(displayImage, 0, 0,width,height);
+			
+			/*juliaViewer.setHeight(previewHeight);
+			juliaViewer.setWidth(previewWidth);
 			juliaGC.drawImage(previewViewerImage, 0, 0, previewWidth,previewHeight);
+			orbitCanvas.setWidth(previewWidth);
+			orbitCanvas.setHeight(previewHeight);
+			textArea.setPrefWidth(previewWidth);
+			textArea.setPrefHeight(previewHeight);*/
+			
+			flowPane.setPrefWidth(window.getScene().getWidth()-width);
+			
+			orbitGC.setFill(Color.WHITE);
+			orbitGC.fillRect(0, 0, previewWidth, previewHeight);
+			mainGC.drawImage(displayImage, 0, 0,width,height);
+			
 			actualImage = viewerCanvas.snapshot(new SnapshotParameters(), null);
 			currentImage = viewerCanvas.snapshot(new SnapshotParameters(), null);
 		});
@@ -1022,6 +1111,12 @@ public class MainGUI extends Application
 		}
 	}
 	
+	private boolean isScrolling()
+	{
+		return (timeline.getStatus() == Status.RUNNING);
+	}
+	
+	
 	public class OrbitThread implements Runnable
 	{
 		private ComplexBigDecimal seed;
@@ -1085,7 +1180,7 @@ public class MainGUI extends Application
 				}
 				
 				try {
-					Thread.sleep(100);
+					Thread.sleep(25);
 				} catch (InterruptedException e)
 				{
 					break;
@@ -1319,6 +1414,10 @@ public class MainGUI extends Application
 			terminate = false;
 		}
 		
+		/**
+		 * Schedules this callable to be called on a separate thread.
+		 * @param callable		Should return false unless it wants the thread queue to terminate.
+		 */
 		public void callLater(CallableClass callable)
 		{
 			/*Consider Changing to Put*/

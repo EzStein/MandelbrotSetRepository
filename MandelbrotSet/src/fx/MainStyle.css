@@ -2,3 +2,10 @@
 BorderPane {
 	-fx-background-image:url("/resource/background.jpg");
 }
+
+.text-area {
+	-fx-border-style:solid;
+	-fx-border-color:black;
+}
+Pane {
+}

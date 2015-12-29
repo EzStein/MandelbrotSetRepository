@@ -243,7 +243,7 @@ public class CustomColorFunction implements Serializable {
 		}
 		else
 		{
-			c = colorMap.get(((int) (Math.sqrt(100*iterations)*Math.log(iterations))%range));
+			c = colorMap.get(((int) (Math.pow(100*iterations,0.5)*Math.log(iterations))%range));
 		}
 		
 		if(c== null)
