@@ -101,4 +101,18 @@ public class Locator
 		
 		return file.getAbsolutePath();
 	}
+	
+	
+	public static boolean exists(String fileName)
+	{
+		if(OS_NAME.indexOf("mac")>=0)
+		{
+			File file = new File(System.getProperty("user.home")+"/Library/Application Support/" + appTitle + "/" + fileName);
+			return file.exists();
+		}
+		else
+		{
+			return false;
+		}
+	}
 }

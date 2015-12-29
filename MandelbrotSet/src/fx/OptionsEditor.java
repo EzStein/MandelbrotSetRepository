@@ -47,26 +47,44 @@ public class OptionsEditor
 	private boolean currentJulia, showNewColor;
 	private ComplexBigDecimal currentSeed;
 	private int tabNumber;
+	private ArrayList<CustomColorFunction> savedColors;
 	
 	/**
 	 * 
 	 * @param gui
 	 * @param tabNumber		The index of the tab that should be initially displayed.
 	 */
-	public OptionsEditor(MainGUI gui, int tabNumber)
+	public OptionsEditor(MainGUI gui)
+	{
+		
+		
+		this.gui = gui;
+		currentRegion = gui.currentRegion;
+		currentJulia = gui.julia;
+		currentSeed = gui.juliaSeed;
+	}
+	
+	public void showEditDialog(int tabNumber)
 	{
 		this.tabNumber = tabNumber;
+		readFiles();
+		buildEditDialog();
+		resetValues();
+		window.show();
+	}
+	
+	private void readFiles()
+	{
 		ObjectInputStream in = null;
 		ObjectInputStream colorIn = null;
 		
 		savedRegions = new ArrayList<SavedRegion>();
-		
+		savedColors = new ArrayList<CustomColorFunction>();
 		try
 		{
 			colorFile = new File(Locator.locateFile("SavedColors.txt"));
 			colorIn = new ObjectInputStream(new FileInputStream(colorFile));
-			ArrayList<CustomColorFunction> savedColors = (ArrayList<CustomColorFunction>) colorIn.readObject();
-			CustomColorFunction.COLOR_FUNCTIONS = savedColors;
+			savedColors = (ArrayList<CustomColorFunction>) colorIn.readObject();
 			
 			file = new File(Locator.locateFile("SavedRegions.txt"));
 			in = new ObjectInputStream(new FileInputStream(file));
@@ -102,14 +120,9 @@ public class OptionsEditor
 				e.printStackTrace();
 			}
 		}
-		
-		this.gui = gui;
-		currentRegion = gui.currentRegion;
-		currentJulia = gui.julia;
-		currentSeed = gui.juliaSeed;
 	}
 	
-	public void showEditDialog()
+	private void buildEditDialog()
 	{
 		window = new Stage();
 		window.setTitle("Edit...");
@@ -122,7 +135,6 @@ public class OptionsEditor
 		layout.setCenter(tabPane);
 		tabPane.getSelectionModel().select(tabNumber);
 		
-		
 		HBox buttonBox = new HBox(10);
 		buttonBox.setPadding(new Insets(10,10,10,10));
 		buttonBox.getChildren().addAll(buildSaveButton(), buildApplyAndRerenderButton(), buildApplyButton(), buildCancelButton());
@@ -131,7 +143,6 @@ public class OptionsEditor
 		Scene scene = new Scene(layout);
 		scene.getStylesheets().add(this.getClass().getResource("OptionsStyleSheet.css").toExternalForm());
 		window.setScene(scene);
-		window.show();
 	}
 	
 	private Tab buildOptionsTab()
@@ -343,14 +354,15 @@ public class OptionsEditor
 		colorGridPane.add(buildColorChoiceBox(), 0, 0);
 		colorGridPane.add(buildGradientCheckBox(), 0, 1);
 		colorGridPane.add(buildGradientRectangle(), 0, 2, 2, 2);
+		colorGridPane.add(buildSaveColorButton(), 0, 3);
 		
 		colorGridPane.add(buildColorPositionSlider(), 1, 1);
 		colorGridPane.add(buildColorPositionField(), 2, 1);
 		colorGridPane.add(buildColorPicker(), 1, 0);
+		colorGridPane.add(buildRemoveColorButton(), 1, 3);
 		
 		colorGridPane.add(buildStopList(), 2, 2,2,1);
 		colorGridPane.add(buildAddStopButton(), 2, 3);
-		colorGridPane.add(buildSaveColorButton(), 0, 3);
 		colorGridPane.add(new Label("Range:"), 2, 0);
 		rangeField = new TextField();
 		colorGridPane.add(rangeField, 3, 0);
@@ -362,16 +374,64 @@ public class OptionsEditor
 		return colorTab;
 	}
 	
+	private Button buildRemoveColorButton()
+	{
+		Button removeColorButton = new Button("Delete Color");
+		removeColorButton.setOnAction(e->{
+			
+			CustomColorFunction colorToRemove = colorChoiceBox.getValue();
+			int index = colorChoiceBox.getItems().indexOf(colorToRemove);
+			if(index >0)
+			{
+				colorChoiceBox.setValue(colorChoiceBox.getItems().get(index-1));
+			}
+			else if(colorChoiceBox.getItems().size() > 1)
+			{
+				colorChoiceBox.setValue(colorChoiceBox.getItems().get(index+1));
+			}
+			else
+			{
+				Alert alert = new Alert(AlertType.ERROR);
+				alert.setContentText("You must keep at least one color");
+				alert.show();
+				return;
+			}
+			
+			savedColors.remove(colorToRemove);
+			colorChoiceBox.getItems().remove(colorToRemove);
+			
+			try
+			{
+				colorOut = new ObjectOutputStream(new FileOutputStream(colorFile));
+				colorOut.writeObject(savedColors);
+			}
+			catch(IOException ioe)
+			{
+				ioe.printStackTrace();
+			}
+			finally
+			{
+				try
+				{
+					colorOut.close();
+				}
+				catch (IOException e1) {
+					// TODO Auto-generated catch block
+					e1.printStackTrace();
+				}
+			}
+		});
+		return removeColorButton;
+	}
+	
 	private void initializeValues()
 	{
 		rangeField.setText(colorChoiceBox.getValue().getRange()+"");
-		
 		stopList.getItems().remove(0, stopList.getItems().size());
 		for(Stop stop : colorChoiceBox.getValue().getStops())
 		{
 			stopList.getItems().add(stop);
 		}
-		
 		gradientRectangle.setFill(new LinearGradient(0,0.5,1,0.5,true, CycleMethod.NO_CYCLE, createGradientStops()));
 		
 	}
@@ -412,7 +472,7 @@ public class OptionsEditor
 	
 	private ChoiceBox<CustomColorFunction> buildColorChoiceBox()
 	{
-		colorChoiceBox = new ChoiceBox<CustomColorFunction>(FXCollections.observableArrayList(CustomColorFunction.COLOR_FUNCTIONS));
+		colorChoiceBox = new ChoiceBox<CustomColorFunction>(FXCollections.observableArrayList(savedColors));
 		colorChoiceBox.setValue(gui.mainCalculator.getColorFunction());
 		
 		colorChoiceBox.getSelectionModel().selectedIndexProperty().addListener(new ChangeListener<Number>(){
@@ -595,11 +655,11 @@ public class OptionsEditor
 			CustomColorFunction color = new CustomColorFunction(new ArrayList<Stop>(stopList.getItems()),val, name);
 			colorChoiceBox.getItems().add(color);
 			colorChoiceBox.setValue(color);
-			CustomColorFunction.COLOR_FUNCTIONS.add(color);
+			savedColors.add(color);
 			try
 			{
 				colorOut = new ObjectOutputStream(new FileOutputStream(colorFile));
-				colorOut.writeObject(CustomColorFunction.COLOR_FUNCTIONS);
+				colorOut.writeObject(savedColors);
 			}
 			catch(IOException ioe)
 			{
@@ -648,7 +708,9 @@ public class OptionsEditor
 					return;
 				}
 			}
+			
 			stopList.getItems().add(stopToAdd);
+			gradientRectangle.setFill(new LinearGradient(0,0.5,1,0.5,true, CycleMethod.NO_CYCLE, createGradientStops()));
 		});
 		return addStopButton;
 	}
@@ -793,7 +855,6 @@ public class OptionsEditor
 		return cancelButton;
 	}
 	
-	
 	public void resetValues()
 	{
 		threadCountField.setText(gui.threadCount + "");
@@ -826,6 +887,9 @@ public class OptionsEditor
 				+ currentRegion.getCenterY().setScale(5, BigDecimal.ROUND_HALF_UP).stripTrailingZeros().toPlainString() + "i");
 		boxValue.setText(currentRegion.x1.subtract(currentRegion.x2).abs().setScale(5, BigDecimal.ROUND_HALF_UP).stripTrailingZeros().toPlainString() + "x" +
 				currentRegion.y1.subtract(currentRegion.y2).abs().setScale(5, BigDecimal.ROUND_HALF_UP).stripTrailingZeros().toPlainString());
+		
+		
+		initializeValues();
 	}
 	
 	public void loadRegion()
@@ -864,7 +928,7 @@ public class OptionsEditor
 		else
 		{
 			colorChoiceBox.getItems().add(sr.colorFunction);
-			CustomColorFunction.COLOR_FUNCTIONS.add(sr.colorFunction);
+			savedColors.add(sr.colorFunction);
 			colorChoiceBox.setValue(sr.colorFunction);
 		}
 		

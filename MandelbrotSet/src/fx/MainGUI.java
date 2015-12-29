@@ -9,11 +9,18 @@ import javafx.scene.canvas.*;
 import javafx.stage.*;
 import javafx.util.*;
 import javafx.scene.control.*;
+import javafx.scene.control.Alert.AlertType;
+import javafx.scene.control.ButtonBar.ButtonData;
 import javafx.scene.image.*;
 import javafx.scene.input.*;
 import javafx.scene.layout.*;
 import javafx.scene.paint.*;
 import javafx.scene.transform.*;
+
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.ObjectOutputStream;
 import java.math.*;
 import java.text.*;
 import java.util.*;
@@ -47,6 +54,7 @@ public class MainGUI extends Application
 	ArrayList<PannedImage> pannedImages;
 	ArrayList<Region<BigDecimal>> loggedRegions;
 	ArrayList<Thread> runningThreads;
+	OptionsEditor optionsEditor;
 	Timeline timeline;
 	BigDecimal magnification;
 	Object lock = new Object();
@@ -81,6 +89,7 @@ public class MainGUI extends Application
 	@Override
 	public void start(Stage window)
 	{
+		writeFiles();
 		//showStartDialog();
 		width = 800;
 		height = 800;
@@ -113,16 +122,6 @@ public class MainGUI extends Application
 		layout.setRight(flowPane);
 		BorderPane.setAlignment(flowPane, Pos.TOP_LEFT);
 		
-		layout.getCenter().boundsInParentProperty().addListener(new ChangeListener<Bounds>(){
-
-
-			@Override
-			public void changed(ObservableValue<? extends Bounds> observable, Bounds oldValue, Bounds newValue) {
-				System.out.println(newValue.getHeight());
-			}
-			
-		});
-		
 		/*Add Listeners*/
 		addKeyPanListener();
 		addMouseListeners();
@@ -138,9 +137,36 @@ public class MainGUI extends Application
 		drawSet();
 	}
 	
+	private void writeFiles()
+	{
+		if(!Locator.exists("SavedColors.txt"))
+		{
+			ObjectOutputStream out = null;
+			try {
+				File file = new File(Locator.locateFile("SavedColors.txt"));
+				 out = new ObjectOutputStream(new FileOutputStream(file));
+				out.writeObject(CustomColorFunction.COLOR_FUNCTIONS);
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			finally
+			{
+				try {
+					if(out != null)
+					out.close();
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			}
+		}
+	}
+	
 	private void initializeMoreValues()
 	{
 		progressBar.setPrefWidth(window.getScene().getWidth()-50);
+		optionsEditor = new OptionsEditor(this);
 	}
 	
 	private void addWindowListener()
@@ -171,6 +197,7 @@ public class MainGUI extends Application
 	
 	private void initializeVariables()
 	{
+		
 		/*Creates two calculator objects. One for the preview viewer and one for the main viewer.*/
 		mainCalculator = new Calculator();
 		previewCalculator = new Calculator();
@@ -251,8 +278,11 @@ public class MainGUI extends Application
 		
 		/*Color Menu*/
 		Menu colorMenu = new Menu("Colors");
-		colorMenu.getItems().add(buildDefaultColorsMenuItem());
-		colorMenu.getItems().add(buildColorEditMenuItem());
+		colorMenu.getItems().addAll(
+				buildDefaultColorsMenuItem(),
+				buildColorEditMenuItem(),
+				new SeparatorMenuItem(),
+				buildClearColorDataMenuItem());
 		
 		menuBar.getMenus().add(fileMenu);
 		menuBar.getMenus().add(editMenu);
@@ -288,9 +318,48 @@ public class MainGUI extends Application
 	{
 		MenuItem menuItem = new MenuItem("Make Your Own...");
 		menuItem.setOnAction(e ->{
-			new OptionsEditor(this,1).showEditDialog();
+			optionsEditor.showEditDialog(1);
 		});
 		return menuItem;
+	}
+	
+	private MenuItem buildClearColorDataMenuItem()
+	{
+		MenuItem clearData = new MenuItem("Clear Color Data");
+		clearData.setOnAction(e->{
+			Alert alert = new Alert(AlertType.CONFIRMATION);
+			alert.setContentText("Are you sure you want to overwrite all saved colors with the original default values?");
+			
+			ButtonType buttonTypeYes = new ButtonType("YES");
+			ButtonType buttonTypeNo = new ButtonType("NO",ButtonData.CANCEL_CLOSE);
+			alert.getButtonTypes().setAll(buttonTypeYes, buttonTypeNo);
+			Optional<ButtonType> result = alert.showAndWait();
+			if(result.get() != buttonTypeYes)
+			{
+				return;
+			}
+			
+			ObjectOutputStream out = null;
+			try {
+				File file = new File(Locator.locateFile("SavedColors.txt"));
+				 out = new ObjectOutputStream(new FileOutputStream(file));
+				out.writeObject(CustomColorFunction.COLOR_FUNCTIONS);
+			} catch (IOException ioe) {
+				// TODO Auto-generated catch block
+				ioe.printStackTrace();
+			}
+			finally
+			{
+				try {
+					if(out != null)
+					out.close();
+				} catch (IOException ioe) {
+					// TODO Auto-generated catch block
+					ioe.printStackTrace();
+				}
+			}
+		});
+		return clearData;
 	}
 	
 	private RadioMenuItem buildMandelbrotSetMenuItem()
@@ -459,7 +528,7 @@ public class MainGUI extends Application
 		 * Opens the edit dialog 
 		 */
 		edit.setOnAction(e -> {
-				new OptionsEditor(this,0).showEditDialog();
+				optionsEditor.showEditDialog(0);
 			});
 		return edit;
 	}

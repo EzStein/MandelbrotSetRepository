@@ -16,7 +16,7 @@ import javafx.scene.paint.*;
  */
 public class CustomColorFunction implements Serializable {
 	
-	public static ArrayList<CustomColorFunction> COLOR_FUNCTIONS = new ArrayList<CustomColorFunction>();
+	public final static ArrayList<CustomColorFunction> COLOR_FUNCTIONS = new ArrayList<CustomColorFunction>();
 	
 	static
 	{
