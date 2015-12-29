@@ -27,6 +27,10 @@ import java.util.*;
 import java.util.concurrent.*;
 
 import colorFunction.CustomColorFunction;
+import de.codecentric.centerdevice.*;
+import de.codecentric.centerdevice.glass.*;
+import de.codecentric.centerdevice.listener.*;
+import de.codecentric.centerdevice.util.*;
 import fx.Region;
 
 /**
@@ -249,7 +253,14 @@ public class MainGUI extends Application
 	
 	private MenuBar buildMenus()
 	{
-		
+		if(Locator.getOS() == Locator.OS_MAC)
+		{
+			MenuToolkit tk = MenuToolkit.toolkit();
+			Menu appMenu = tk.createDefaultApplicationMenu("Test");
+			tk.setApplicationMenu(appMenu);
+			appMenu.getItems().remove(0, appMenu.getItems().size());
+			appMenu.getItems().addAll(buildAboutMenuItem(), new SeparatorMenuItem(),buildQuitMenuItem());
+		}
 		
 		/*Create MenuBar*/
 		MenuBar menuBar = new MenuBar();
@@ -257,8 +268,11 @@ public class MainGUI extends Application
 		
 		/*Builds File Menu*/
 		Menu fileMenu = new Menu("File");
-		fileMenu.getItems().addAll(buildSaveMenuItem(),buildAboutMenuItem());
-		
+		fileMenu.getItems().add(buildSaveMenuItem());
+		if(Locator.getOS() != Locator.OS_MAC)
+		{
+			fileMenu.getItems().add(buildAboutMenuItem());
+		}
 		
 		/*Build Edit Menu*/
 		RadioMenuItem mset = buildMandelbrotSetMenuItem();
@@ -289,6 +303,24 @@ public class MainGUI extends Application
 		menuBar.getMenus().add(colorMenu);
 		
 		return menuBar;
+	}
+	
+	private MenuItem buildQuitMenuItem()
+	{
+		MenuItem quitMenuItem = new MenuItem("Quit Fractal App");
+		quitMenuItem.setOnAction(e->{
+			close();
+		});
+		return quitMenuItem;
+	}
+	
+	private MenuItem buildPreferencesMenuItem()
+	{
+		MenuItem prefMenuItem = new MenuItem("Preferences");
+		prefMenuItem.setOnAction(e ->{
+			optionsEditor.showEditDialog(0);
+		});
+		return prefMenuItem;
 	}
 	
 	private Menu buildDefaultColorsMenuItem()
@@ -1059,11 +1091,13 @@ public class MainGUI extends Application
 			//threadQueue.terminate();
 			Platform.runLater(()->{
 				window.close();
+				System.exit(0);
 			});
 			
 			return true;
 			
 		});
+		
 		
 	}
 	

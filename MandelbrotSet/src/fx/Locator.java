@@ -12,6 +12,13 @@ import java.io.*;
  */
 public class Locator
 {
+	
+	public static final int OS_WINDOWS = 0;
+	public static final int OS_MAC = 1;
+	public static final int OS_LINUX = 2;
+	public static final int OS_SOLARIS = 3;
+	public static final int OS_UNKNOWN =4;
+	
 	/**
 	 * Contains the name of the current operating system.
 	 */
@@ -113,6 +120,30 @@ public class Locator
 		else
 		{
 			return false;
+		}
+	}
+	
+	public static int getOS()
+	{
+		if(OS_NAME.indexOf("mac")>=0)
+		{
+			return OS_MAC;
+		}
+		else if(OS_NAME.indexOf("win")>=0)
+		{
+			return OS_WINDOWS;
+		}
+		else if(OS_NAME.indexOf("nix") >= 0 || OS_NAME.indexOf("nux") >= 0 || OS_NAME.indexOf("aix") > 0 )
+		{
+			return OS_LINUX;
+		}
+		else if(OS_NAME.indexOf("sunos") >= 0)
+		{
+			return OS_SOLARIS;
+		}
+		else
+		{
+			return OS_UNKNOWN;
 		}
 	}
 }
