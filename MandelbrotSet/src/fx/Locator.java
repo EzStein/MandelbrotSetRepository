@@ -13,12 +13,6 @@ import java.io.*;
 public class Locator
 {
 	
-	public static final int OS_WINDOWS = 0;
-	public static final int OS_MAC = 1;
-	public static final int OS_LINUX = 2;
-	public static final int OS_SOLARIS = 3;
-	public static final int OS_UNKNOWN =4;
-	
 	/**
 	 * Contains the name of the current operating system.
 	 */
@@ -39,111 +33,129 @@ public class Locator
 	 */
 	public static String locateFile(String pathName) throws FileNotFoundException
 	{
-		File file = new File("");
+		
+		File dir = new File(getBaseDirectoryPath());
+		if(!dir.exists())
+		{
+			dir.mkdirs();
+		}
+		File file = new File(dir.getAbsolutePath() + File.separator + pathName);
+		if(!file.exists())
+		{
+			/*Creates the text file and overwrites it*/
+			PrintWriter writer = new PrintWriter(file);
+			writer.close();
+		}
+		return file.getAbsolutePath();
+	}
+	
+	/**
+	 * Determines whether the file exists in the file system.
+	 * @param fileName	The path of the file which may or may not exist.
+	 * @return			True if the file exists. False otherwise.
+	 */
+	public static boolean exists(String fileName)
+	{
+		File file = new File(getBaseDirectoryPath() + File.separator + fileName);
+		return file.exists();
+	}
+	
+	/**
+	 * Returns the OS. Should be compared with the fields OS_MAC etc.
+	 * @return the OS. Should be compared with the fields OS_MAC etc.
+	 */
+	public static OS getOS()
+	{
 		if(OS_NAME.indexOf("mac")>=0)
 		{
-			File dir = new File(System.getProperty("user.home")+"/Library/Application Support/" + appTitle);
-			if(!dir.exists())
-			{
-				dir.mkdirs();
-			}
-			file = new File(dir.getAbsolutePath() + "/" + pathName);
-			if(!file.exists())
-			{
-				/*Creates the file and overwrites it*/
-				PrintWriter writer = new PrintWriter(file);
-				writer.close();
-			}
+			return OS.MAC;
 		}
 		else if(OS_NAME.indexOf("win")>=0)
 		{
-			File dir = new File(System.getenv("APPDATA")+ File.pathSeparator + appTitle);
-			if(!dir.exists())
-			{
-				dir.mkdirs();
-			}
-			file = new File(dir.getAbsolutePath() + File.pathSeparator + pathName);
-			if(!file.exists())
-			{
-				/*Creates the file and overwrites it*/
-				PrintWriter writer = new PrintWriter(file);
-				writer.close();
-			}
+			return OS.WINDOWS;
 		}
 		else if(OS_NAME.indexOf("nix") >= 0 || OS_NAME.indexOf("nux") >= 0 || OS_NAME.indexOf("aix") > 0 )
 		{
-			File dir = new File(System.getProperty("user.home") + "/." + appTitle);
-			if(!dir.exists())
-			{
-				dir.mkdirs();
-			}
-			file = new File(dir.getAbsolutePath() + "/" + pathName);
-			if(!file.exists())
-			{
-				/*Creates the file and overwrites it*/
-				PrintWriter writer = new PrintWriter(file);
-				writer.close();
-			}
-			
+			return OS.LINUX;
 		}
 		else if(OS_NAME.indexOf("sunos") >= 0)
 		{
-			File dir = new File(System.getProperty("user.home") + "/." + appTitle);
-			if(!dir.exists())
-			{
-				dir.mkdirs();
-			}
-			file = new File(dir.getAbsolutePath() + "/" + pathName);
-			if(!file.exists())
-			{
-				/*Creates the file and overwrites it*/
-				PrintWriter writer = new PrintWriter(file);
-				writer.close();
-			}
+			return OS.SOLARIS;
+		}
+		else
+		{
+			return OS.UNKNOWN;
+		}
+	}
+	
+	/**
+	 * Returns the absolute path to the base directory of the file system.
+	 * For Mac it is ~/Library/Application\ Support/AppName
+	 * For Windows it is APPDATA\AppName
+	 * For Linux and Solaris it is a hidden directory ~/.AppName
+	 * @return the absolute path to the base directory of the file system.
+	 */
+	public static String getBaseDirectoryPath()
+	{
+		File dir = new File("");
+		if(isMac())
+		{
+			dir = new File(System.getProperty("user.home")+"/Library/Application Support/" + appTitle);
+		}
+		else if(isWindows())
+		{
+			dir = new File(System.getenv("APPDATA")+ File.separator + appTitle);
+		}
+		else if(isLinux())
+		{
+			dir = new File(System.getProperty("user.home") + "/." + appTitle);
+			
+		}
+		else if(isSolaris())
+		{
+			dir = new File(System.getProperty("user.home") + "/." + appTitle);
 		}
 		else
 		{
 			System.out.println("Unknown OS!");
 		}
 		
-		return file.getAbsolutePath();
+		return dir.getAbsolutePath();
 	}
 	
-	
-	public static boolean exists(String fileName)
+	/**
+	 * Returns true if this is a mac.
+	 * @return true if this is a mac.
+	 */
+	public static boolean isMac()
 	{
-		if(OS_NAME.indexOf("mac")>=0)
-		{
-			File file = new File(System.getProperty("user.home")+"/Library/Application Support/" + appTitle + "/" + fileName);
-			return file.exists();
-		}
-		else
-		{
-			return false;
-		}
+		return getOS().equals(OS.MAC);
 	}
 	
-	public static int getOS()
+	/**
+	 * Returns true if this is a windows system.
+	 * @return true if this is a windows system.
+	 */
+	public static boolean isWindows()
 	{
-		if(OS_NAME.indexOf("mac")>=0)
-		{
-			return OS_MAC;
-		}
-		else if(OS_NAME.indexOf("win")>=0)
-		{
-			return OS_WINDOWS;
-		}
-		else if(OS_NAME.indexOf("nix") >= 0 || OS_NAME.indexOf("nux") >= 0 || OS_NAME.indexOf("aix") > 0 )
-		{
-			return OS_LINUX;
-		}
-		else if(OS_NAME.indexOf("sunos") >= 0)
-		{
-			return OS_SOLARIS;
-		}
-		else
-		{
-			return OS_UNKNOWN;
-		}
+		return getOS().equals(OS.WINDOWS);
+	}
+	
+	/**
+	 * Returns true if this is a linux system.
+	 * @return true if this is a linux system.
+	 */
+	public static boolean isLinux()
+	{
+		return getOS().equals(OS.LINUX);
+	}
+	
+	/**
+	 * Returns true if this is a solaris system.
+	 * @return true if this is a solaris system.
+	 */
+	public static boolean isSolaris()
+	{
+		return getOS().equals(OS.SOLARIS);
 	}
 }

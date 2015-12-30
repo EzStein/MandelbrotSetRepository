@@ -253,13 +253,21 @@ public class MainGUI extends Application
 	
 	private MenuBar buildMenus()
 	{
-		if(Locator.getOS() == Locator.OS_MAC)
+		if(Locator.getOS() == OS.MAC)
 		{
 			MenuToolkit tk = MenuToolkit.toolkit();
 			Menu appMenu = tk.createDefaultApplicationMenu("Test");
 			tk.setApplicationMenu(appMenu);
 			appMenu.getItems().remove(0, appMenu.getItems().size());
-			appMenu.getItems().addAll(buildAboutMenuItem(), new SeparatorMenuItem(),buildQuitMenuItem());
+			appMenu.getItems().addAll(buildAboutMenuItem(),
+					new SeparatorMenuItem(),
+					buildPreferencesMenuItem(),
+					new SeparatorMenuItem(),
+					tk.createHideMenuItem(Locator.appTitle),
+					tk.createHideOthersMenuItem(),
+					tk.createBringAllToFrontItem(),
+					new SeparatorMenuItem(),
+					buildQuitMenuItem());
 		}
 		
 		/*Create MenuBar*/
@@ -269,9 +277,12 @@ public class MainGUI extends Application
 		/*Builds File Menu*/
 		Menu fileMenu = new Menu("File");
 		fileMenu.getItems().add(buildSaveMenuItem());
-		if(Locator.getOS() != Locator.OS_MAC)
+		if(Locator.getOS() != OS.MAC)
 		{
-			fileMenu.getItems().add(buildAboutMenuItem());
+			fileMenu.getItems().addAll(new SeparatorMenuItem(),
+					buildAboutMenuItem(),
+					buildPreferencesMenuItem(),
+					buildQuitMenuItem());
 		}
 		
 		/*Build Edit Menu*/
@@ -308,6 +319,7 @@ public class MainGUI extends Application
 	private MenuItem buildQuitMenuItem()
 	{
 		MenuItem quitMenuItem = new MenuItem("Quit Fractal App");
+		quitMenuItem.setAccelerator(new KeyCodeCombination(KeyCode.Q, KeyCombination.SHORTCUT_DOWN));
 		quitMenuItem.setOnAction(e->{
 			close();
 		});
@@ -316,9 +328,11 @@ public class MainGUI extends Application
 	
 	private MenuItem buildPreferencesMenuItem()
 	{
-		MenuItem prefMenuItem = new MenuItem("Preferences");
+		MenuItem prefMenuItem = new MenuItem("Preferences...");
 		prefMenuItem.setOnAction(e ->{
-			optionsEditor.showEditDialog(0);
+			Alert alert = new Alert(AlertType.INFORMATION);
+			alert.setContentText("No Preferences at the moment");
+			alert.show();
 		});
 		return prefMenuItem;
 	}
@@ -573,7 +587,7 @@ public class MainGUI extends Application
 	private MenuItem buildSaveMenuItem()
 	{
 		MenuItem saveMenu = new MenuItem("Save Image...");
-		
+		saveMenu.setAccelerator(new KeyCodeCombination(KeyCode.S, KeyCombination.SHORTCUT_DOWN));
 		saveMenu.setOnAction(e->{
 				new ImageSaverDialog(this).showSaverDialog();
 			});
