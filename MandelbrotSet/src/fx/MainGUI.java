@@ -74,7 +74,6 @@ public class MainGUI extends Application
 	int scrollX, scrollY;
 	double zoomFactor;
 	
-	
 	/**
 	 * The main method that launches this GUI.
 	 * @param args		Passed directly to the launch method of application.
