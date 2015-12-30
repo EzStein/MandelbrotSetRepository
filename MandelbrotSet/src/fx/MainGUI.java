@@ -1146,13 +1146,54 @@ public class MainGUI extends Application
 			iterations = calcAutoIterations(magnification);
 		}
 		
+		
 		pannedImages = new ArrayList<PannedImage>();
 		imageX = 0;
 		imageY = 0;
-		//mainCalculator.setPixelsCalculated(0);
 		mainCalculator.resetPixelsCalculated();
 		updater = (new Thread(new Updater()));
 		updater.start();
+		
+		allocateThreadsInRectangles();
+		
+		updateTextArea();
+	}
+	
+	private void allocateThreadsInSquares()
+	{
+		int length = (int) Math.sqrt((width*height)/threadCount);
+		int squaresPerSide = (int) (width/length);
+		System.out.println(squaresPerSide + " " + length);
+		for(int i = 0; i<Math.pow(squaresPerSide,2); i++)
+		{
+			int x = (int) (i%squaresPerSide)*length;
+			int y = ((int)(i/squaresPerSide))*length;
+			Region<Integer> pixelRegionSection = new Region<Integer>(x,y,x+length, y + length);
+			
+			Thread  g = new Thread(new Generator(pixelRegionSection, currentRegion, viewerPixelRegion, iterations,arbitraryPrecision, precision,julia,juliaSeed,mainGC, mainCalculator));
+			runningThreads.add(g);
+			g.start();
+		}
+		if(squaresPerSide*length != width)
+		{
+			Region<Integer> pixelRegionSection = new Region<Integer>(squaresPerSide*length,0,width, height);
+			
+			Thread  g = new Thread(new Generator(pixelRegionSection, currentRegion, viewerPixelRegion, iterations,arbitraryPrecision, precision,julia,juliaSeed,mainGC, mainCalculator));
+			runningThreads.add(g);
+			g.start();
+			
+			pixelRegionSection = new Region<Integer>(0,squaresPerSide*length,squaresPerSide*length, height);
+			
+			g = new Thread(new Generator(pixelRegionSection, currentRegion, viewerPixelRegion, iterations,arbitraryPrecision, precision,julia,juliaSeed,mainGC, mainCalculator));
+			runningThreads.add(g);
+			g.start();
+		}
+		
+		
+	}
+	
+	private void allocateThreadsInRectangles()
+	{
 		int h = (int) height/threadCount;
 		for(int i = 0; i<threadCount; i++)
 		{
@@ -1170,7 +1211,6 @@ public class MainGUI extends Application
 			runningThreads.add(g);
 			g.start();
 		}
-		updateTextArea();
 	}
 	
 	/**
@@ -1232,7 +1272,6 @@ public class MainGUI extends Application
 	{
 		return (timeline.getStatus() == Status.RUNNING);
 	}
-	
 	
 	public class OrbitThread implements Runnable
 	{
