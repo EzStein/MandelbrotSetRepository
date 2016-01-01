@@ -21,6 +21,11 @@ import javafx.scene.text.*;
 import javafx.stage.*;
 import javafx.util.*;
 
+/**
+ * This class is used to control all the options of the program including colors iterations threads etc.
+ * @author Ezra
+ *
+ */
 public class OptionsEditor
 {
 	private MainGUI gui;
@@ -51,9 +56,8 @@ public class OptionsEditor
 	private ArrayList<CustomColorFunction> savedColors;
 	
 	/**
-	 * 
+	 * Constructs this editor with a reference to the gui that created it.
 	 * @param gui
-	 * @param tabNumber		The index of the tab that should be initially displayed.
 	 */
 	public OptionsEditor(MainGUI gui)
 	{
@@ -65,6 +69,10 @@ public class OptionsEditor
 		currentSeed = gui.juliaSeed;
 	}
 	
+	/**
+	 * Shoes the view with the given tab number.
+	 * @param tabNumber
+	 */
 	public void showEditDialog(int tabNumber)
 	{
 		this.tabNumber = tabNumber;
@@ -74,6 +82,7 @@ public class OptionsEditor
 		window.show();
 	}
 	
+	@SuppressWarnings("unchecked")
 	private void readFiles()
 	{
 		ObjectInputStream in = null;
@@ -128,6 +137,13 @@ public class OptionsEditor
 		window = new Stage();
 		window.setTitle("Edit...");
 		window.initModality(Modality.APPLICATION_MODAL);
+		window.setOnCloseRequest(e ->{
+			ResultType result = askToSaveColor();
+			if(result == ResultType.CANCEL)
+			{
+				e.consume();
+			}
+		});
 		BorderPane layout = new BorderPane();
 		
 		TabPane tabPane = new TabPane();
@@ -764,45 +780,11 @@ public class OptionsEditor
 	{
 		Button applyAndRerenderButton = new Button("Apply And Rerender");
 		applyAndRerenderButton.setOnAction(e->{
-			boolean save = true;
-			for(CustomColorFunction cf: colorChoiceBox.getItems())
+			
+			ResultType result = askToSaveColor();
+			if(result == ResultType.CANCEL)
 			{
-				if(cf.getStops().equals(stopList.getItems()))
-				{
-					save = false;
-					break;
-				}
-			}
-			if(save)
-			{
-				Alert alert = new Alert(AlertType.CONFIRMATION);
-				alert.setContentText("Would you like to save the color.");
-				ButtonType buttonTypeYes = new ButtonType("Yes");
-				ButtonType buttonTypeNo = new ButtonType("No");
-				ButtonType buttonTypeCancel = new ButtonType("Cancel", ButtonData.CANCEL_CLOSE);
-				alert.getButtonTypes().setAll(buttonTypeYes, buttonTypeNo, buttonTypeCancel);
-				Optional<ButtonType> result = alert.showAndWait();
-				if(result.get() == buttonTypeCancel)
-				{
-					/*Also executes if the dialog is closed*/
-					return;
-				}
-				else if (result.get() == buttonTypeYes)
-				{
-					if(!validateForSaveColor())
-					{
-						return;
-					}
-					
-					if(!saveColor())
-					{
-						return;
-					}
-				}
-				else if (result.get() == buttonTypeNo)
-				{
-					/*Do nothing*/
-				}
+				return;
 			}
 			gui.threadQueue.callLater(()->{
 				if(!checkValues())
@@ -895,58 +877,19 @@ public class OptionsEditor
 		return saveButton;
 	}
 	
-	
-	
 	private Button buildApplyButton()
 	{
 		Button applyButton = new Button("Apply");
 		applyButton.setOnAction(e ->{
 			
-				
-				
-			boolean save = true;
-			for(CustomColorFunction cf: colorChoiceBox.getItems())
+			ResultType result = askToSaveColor();
+			if(result == ResultType.CANCEL)
 			{
-				if(cf.getStops().equals(stopList.getItems()))
-				{
-					save = false;
-					break;
-				}
-			}
-			if(save)
-			{
-				Alert alert = new Alert(AlertType.CONFIRMATION);
-				alert.setContentText("Would you like to save the color.");
-				ButtonType buttonTypeYes = new ButtonType("Yes");
-				ButtonType buttonTypeNo = new ButtonType("No");
-				ButtonType buttonTypeCancel = new ButtonType("Cancel", ButtonData.CANCEL_CLOSE);
-				alert.getButtonTypes().setAll(buttonTypeYes, buttonTypeNo, buttonTypeCancel);
-				Optional<ButtonType> result = alert.showAndWait();
-				if(result.get() == buttonTypeCancel)
-				{
-					/*Also executes if the dialog is closed*/
-					return;
-				}
-				else if (result.get() == buttonTypeYes)
-				{
-					if(!validateForSaveColor())
-					{
-						return;
-					}
-					
-					if(!saveColor())
-					{
-						return;
-					}
-				}
-				else if (result.get() == buttonTypeNo)
-				{
-					/*Do nothing*/
-				}
+				return;
 			}
 				
 				
-				gui.threadQueue.callLater(()->{
+			gui.threadQueue.callLater(()->{
 				if(!checkValues())
 				{
 					return;
@@ -967,13 +910,83 @@ public class OptionsEditor
 	private Button buildCancelButton()
 	{
 		Button cancelButton = new Button("Cancel");
+		
 		cancelButton.setOnAction(e ->{
+			ResultType result = askToSaveColor();
+			if(result == ResultType.CANCEL)
+			{
+				return;
+			}
 			window.close();
 		});
 		return cancelButton;
 	}
 	
-	public void resetValues()
+	/**
+	 * Opens dialogs for prompting to save.
+	 * @return  No if it is not necessary to save a color or if No is selected.
+	 * 			Cancel if cancel is selected or if the window is closed or if the save process was in some other way canceled.
+	 * 			Yes was selected and if the save was successful
+	 */
+	public ResultType askToSaveColor()
+	{
+		boolean save = true;
+		for(CustomColorFunction cf: colorChoiceBox.getItems())
+		{
+			if(cf.getStops().equals(stopList.getItems()))
+			{
+				save = false;
+				break;
+			}
+		}
+		if(save)
+		{
+			Alert alert = new Alert(AlertType.CONFIRMATION);
+			alert.setContentText("Would you like to save the color.");
+			ButtonType buttonTypeYes = new ButtonType("Yes");
+			ButtonType buttonTypeNo = new ButtonType("No");
+			ButtonType buttonTypeCancel = new ButtonType("Cancel", ButtonData.CANCEL_CLOSE);
+			alert.getButtonTypes().setAll(buttonTypeYes, buttonTypeNo, buttonTypeCancel);
+			Optional<ButtonType> result = alert.showAndWait();
+			if(result.get() == buttonTypeCancel)
+			{
+				/*Also executes if the dialog is closed*/
+				return ResultType.CANCEL;
+			}
+			else if (result.get() == buttonTypeYes)
+			{
+				if(!validateForSaveColor())
+				{
+					return ResultType.CANCEL;
+				}
+				
+				if(!saveColor())
+				{
+					/*The cancel button was pressed when asking to name the color*/
+					return ResultType.CANCEL;
+				}
+				return ResultType.YES;
+			}
+			else if (result.get() == buttonTypeNo)
+			{
+				return ResultType.NO;
+			}
+			else
+			{
+				return ResultType.CANCEL;
+			}
+		}
+		else
+		{
+			/*A save was not necessary*/
+			return ResultType.NO;
+		}
+	}
+	
+	/**
+	 * Resets all the values to those currently in use by the gui.
+	 */
+ 	public void resetValues()
 	{
 		threadCountField.setText(gui.threadCount + "");
 		
@@ -1010,6 +1023,9 @@ public class OptionsEditor
 		initializeValues();
 	}
 	
+	/**
+	 * Loads a region from the choice box and sets all the values of the options editor.
+	 */
 	public void loadRegion()
 	{
 		SavedRegion sr = savedRegionsChoiceBox.getValue();
@@ -1071,6 +1087,9 @@ public class OptionsEditor
 		gui.loggedRegions = new ArrayList<>();
 	}
 	
+	/**
+	 * Sets all the values of the gui to the values of the editor.
+	 */
 	public void setValues()
 	{
 		gui.threadCount = Integer.parseInt(threadCountField.getText());
@@ -1091,6 +1110,10 @@ public class OptionsEditor
 		gui.juliaSeed = currentSeed;
 	}
 	
+	/**
+	 * Validates all the values.
+	 * @return false if some values are not valid.
+	 */
 	public boolean checkValues()
 	{
 		boolean returnValue = true;
@@ -1142,12 +1165,22 @@ public class OptionsEditor
 		
 		return returnValue;
 	}
-	
+
+	enum ResultType {YES, CANCEL, NO}
+	/**
+	 * A custom cell for use in the list view.
+	 * @author Ezra
+	 *
+	 */
 	public class CustomListCell extends ListCell<Stop>
 	{
 		HBox hbox;
 		Canvas canvas;
 		Label label;
+		
+		/**
+		 * Constructs this cell with a label and a canvas that will hold the color of the cell.
+		 */
 		public CustomListCell()
 		{
 			super();
