@@ -12,6 +12,7 @@ import javafx.scene.*;
 import javafx.scene.canvas.*;
 import javafx.scene.control.*;
 import javafx.scene.control.Alert.AlertType;
+import javafx.scene.control.ButtonBar.ButtonData;
 import javafx.scene.input.*;
 import javafx.scene.layout.*;
 import javafx.scene.paint.*;
@@ -44,7 +45,7 @@ public class OptionsEditor
 	private File file, colorFile;
 	private ArrayList<SavedRegion> savedRegions;
 	private Region<BigDecimal> currentRegion;
-	private boolean currentJulia, showNewColor;
+	private boolean currentJulia;
 	private ComplexBigDecimal currentSeed;
 	private int tabNumber;
 	private ArrayList<CustomColorFunction> savedColors;
@@ -352,7 +353,7 @@ public class OptionsEditor
 		
 		
 		colorGridPane.add(buildColorChoiceBox(), 0, 0);
-		colorGridPane.add(buildGradientCheckBox(), 0, 1);
+		//colorGridPane.add(buildGradientCheckBox(), 0, 1);
 		colorGridPane.add(buildGradientRectangle(), 0, 2, 2, 2);
 		colorGridPane.add(buildSaveColorButton(), 0, 3);
 		
@@ -432,7 +433,6 @@ public class OptionsEditor
 		{
 			stopList.getItems().add(stop);
 		}
-		gradientRectangle.setFill(new LinearGradient(0,0.5,1,0.5,true, CycleMethod.NO_CYCLE, createGradientStops()));
 		
 	}
 	
@@ -440,7 +440,7 @@ public class OptionsEditor
 	{
 		gradientRectangle = new Rectangle();
 		gradientRectangle.setWidth(200);
-		gradientRectangle.setHeight(200);
+		gradientRectangle.setHeight(300);
 		
 		return gradientRectangle;
 	}
@@ -453,7 +453,13 @@ public class OptionsEditor
 			@Override
 			public void changed(ObservableValue<? extends Color> observable, Color oldValue, Color newValue)
 			{
-				gradientRectangle.setFill(new LinearGradient(0,0.5,1,0.5,true, CycleMethod.NO_CYCLE, createGradientStops()));
+				int index = stopList.getSelectionModel().getSelectedIndex();
+				if(index < 0)
+				{
+					/*Nothing selected*/
+					return;
+				}
+				stopList.getItems().set(index, new Stop(stopList.getItems().get(index).getOffset(), colorPicker.getValue()));
 			}
 		});
 		return colorPicker;
@@ -463,10 +469,6 @@ public class OptionsEditor
 	{
 		
 		ArrayList<Stop> returnValue = new ArrayList<Stop>(Arrays.asList(stopList.getItems().toArray(new Stop[1])));
-		if(showNewColor)
-		{
-			returnValue.add(new Stop(colorPositionSlider.getValue(),colorPicker.getValue()));
-		}
 		return returnValue;
 	}
 	
@@ -489,7 +491,6 @@ public class OptionsEditor
 					stopList.getItems().add(stop);
 				}
 				
-				gradientRectangle.setFill(new LinearGradient(0,0.5,1,0.5,true, CycleMethod.NO_CYCLE, createGradientStops()));
 				
 			}
 		});
@@ -542,8 +543,13 @@ public class OptionsEditor
 				Platform.runLater(()->{
 					colorPositionField.setStyle("-fx-background-color:white");
 					colorPositionField.setText(newValue.doubleValue() + "");
-					
-					gradientRectangle.setFill(new LinearGradient(0,0.5,1,0.5,true, CycleMethod.NO_CYCLE, createGradientStops()));
+					int index = stopList.getSelectionModel().getSelectedIndex();
+					if(index < 0)
+					{
+						/*Nothing selected*/
+						return;
+					}
+					stopList.getItems().set(index, new Stop(colorPositionSlider.getValue(), stopList.getItems().get(index).getColor()));
 				});
 			}
 		});
@@ -556,25 +562,36 @@ public class OptionsEditor
 		stopList.setCellFactory(new Callback<ListView<Stop>, ListCell<Stop>>(){
 			@Override
 			public ListCell<Stop> call(ListView<Stop> param) {
-				/*return new TextFieldListCell<Stop>(new StringConverter<Stop>(){
-
-					@Override
-					public String toString(Stop stop) {
-						return stop.getOffset()+", " + stop.getColor().toString();
-					}
-
-					@Override
-					public Stop fromString(String string) {
-						// TODO Auto-generated method stub
-						return null;
-					}
-					
-				});*/
 				return new CustomListCell();
 			}
 			
 		});
-		
+		stopList.getSelectionModel().selectedItemProperty().addListener(new ChangeListener<Stop>(){
+
+			@Override
+			public void changed(ObservableValue<? extends Stop> observable, Stop oldValue, Stop newValue) {
+				Stop stop = stopList.getSelectionModel().getSelectedItem();
+				if(stop == null)
+				{
+					return;
+				}
+				Platform.runLater(()->{
+					colorPicker.setValue(stop.getColor());
+					colorPositionSlider.setValue(stop.getOffset());
+				});
+				
+			}
+			
+		});
+		stopList.getItems().addListener(new ListChangeListener<Stop>(){
+
+			@Override
+			public void onChanged(ListChangeListener.Change<? extends Stop> c) {
+				gradientRectangle.setFill(new LinearGradient(0,0.5,1,0.5,true, CycleMethod.NO_CYCLE, createGradientStops()));
+				
+			}
+			
+		});
 		return stopList;
 	}
 	
@@ -582,103 +599,140 @@ public class OptionsEditor
 	{
 		Button saveColorButton = new Button("Save Color");
 		saveColorButton.setOnAction(ae ->{
-			
-			if(stopList.getItems().size()<2)
+			if(!validateForSaveColor())
 			{
-				Alert alert = new Alert(AlertType.ERROR);
-				alert.setContentText("There must be atleast two colors positioned at 0 and 1 (beginning and end)");
-				alert.show();
-				return;
-			}
-			boolean validStart = false;
-			boolean validEnd = false;
-			for(Stop stop : stopList.getItems())
-			{
-				if(stop.getOffset() == 0)
-				{
-					validStart = true;
-				}
-				if(stop.getOffset() == 1)
-				{
-					validEnd = true;
-				}
-			}
-			if(!(validStart && validEnd))
-			{
-				Alert alert = new Alert(AlertType.ERROR);
-				alert.setContentText("There must be atleast two colors positioned at 0 and 1 (beginning and end)");
-				alert.show();
 				return;
 			}
 			
-			int val;
-			try
-			{
-				val = Integer.parseInt(rangeField.getText());
-			}
-			catch(NumberFormatException nfe)
-			{
-				rangeField.setStyle("-fx-background-color:red");
-				return;
-			}
-			if(val <= 1)
-			{
-				rangeField.setStyle("-fx-background-color:red");
-				return;
-			}
+			saveColor();
 			
-			String name;
-			TextInputDialog dialog = new TextInputDialog();
-			dialog.setTitle("Save Color");
-			dialog.setContentText("Enter a name:");
-			Optional<String> result = dialog.showAndWait();
-			if(result.isPresent())
-			{
-				name = result.get();
-				for(CustomColorFunction c : colorChoiceBox.getItems())
-				{
-					if(c.getName().equals(name))
-					{
-						Alert alert = new Alert(AlertType.ERROR);
-						alert.setContentText("That name already exists");
-						alert.show();
-						return;
-					}
-				} 
-				/*Add in name validation here*/
-			}
-			else
-			{
-				return;
-			}
-			rangeField.setStyle("-fx-background-color:white");
-			CustomColorFunction color = new CustomColorFunction(new ArrayList<Stop>(stopList.getItems()),val, name);
-			colorChoiceBox.getItems().add(color);
-			colorChoiceBox.setValue(color);
-			savedColors.add(color);
-			try
-			{
-				colorOut = new ObjectOutputStream(new FileOutputStream(colorFile));
-				colorOut.writeObject(savedColors);
-			}
-			catch(IOException ioe)
-			{
-				ioe.printStackTrace();
-			}
-			finally
-			{
-				try
-				{
-					
-					colorOut.close();
-				}
-				catch (IOException e1) {
-					// TODO Auto-generated catch block
-					e1.printStackTrace();
-				}
-			}
 		});
 		return saveColorButton;
+	}
+	
+	/**
+	 * 
+	 * @return true if the color was actually saved.
+	 */
+	private boolean saveColor()
+	{
+		String name;
+		TextInputDialog dialog = new TextInputDialog();
+		dialog.setTitle("Save Color");
+		dialog.setContentText("Enter a name:");
+		Optional<String> result = dialog.showAndWait();
+		if(result.isPresent())
+		{
+			name = result.get();
+			for(CustomColorFunction c : colorChoiceBox.getItems())
+			{
+				if(c.getName().equals(name))
+				{
+					Alert alert = new Alert(AlertType.ERROR);
+					alert.setContentText("That name already exists");
+					alert.show();
+					return false;
+				}
+			}
+		}
+		else
+		{
+			return false;
+		}
+		rangeField.setStyle("-fx-background-color:white");
+		CustomColorFunction color = new CustomColorFunction(new ArrayList<Stop>(stopList.getItems()),Integer.parseInt(rangeField.getText()), name);
+		colorChoiceBox.getItems().add(color);
+		colorChoiceBox.setValue(color);
+		savedColors.add(color);
+		try
+		{
+			colorOut = new ObjectOutputStream(new FileOutputStream(colorFile));
+			colorOut.writeObject(savedColors);
+		}
+		catch(IOException ioe)
+		{
+			ioe.printStackTrace();
+		}
+		finally
+		{
+			try
+			{
+				
+				colorOut.close();
+			}
+			catch (IOException e1) {
+				// TODO Auto-generated catch block
+				e1.printStackTrace();
+			}
+		}
+		return true;
+	}
+	
+	private boolean validateForSaveColor()
+	{
+		TreeSet<Double> set = new TreeSet<Double>();
+		for(Stop stop : stopList.getItems())
+		{
+			/*Checks for duplicates*/
+			if(!set.add(stop.getOffset()))
+			{
+				Alert alert = new Alert(AlertType.ERROR);
+				alert.setContentText("That color has the same position as another!");
+				alert.show();
+				return false;
+			}
+		}
+		
+		
+		if(stopList.getItems().size()<2)
+		{
+			Alert alert = new Alert(AlertType.ERROR);
+			alert.setContentText("There must be atleast two colors positioned at 0 and 1 (beginning and end)");
+			alert.show();
+			return false;
+		}
+		
+		
+		
+		boolean validStart = false;
+		boolean validEnd = false;
+		for(Stop stop : stopList.getItems())
+		{
+			if(stop.getOffset() == 0)
+			{
+				validStart = true;
+			}
+			if(stop.getOffset() == 1)
+			{
+				validEnd = true;
+			}
+		}
+		if(!(validStart && validEnd))
+		{
+			Alert alert = new Alert(AlertType.ERROR);
+			alert.setContentText("There must be atleast two colors positioned at 0 and 1 (beginning and end)");
+			alert.show();
+			return false;
+		}
+		
+		
+		
+		int val;
+		try
+		{
+			val = Integer.parseInt(rangeField.getText());
+		}
+		catch(NumberFormatException nfe)
+		{
+			rangeField.setStyle("-fx-background-color:red");
+			return false;
+		}
+		if(val <= 1)
+		{
+			rangeField.setStyle("-fx-background-color:red");
+			return false;
+		}
+		return true;
 	}
 	
 	private Button buildRemoveStopButton()
@@ -687,7 +741,6 @@ public class OptionsEditor
 		removeStopButton.setOnAction(ae->{
 			Stop stop = stopList.getSelectionModel().getSelectedItem();
 			stopList.getItems().remove(stop);
-			gradientRectangle.setFill(new LinearGradient(0,0.5,1,0.5,true, CycleMethod.NO_CYCLE, createGradientStops()));
 			
 		});
 		return removeStopButton;
@@ -698,43 +751,63 @@ public class OptionsEditor
 		Button addStopButton = new Button("Add Color");
 		addStopButton.setOnAction(ae->{
 			Stop stopToAdd = new Stop(colorPositionSlider.getValue(), colorPicker.getValue());
-			for(Stop stop : stopList.getItems())
-			{
-				if(stop.getOffset() == stopToAdd.getOffset())
-				{
-					Alert alert = new Alert(AlertType.ERROR);
-					alert.setContentText("That color has the same position as another!");
-					alert.show();
-					return;
-				}
-			}
+			
 			
 			stopList.getItems().add(stopToAdd);
-			gradientRectangle.setFill(new LinearGradient(0,0.5,1,0.5,true, CycleMethod.NO_CYCLE, createGradientStops()));
+			stopList.getSelectionModel().select(stopList.getItems().size()-1);
+			
 		});
 		return addStopButton;
-	}
-	
-	private CheckBox buildGradientCheckBox()
-	{
-		CheckBox checkBox = new CheckBox("Show New Color");
-		checkBox.setSelected(false);
-		showNewColor = false;
-		checkBox.setOnAction(e ->{
-			showNewColor = checkBox.isSelected();
-			gradientRectangle.setFill(new LinearGradient(0,0.5,1,0.5,true, CycleMethod.NO_CYCLE, createGradientStops()));
-		});
-		return checkBox;
 	}
 
 	private Button buildApplyAndRerenderButton()
 	{
 		Button applyAndRerenderButton = new Button("Apply And Rerender");
 		applyAndRerenderButton.setOnAction(e->{
+			boolean save = true;
+			for(CustomColorFunction cf: colorChoiceBox.getItems())
+			{
+				if(cf.getStops().equals(stopList.getItems()))
+				{
+					save = false;
+					break;
+				}
+			}
+			if(save)
+			{
+				Alert alert = new Alert(AlertType.CONFIRMATION);
+				alert.setContentText("Would you like to save the color.");
+				ButtonType buttonTypeYes = new ButtonType("Yes");
+				ButtonType buttonTypeNo = new ButtonType("No");
+				ButtonType buttonTypeCancel = new ButtonType("Cancel", ButtonData.CANCEL_CLOSE);
+				alert.getButtonTypes().setAll(buttonTypeYes, buttonTypeNo, buttonTypeCancel);
+				Optional<ButtonType> result = alert.showAndWait();
+				if(result.get() == buttonTypeCancel)
+				{
+					/*Also executes if the dialog is closed*/
+					return;
+				}
+				else if (result.get() == buttonTypeYes)
+				{
+					if(!validateForSaveColor())
+					{
+						return;
+					}
+					
+					if(!saveColor())
+					{
+						return;
+					}
+				}
+				else if (result.get() == buttonTypeNo)
+				{
+					/*Do nothing*/
+				}
+			}
 			gui.threadQueue.callLater(()->{
 				if(!checkValues())
 				{
-					return false;
+					return;
 				}
 				gui.interrupt();
 				
@@ -744,7 +817,6 @@ public class OptionsEditor
 					gui.updateJuliaSetViewer();
 					window.close();
 				});
-				return false;
 				
 			});
 		});
@@ -823,14 +895,61 @@ public class OptionsEditor
 		return saveButton;
 	}
 	
+	
+	
 	private Button buildApplyButton()
 	{
 		Button applyButton = new Button("Apply");
 		applyButton.setOnAction(e ->{
-			gui.threadQueue.callLater(()->{
+			
+				
+				
+			boolean save = true;
+			for(CustomColorFunction cf: colorChoiceBox.getItems())
+			{
+				if(cf.getStops().equals(stopList.getItems()))
+				{
+					save = false;
+					break;
+				}
+			}
+			if(save)
+			{
+				Alert alert = new Alert(AlertType.CONFIRMATION);
+				alert.setContentText("Would you like to save the color.");
+				ButtonType buttonTypeYes = new ButtonType("Yes");
+				ButtonType buttonTypeNo = new ButtonType("No");
+				ButtonType buttonTypeCancel = new ButtonType("Cancel", ButtonData.CANCEL_CLOSE);
+				alert.getButtonTypes().setAll(buttonTypeYes, buttonTypeNo, buttonTypeCancel);
+				Optional<ButtonType> result = alert.showAndWait();
+				if(result.get() == buttonTypeCancel)
+				{
+					/*Also executes if the dialog is closed*/
+					return;
+				}
+				else if (result.get() == buttonTypeYes)
+				{
+					if(!validateForSaveColor())
+					{
+						return;
+					}
+					
+					if(!saveColor())
+					{
+						return;
+					}
+				}
+				else if (result.get() == buttonTypeNo)
+				{
+					/*Do nothing*/
+				}
+			}
+				
+				
+				gui.threadQueue.callLater(()->{
 				if(!checkValues())
 				{
-					return false;
+					return;
 				}
 				gui.interrupt();
 				
@@ -840,7 +959,6 @@ public class OptionsEditor
 					
 				});
 				
-				return false;
 			});
 		});
 		return applyButton;
@@ -1052,7 +1170,7 @@ public class OptionsEditor
 			}
 			else
 			{
-				label.setText(item.getOffset()*100 + "%");
+				label.setText(Math.round(item.getOffset()*100) + "%");
 				GraphicsContext gc = canvas.getGraphicsContext2D();
 				gc.setFill(item.getColor());
 				gc.fillRect(0, 0, canvas.getWidth(), canvas.getHeight());

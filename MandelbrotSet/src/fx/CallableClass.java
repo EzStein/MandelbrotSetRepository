@@ -13,7 +13,6 @@ public interface CallableClass
 	/**
 	 * Called by another class.
 	 * Must be implemented by called class.
-	 * @return A boolean indicating that the calling thread should do something or not.
 	 */
-	public abstract boolean call();
+	public abstract void call();
 }

@@ -2,9 +2,11 @@ package fx;
 
 import java.math.BigDecimal;
 
+
 import javafx.application.*;
 import javafx.scene.canvas.*;
 import javafx.scene.image.*;
+import javafx.scene.paint.Color;
 
 /**
  * Represents a panned image that will be rendered after a pan.
@@ -81,6 +83,14 @@ public class PannedImage implements Runnable
 		this.gui = gui;
 		this.calculator = calculator;
 		image = new WritableImage(pixelRegionSection.getWidth().intValue(), pixelRegionSection.getHeight().intValue());
+		for(int i = 0; i<image.getWidth(); i++)
+		{
+			for(int j = 0; j<image.getHeight(); j++)
+			{
+				image.getPixelWriter().setColor(i, j, Color.WHITE);
+			}
+		}
+		
 	}
 	
 	/**

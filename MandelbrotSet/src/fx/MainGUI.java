@@ -3,6 +3,7 @@ import javafx.animation.*;
 import javafx.animation.Animation.*;
 import javafx.application.*;
 import javafx.beans.value.*;
+import javafx.embed.swing.SwingFXUtils;
 import javafx.geometry.*;
 import javafx.scene.*;
 import javafx.scene.canvas.*;
@@ -17,6 +18,8 @@ import javafx.scene.layout.*;
 import javafx.scene.paint.*;
 import javafx.scene.transform.*;
 
+import java.awt.Graphics2D;
+import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -57,12 +60,14 @@ public class MainGUI extends Application
 	ComplexBigDecimal juliaSeed;
 	ArrayList<PannedImage> pannedImages;
 	ArrayList<Region<BigDecimal>> loggedRegions;
-	ArrayList<Thread> runningThreads;
+	//ArrayList<Thread> runningThreads;
 	OptionsEditor optionsEditor;
 	Timeline timeline;
 	BigDecimal magnification;
 	Object lock = new Object();
 	ThreadQueue threadQueue;
+	ArrayList<Future<?>> futureList;
+	ExecutorService executor = Executors.newCachedThreadPool();
 	private final Region<BigDecimal> originalRegion = new Region<BigDecimal>(new BigDecimal("-2"),
 			new BigDecimal("2"),
 			new BigDecimal("2"),
@@ -72,6 +77,7 @@ public class MainGUI extends Application
 	boolean closed, idle, julia, arbitraryPrecision, autoIterations,resizable, waitForImage;
 	int width, height, previewWidth, previewHeight, iterations, precision, initX, initY, imageX, imageY, threadCount;
 	int scrollX, scrollY;
+	long startTime, endTime;
 	double zoomFactor;
 	
 	/**
@@ -210,13 +216,14 @@ public class MainGUI extends Application
 		pannedImages = new ArrayList<PannedImage>();
 		juliaSeed = new ComplexBigDecimal("0","0",precision);
 		loggedRegions = new ArrayList<Region<BigDecimal>>();
-		runningThreads = new ArrayList<Thread>();
+		//runningThreads = new ArrayList<Thread>();
 		timeline = new Timeline(new KeyFrame(Duration.millis(2000),ae->{}));
 		updater = new Thread();
 		orbitThread = new Thread();
 		magnification = new BigDecimal("1");
 		threadQueue = new ThreadQueue();
 		new Thread(threadQueue).start();
+		futureList = new ArrayList<Future<?>>();
 		currentRegion = originalRegion;
 		closed = false;
 		idle = false;
@@ -225,6 +232,8 @@ public class MainGUI extends Application
 		autoIterations = true;
 		resizable = false;
 		waitForImage = false;
+		startTime = 0;
+		endTime = 0;
 		iterations = 500;
 		precision = 50;
 		initX=0;
@@ -350,9 +359,7 @@ public class MainGUI extends Application
 					mainCalculator.setColorFunction(cf);
 					drawSet();
 					updateJuliaSetViewer();
-					return false;
 				});
-				
 			});
 			defaultColorsMenu.getItems().add(colorMenuItem);
 		}
@@ -433,7 +440,7 @@ public class MainGUI extends Application
 					julia = false;
 					drawSet();
 					
-					return false;
+					
 				});
 				
 			}
@@ -467,7 +474,7 @@ public class MainGUI extends Application
 					julia = true;
 					drawSet();
 					
-					return false;
+					
 				});
 			}
 		});
@@ -491,7 +498,7 @@ public class MainGUI extends Application
 				arbitraryPrecision = false;
 				drawSet();
 				
-				return false;
+				
 			});
 		});
 		return reset;
@@ -508,7 +515,7 @@ public class MainGUI extends Application
 			threadQueue.callLater(() -> {
 				interrupt();
 				drawSet();
-				return false;
+				
 			});
 		});
 		return rerender;
@@ -532,7 +539,7 @@ public class MainGUI extends Application
 					loggedRegions.remove(loggedRegions.size()-1);
 					drawSet();
 					
-					return false;
+					
 				});
 			}
 			else
@@ -558,8 +565,6 @@ public class MainGUI extends Application
 		interrupt.setOnAction(e -> {
 			threadQueue.callLater(() -> {
 				interrupt();
-				
-				return false;
 			});
 		});
 		return interrupt;
@@ -642,8 +647,8 @@ public class MainGUI extends Application
 	private Canvas buildOrbitCanvas()
 	{
 		orbitCanvas = new Canvas();
-		orbitCanvas.setWidth(previewWidth);
-		orbitCanvas.setHeight(previewHeight);
+		orbitCanvas.setWidth(previewWidth*2);
+		orbitCanvas.setHeight(previewHeight*2);
 		orbitGC = orbitCanvas.getGraphicsContext2D();
 		orbitGC.setFill(Color.WHITE);
 		orbitGC.fillRect(0, 0, width, height);
@@ -666,7 +671,6 @@ public class MainGUI extends Application
 						height = width;
 						updateAfterResize();
 					}
-					return false;
 				});
 			}
 		});
@@ -683,7 +687,6 @@ public class MainGUI extends Application
 						width = height;
 						updateAfterResize();
 					}
-					return false;
 				});
 			}
 		});
@@ -720,7 +723,8 @@ public class MainGUI extends Application
 					currentRegion = Calculator.toBigDecimalRegion(new Region<Integer>(0,-change,width,height-change), currentRegion, viewerPixelRegion, precision);
 					PannedImage pi = new PannedImage(mainCalculator, -imageX,-imageY, new Region<Integer>(0,0,width,change),currentRegion, viewerPixelRegion, iterations,
 							arbitraryPrecision, precision, julia,juliaSeed, mainGC,this);
-					new Thread(pi).start();
+					//new Thread(pi).start();
+					executor.execute(pi);
 					pannedImages.add(pi);
 				}
 				else if(e.getCode() == KeyCode.DOWN)
@@ -729,7 +733,8 @@ public class MainGUI extends Application
 					currentRegion = Calculator.toBigDecimalRegion(new Region<Integer>(0,change,width,height+change), currentRegion, viewerPixelRegion, precision);
 					PannedImage pi = new PannedImage(mainCalculator,-imageX,height-imageY-change, new Region<Integer>(0,height-change,width,height),currentRegion, viewerPixelRegion, iterations,
 							arbitraryPrecision, precision, julia,juliaSeed, mainGC,this);
-					new Thread(pi).start();
+					//new Thread(pi).start();
+					executor.execute(pi);
 					pannedImages.add(pi);
 				}
 				else if(e.getCode() == KeyCode.LEFT)
@@ -738,7 +743,8 @@ public class MainGUI extends Application
 					currentRegion = Calculator.toBigDecimalRegion(new Region<Integer>(-change,0,width-change,height), currentRegion, viewerPixelRegion, precision);
 					PannedImage pi = new PannedImage(mainCalculator,-imageX,-imageY, new Region<Integer>(0,0,change,height),currentRegion, viewerPixelRegion, iterations,
 							arbitraryPrecision, precision, julia,juliaSeed, mainGC,this);
-					new Thread(pi).start();
+					//new Thread(pi).start();
+					executor.execute(pi);
 					pannedImages.add(pi);
 				}
 				else if(e.getCode() == KeyCode.RIGHT)
@@ -747,7 +753,8 @@ public class MainGUI extends Application
 					currentRegion = Calculator.toBigDecimalRegion(new Region<Integer>(change,0, width+change,height), currentRegion, viewerPixelRegion, precision);
 					PannedImage pi = new PannedImage(mainCalculator,-imageX+width-change,-imageY, new Region<Integer>(width-change,0,width,height),currentRegion, viewerPixelRegion, iterations,
 							arbitraryPrecision, precision, julia,juliaSeed, mainGC,this);
-					new Thread(pi).start();
+					//new Thread(pi).start();
+					executor.execute(pi);
 					pannedImages.add(pi);
 				}
 				
@@ -785,7 +792,6 @@ public class MainGUI extends Application
 					
 				
 					updateTextArea();
-				return false;
 			});
 			
 		});
@@ -865,7 +871,6 @@ public class MainGUI extends Application
 				}));
 				timeline.play();
 				
-				return false;
 			});
 		});
 	}
@@ -942,7 +947,6 @@ public class MainGUI extends Application
 						});
 					}
 				}
-				return false;
 			});
 		});
 		
@@ -1009,7 +1013,6 @@ public class MainGUI extends Application
 						updateJuliaSetViewer();
 					}
 				}
-				return false;
 			});
 			
 		});
@@ -1106,8 +1109,7 @@ public class MainGUI extends Application
 				window.close();
 				System.exit(0);
 			});
-			
-			return true;
+			threadQueue.terminate();
 			
 		});
 		
@@ -1138,6 +1140,7 @@ public class MainGUI extends Application
 	 */
 	public void drawSet()
 	{
+		startTime = System.currentTimeMillis();
 		idle = false;
 		magnification = originalRegion.getWidth().divide(currentRegion.getWidth(), precision, BigDecimal.ROUND_HALF_UP);
 		if(autoIterations)
@@ -1162,30 +1165,27 @@ public class MainGUI extends Application
 	{
 		int length = (int) Math.sqrt((width*height)/threadCount);
 		int squaresPerSide = (int) (width/length);
-		System.out.println(squaresPerSide + " " + length);
 		for(int i = 0; i<Math.pow(squaresPerSide,2); i++)
 		{
 			int x = (int) (i%squaresPerSide)*length;
 			int y = ((int)(i/squaresPerSide))*length;
 			Region<Integer> pixelRegionSection = new Region<Integer>(x,y,x+length, y + length);
 			
-			Thread  g = new Thread(new Generator(pixelRegionSection, currentRegion, viewerPixelRegion, iterations,arbitraryPrecision, precision,julia,juliaSeed,mainGC, mainCalculator));
-			runningThreads.add(g);
-			g.start();
+			futureList.add(executor.submit(new Generator(pixelRegionSection, currentRegion, viewerPixelRegion, iterations,
+					arbitraryPrecision, precision,julia,juliaSeed,mainGC, mainCalculator)));
 		}
 		if(squaresPerSide*length != width)
 		{
 			Region<Integer> pixelRegionSection = new Region<Integer>(squaresPerSide*length,0,width, height);
 			
-			Thread  g = new Thread(new Generator(pixelRegionSection, currentRegion, viewerPixelRegion, iterations,arbitraryPrecision, precision,julia,juliaSeed,mainGC, mainCalculator));
-			runningThreads.add(g);
-			g.start();
+			futureList.add(executor.submit(new Generator(pixelRegionSection, currentRegion, viewerPixelRegion, iterations,arbitraryPrecision,
+					precision,julia,juliaSeed,mainGC, mainCalculator)));
 			
 			pixelRegionSection = new Region<Integer>(0,squaresPerSide*length,squaresPerSide*length, height);
 			
-			g = new Thread(new Generator(pixelRegionSection, currentRegion, viewerPixelRegion, iterations,arbitraryPrecision, precision,julia,juliaSeed,mainGC, mainCalculator));
-			runningThreads.add(g);
-			g.start();
+			futureList.add(executor.submit(new Generator(pixelRegionSection, currentRegion, viewerPixelRegion,
+					iterations,arbitraryPrecision,
+					precision,julia,juliaSeed,mainGC, mainCalculator)));
 		}
 		
 		
@@ -1198,17 +1198,19 @@ public class MainGUI extends Application
 		{
 			Region<Integer> pixelRegionSection = new Region<Integer>(0,i*h,width,i*h+h);
 			
-			Thread  g = new Thread(new Generator(pixelRegionSection, currentRegion, viewerPixelRegion, iterations,arbitraryPrecision, precision,julia,juliaSeed,mainGC, mainCalculator));
-			runningThreads.add(g);
-			g.start();
+			futureList.add(
+					executor.submit(
+					new Generator(pixelRegionSection, currentRegion, viewerPixelRegion, iterations,
+							arbitraryPrecision, precision,julia,juliaSeed,mainGC, mainCalculator)));
 		}
 		
 		if(h*threadCount < height)
 		{
 			Region<Integer> pixelRegionSection = new Region<Integer>(0,h*threadCount,width,height);
-			Thread  g = new Thread(new Generator(pixelRegionSection, currentRegion, viewerPixelRegion, iterations,arbitraryPrecision, precision,julia,juliaSeed,mainGC, mainCalculator));
-			runningThreads.add(g);
-			g.start();
+			futureList.add(
+					executor.submit(
+							new Generator(pixelRegionSection, currentRegion, viewerPixelRegion, iterations,arbitraryPrecision,
+									precision,julia,juliaSeed,mainGC, mainCalculator)));
 		}
 	}
 	
@@ -1227,7 +1229,8 @@ public class MainGUI extends Application
 					+ currentRegion.getCenterY().setScale(6, BigDecimal.ROUND_HALF_UP).stripTrailingZeros().toPlainString() + "i" + "\n"
 					+ "Threads: " + threadCount + "\n"
 					+ "Color: " + mainCalculator.getColorFunction().toString() + "\n"
-					+ "Arbitrary Precision: " + arbitraryPrecision + "\n");
+					+ "Arbitrary Precision: " + arbitraryPrecision + "\n"
+					+ "Time: " + (endTime - startTime) +"\n");
 		});
 	}
 	
@@ -1251,7 +1254,7 @@ public class MainGUI extends Application
 	public void updateJuliaSetViewer()
 	{
 		previewCalculator.setInterrupt(false);
-		int h = (int) (previewHeight/threadCount);
+		int h = (int) (previewHeight/10);
 		for(int i = 0; i<threadCount; i++)
 		{
 			Region<Integer> pixelRegionSection = new Region<Integer>(0,i*h,previewWidth,i*h+h);
@@ -1272,10 +1275,22 @@ public class MainGUI extends Application
 		return (timeline.getStatus() == Status.RUNNING);
 	}
 	
+	
+	/**
+	 * A thread that renders orbits onto a  superimposed image of the julia set.
+	 * Currently it uses the swing image and converts it. Consider finding a pure fx solution.
+	 * @author Ezra
+	 *
+	 */
 	public class OrbitThread implements Runnable
 	{
 		private ComplexBigDecimal seed;
 		private int x,y, oldX, oldY;
+		
+		/**
+		 * Constructs an orbit 
+		 * @param seed
+		 */
 		public OrbitThread(ComplexBigDecimal seed)
 		{
 			this.seed = seed;
@@ -1284,6 +1299,9 @@ public class MainGUI extends Application
 		@Override
 		public void run()
 		{
+			BufferedImage imageToRender = new BufferedImage((int) orbitCanvas.getWidth(),
+					(int) orbitCanvas.getHeight(), BufferedImage.TYPE_INT_ARGB);
+			Graphics2D g2d = imageToRender.createGraphics();
 			Region<Integer> pixelRegion = new Region<Integer>(
 					0,0,
 					(int) orbitCanvas.getWidth(),
@@ -1294,8 +1312,9 @@ public class MainGUI extends Application
 			oldX = x;
 			oldY = y;
 			Platform.runLater(()->{
-				orbitGC.setFill(Color.WHITE);
-				orbitGC.fillRect(0, 0, orbitCanvas.getWidth(), orbitCanvas.getHeight());
+				//g2d.setColor(java.awt.Color.WHITE);
+				//g2d.fillRect(0, 0, (int)orbitCanvas.getWidth(),(int) orbitCanvas.getHeight());
+				//orbitGC.drawImage(SwingFXUtils.toFXImage(imageToRender, null), 0, 0);
 			});
 			
 			int i = 0;
@@ -1307,18 +1326,14 @@ public class MainGUI extends Application
 			while(i<=iterations)
 			{
 				Platform.runLater(()->{
-					/*orbitGC.setGlobalAlpha(1);
-					orbitGC.setFill(Color.WHITE);
-					orbitGC.fillRect(0, 0, orbitCanvas.getWidth(), orbitCanvas.getHeight());
-					orbitGC.setGlobalAlpha(0.5);
-					orbitGC.drawImage(previewViewerImage, 0, 0, orbitCanvas.getWidth(), orbitCanvas.getHeight());*/
-					orbitGC.setStroke(Color.RED);
-					orbitGC.setFill(Color.RED);
-					orbitGC.strokeLine(oldX, oldY, x, y);
-					orbitGC.fillRect(x, y, 1, 1);
-					orbitGC.strokeOval(x-5, y-5, 10, 10);
 					
+					g2d.setColor(java.awt.Color.WHITE);
+					g2d.drawLine(oldX, oldY, x, y);
+					g2d.fillRect(x, y, 1, 1);
+					g2d.drawOval(x-5, y-5, 10, 10);
 					
+					orbitGC.drawImage(previewViewerImage, 0, 0, orbitCanvas.getWidth(), orbitCanvas.getHeight());
+					orbitGC.drawImage(SwingFXUtils.toFXImage(imageToRender, null), 0, 0);
 				});
 				if(julia)
 				{
@@ -1335,7 +1350,7 @@ public class MainGUI extends Application
 				}
 				
 				try {
-					Thread.sleep(25);
+					Thread.sleep(50);
 				} catch (InterruptedException e)
 				{
 					break;
@@ -1350,16 +1365,13 @@ public class MainGUI extends Application
 			}
 			
 			Platform.runLater(()->{
-				/*orbitGC.setGlobalAlpha(1);
-				orbitGC.setFill(Color.WHITE);
-				orbitGC.fillRect(0, 0, orbitCanvas.getWidth(), orbitCanvas.getHeight());
-				orbitGC.setGlobalAlpha(0.5);
-				orbitGC.drawImage(previewViewerImage, 0, 0, orbitCanvas.getWidth(), orbitCanvas.getHeight());*/
-				orbitGC.setStroke(Color.RED);
-				orbitGC.setFill(Color.RED);
-				orbitGC.fillRect(x, y, 1, 1);
-				orbitGC.strokeOval(x-5, y-5, 10, 10);
-				orbitGC.strokeLine(oldX, oldY, x, y);
+				g2d.setColor(java.awt.Color.WHITE);
+				g2d.drawLine(oldX, oldY, x, y);
+				g2d.fillRect(x, y, 1, 1);
+				g2d.drawOval(x-5, y-5, 10, 10);
+				
+				orbitGC.drawImage(previewViewerImage, 0, 0, orbitCanvas.getWidth(), orbitCanvas.getHeight());
+				orbitGC.drawImage(SwingFXUtils.toFXImage(imageToRender, null), 0, 0);
 			});
 			
 		}
@@ -1403,26 +1415,40 @@ public class MainGUI extends Application
 				}
 			}
 			
-			for(Thread r: runningThreads)
+			try
 			{
-				try {
-					r.join();
-				} catch (InterruptedException e)
+				for(Future<?> task : futureList)
 				{
-					e.printStackTrace();
+					task.get();
 				}
 			}
+			catch(ExecutionException | InterruptedException ee)
+			{
+				ee.printStackTrace();
+			}
+			futureList = new ArrayList<Future<?>>();
+			
 			Platform.runLater(()->{
 				progressBar.setProgress(1);
 				progressIndicator.setProgress(1);
 				});
 			
-			runningThreads = new ArrayList<Thread>();
 			mainCalculator.setInterrupt(false);
 			
-			ImageReady ready = new ImageReady();
+			//ImageReady ready = new ImageReady();
 			SnapshotParameters sp = new SnapshotParameters();
-			Platform.runLater(() -> viewerCanvas.snapshot(ready, sp, null));
+			Platform.runLater(() -> viewerCanvas.snapshot((SnapshotResult result) ->{
+				currentImage = result.getImage();
+				displayImage = result.getImage();
+				actualImage = result.getImage();
+				waitForImage = false;
+				synchronized(lock)
+				{
+					lock.notifyAll();
+				}
+				return null;
+				
+			}, sp, null));
 			
 			waitForImage = true;
 			synchronized(lock)
@@ -1437,10 +1463,12 @@ public class MainGUI extends Application
 					e.printStackTrace();
 				}
 			}
+			endTime = System.currentTimeMillis();
+			updateTextArea();
 		}
 	}
 	
-	public class ImageReady implements Callback<SnapshotResult, Void>
+	/*public class ImageReady implements Callback<SnapshotResult, Void>
 	{
 		@Override
 		public Void call(SnapshotResult result)
@@ -1456,7 +1484,7 @@ public class MainGUI extends Application
 			return null;
 		}
 		
-	}
+	}*/
 	
 	/**
 	 * Used to construct an image and draw to a canvas of either the julia set or the Mandelbrot Set.
@@ -1559,10 +1587,23 @@ public class MainGUI extends Application
 		}
 	}
 	
+	
+	/**
+	 * A thread that is always running. It accepts CallableClass objects whose call method
+	 * will be executed on threadQueue thread some time after callLater(CallableClass) is invoked.
+	 * 
+	 * Consider replacing this with a threadPool.
+	 * @author Ezra
+	 *
+	 */
 	public class ThreadQueue implements Runnable
 	{
 		private ArrayBlockingQueue<CallableClass> queue;
 		private boolean terminate;
+		
+		/**
+		 * Constructs this threadQueue.
+		 */
 		public ThreadQueue()
 		{
 			queue = new ArrayBlockingQueue<CallableClass>(100);
@@ -1571,25 +1612,41 @@ public class MainGUI extends Application
 		
 		/**
 		 * Schedules this callable to be called on a separate thread.
+		 * If the thread has already terminated, it will not accept any more values.
 		 * @param callable		Should return false unless it wants the thread queue to terminate.
 		 */
 		public void callLater(CallableClass callable)
 		{
 			/*Consider Changing to Put*/
-			queue.offer(callable);
+			if(!terminate)
+			{
+				queue.offer(callable);
+			}
 		}
 		
+		/**
+		 * Terminates the thread.
+		 * It sets terminate to true then it feeds the queue an empty CallableClass to unblock it.
+		 */
 		public void terminate()
 		{
 			terminate = true;
-			queue.offer(() -> {return true;});
+			queue.offer(() -> {});
 		}
 		
+		/**
+		 * Returns the blocking queue.
+		 * @return the blocking queue.
+		 */
 		public ArrayBlockingQueue<CallableClass> getQueue()
 		{
 			return queue;
 		}
 
+		
+		/**
+		 * Loops through each callableClass in the queue blocking if none is available. 
+		 */
 		@Override
 		public void run()
 		{
@@ -1598,10 +1655,7 @@ public class MainGUI extends Application
 				while(!terminate)
 				{
 					CallableClass callable = queue.take();
-					if(callable.call())
-					{
-						return;
-					}
+					callable.call();
 				}
 			}
 			catch (InterruptedException e)
