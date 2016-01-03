@@ -284,7 +284,7 @@ public class MainGUI extends Application
 		
 		/*Builds File Menu*/
 		Menu fileMenu = new Menu("File");
-		fileMenu.getItems().add(buildSaveMenuItem());
+		fileMenu.getItems().addAll(buildReadMeMenuItem(),buildSaveMenuItem());
 		if(Locator.getOS() != OS.MAC)
 		{
 			fileMenu.getItems().addAll(new SeparatorMenuItem(),
@@ -581,6 +581,24 @@ public class MainGUI extends Application
 				optionsEditor.showEditDialog(0);
 			});
 		return edit;
+	}
+	
+	private MenuItem buildReadMeMenuItem()
+	{
+		MenuItem readMe = new MenuItem("Read Me");
+		readMe.setOnAction(e->{
+			Alert alert = new Alert(AlertType.INFORMATION);
+			alert.setContentText("For Zooming:\nDrag a box.\nLeft click.\nScroll using the scroll wheel (platform dependent).\n\n"
+					+ "For Panning:\nUse the arrow keys.\n\n"
+					+ "For Previewing the Julia Sets:\nRight click\n\n"
+					+ "Use the Edit menu to switch between Mandelbrot and Julia sets, and to toggle double and arbitrary precision. "
+					+ "You may also use it to rerender an image or to go back to a previous image.\n\n"
+					+ "Use the Edit > Edit... menu item to change the color of the set, "
+					+ "the iterations used, the precision, or the number of threads used.\n\n"
+					+ "Use the File menu item to save an image.");
+			alert.show();
+		});
+		return readMe;
 	}
 
 	/**
