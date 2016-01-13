@@ -1,7 +1,9 @@
 package fx;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.util.ArrayList;
 
 import javax.imageio.ImageIO;
 
@@ -26,6 +28,8 @@ public class ImageSaverDialog
 	private ChoiceBox<String> typeChooser;
 	private MainGUI gui;
 	private Stage window;
+	private boolean chooseFile;
+	private CallableClass call;
 	
 	/**
 	 * Initializes this dialog box with a reference to the mainGui.
@@ -37,10 +41,14 @@ public class ImageSaverDialog
 	}
 	
 	/**
-	 * Constructs this dialog box.
+	 * 
+	 * @param chooseFile	True if the user should choose the file himself.
+	 * @param call			A class whose call method is invoked when the image has been written succesfully to a file.
 	 */
-	public void showSaverDialog()
+	public void showSaverDialog(boolean chooseFile, CallableClass call)
 	{
+		this.chooseFile = chooseFile;
+		this.call = call;
 		window = new Stage();
 		window.setTitle("Image Saver");
 		window.initModality(Modality.APPLICATION_MODAL);
@@ -52,8 +60,15 @@ public class ImageSaverDialog
 		Label sizeLabel = new Label("Size:");
 		Label typeLabel = new Label("Image Type:");
 		sizeField = new TextField();
-		typeChooser = new ChoiceBox<String>(FXCollections.observableArrayList(
-				ImageIO.getWriterFormatNames()));
+		
+		ArrayList<String> writableImages = new ArrayList<String>();
+		for(String type : ImageIO.getWriterFormatNames())
+		{
+			if(!Character.isUpperCase(type.charAt(0))){
+				writableImages.add(type);
+			}
+		}
+		typeChooser = new ChoiceBox<String>(FXCollections.observableArrayList(writableImages));
 		typeChooser.setValue("png");
 		
 		Button cancelButton = new Button("Cancel");
@@ -85,24 +100,40 @@ public class ImageSaverDialog
 	 */
 	public void saveImage()
 	{
-		FileChooser fc = new FileChooser();
-		fc.setTitle("Save Image");
-		File file;
-		if((file = fc.showSaveDialog(window)) == null)
-		{
-			return;
-		}
+		File file = null;
 		String imageType = typeChooser.getValue();
-		String fileName = file.getAbsolutePath();
-		if(! fileName.endsWith("." + imageType))
+		if(!chooseFile)
 		{
-			file = new File(fileName + "." + imageType);
+			try {
+				file = new File(Locator.locateFile("tmp/uploadFile." + imageType));
+			} catch (FileNotFoundException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 		}
+		else
+		{
+			FileChooser fc = new FileChooser();
+			fc.setTitle("Save Image");
+			
+			if((file = fc.showSaveDialog(window)) == null)
+			{
+				return;
+			}
+			
+			String fileName = file.getAbsolutePath();
+			if(! fileName.endsWith("." + imageType))
+			{
+				file = new File(fileName + "." + imageType);
+			}
+		}
+		
 		Calculator calc = new Calculator(gui.mainCalculator.getColorFunction());
 		ImageGenerator imageGen = new ImageGenerator(calc);
 		new Thread(imageGen).start();
-		Updater updater = new Updater(calc, imageGen, file, new ProgressMonitor());
+		Updater updater = new Updater(calc, imageGen, file, imageType, new ProgressMonitor());
 		new Thread(updater).start();
+		window.close();
 	}
 	
 	/**
@@ -135,7 +166,6 @@ public class ImageSaverDialog
 	 * @author Ezra Stein
 	 * @version 1.0
 	 * @since 2015
-	 *
 	 */
 	private class Updater implements Runnable
 	{
@@ -143,12 +173,14 @@ public class ImageSaverDialog
 		private ProgressMonitor pm;
 		private File file;
 		private ImageGenerator imageGen;
-		public Updater(Calculator calc, ImageGenerator imageGen, File file, ProgressMonitor pm)
+		private String imageType;
+		public Updater(Calculator calc, ImageGenerator imageGen, File file, String imageType, ProgressMonitor pm)
 		{
 			this.calc = calc;
 			this.file = file;
 			this.imageGen = imageGen;
 			this.pm = pm;
+			this.imageType = imageType;
 		}
 		
 		public void run()
@@ -173,14 +205,17 @@ public class ImageSaverDialog
 					pm.update(calc.getPixelsCalculated()/Math.pow(Integer.parseInt(sizeField.getText()),2));
 					});
 			}
+			
+			
 			try
 			{
-				ImageIO.write(SwingFXUtils.fromFXImage(imageGen.getImage(),null), typeChooser.getValue(), file);
+				ImageIO.write(SwingFXUtils.fromFXImage(imageGen.getImage(),null), imageType, file);
 			} catch (IOException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 			Platform.runLater(() -> {pm.close();});
+			call.call();
 		}
 	}
 	
@@ -192,11 +227,12 @@ public class ImageSaverDialog
 	 *
 	 */
 	private class ProgressMonitor
-	{	
+	{
 		private boolean canceled = false;
 		private ProgressBar progressBar;
 		private ProgressIndicator progressIndicator;
 		private Stage stage;
+		
 		public void show()
 		{
 			stage = new Stage();

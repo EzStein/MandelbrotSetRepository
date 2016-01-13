@@ -1,29 +1,57 @@
 package fx;
 
 import java.io.*;
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.nio.file.*;
+import java.text.*;
+import java.util.*;
 
-import colorFunction.*;
+import org.apache.http.*;
+import org.apache.http.client.*;
+import org.apache.http.client.methods.*;
+import org.apache.http.entity.*;
+import org.apache.http.entity.mime.*;
+import org.apache.http.impl.client.*;
 
-/**
- * A test class
- * @author Ezra
- *
- */
-public class Test
-{
-	/**
-	 * The main method
-	 * @param args		unused.
-	 */
+public class Test {
 	public static void main(String[] args)
 	{
-		for(int i =0; i<=200000; i++)
-		{
-			char[] charPair = Character.toChars(i);
-			System.out.println(new String(i + ": " + new String(charPair)));
+		HttpClient client = HttpClients.createDefault();
+		HttpGet get = new HttpGet("http://www.ezstein.xyz/uploads/MSet1024p3j.png");
+		InputStream in = null;
+		FileOutputStream out = null;
+		byte[] buffer = new byte[1024];
+		try {
+			HttpResponse response = client.execute(get);
+			in = response.getEntity().getContent();
+			out = new FileOutputStream(Locator.locateFile("tmp/downloaded.png"));
+			for(int length; (length = in.read(buffer)) >0;)
+			{
+				out.write(buffer, 0, length);
+			}
+			
+		} catch (ClientProtocolException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
 		}
+		finally
+		{
+			
+				try {
+					if(in!=null){
+						in.close();
+					}
+					if(out !=null){
+						out.close();
+					}
+						
+				
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+		}
+		System.out.println("SUCCESSFUL");
 	}
 }

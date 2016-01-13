@@ -100,8 +100,8 @@ public class MainGUI extends Application
 	{
 		writeFiles();
 		//showStartDialog();
-		width = 800;
-		height = 800;
+		width = 500;
+		height = 500;
 		initializeVariables();
 		
 		/*Sets the root*/
@@ -600,7 +600,7 @@ public class MainGUI extends Application
 		});
 		return readMe;
 	}
-
+	
 	/**
 	 * Save Menu Item:
 	 * Opens up the image saver dialog.
@@ -611,7 +611,7 @@ public class MainGUI extends Application
 		MenuItem saveMenu = new MenuItem("Save Image...");
 		saveMenu.setAccelerator(new KeyCodeCombination(KeyCode.S, KeyCombination.SHORTCUT_DOWN));
 		saveMenu.setOnAction(e->{
-				new ImageSaverDialog(this).showSaverDialog();
+				new ImageSaverDialog(this).showSaverDialog(true, ()->{});
 			});
 		return saveMenu;
 	}

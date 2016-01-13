@@ -39,6 +39,17 @@ public class Locator
 		{
 			dir.mkdirs();
 		}
+		
+		if(new File(pathName).getParent() != null)
+		{
+			File dir2 =new File(dir.getAbsolutePath() + File.separator + new File(pathName).getParent());
+			if(!dir2.exists())
+			{
+				dir2.mkdirs();
+			}
+		}
+		
+		
 		File file = new File(dir.getAbsolutePath() + File.separator + pathName);
 		if(!file.exists())
 		{

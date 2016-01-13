@@ -2,7 +2,21 @@ package fx;
 
 import java.io.*;
 import java.math.*;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.*;
+
+import javax.imageio.ImageIO;
+
+import org.apache.http.HttpEntity;
+import org.apache.http.HttpResponse;
+import org.apache.http.client.ClientProtocolException;
+import org.apache.http.client.HttpClient;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.entity.ContentType;
+import org.apache.http.entity.mime.MultipartEntityBuilder;
+import org.apache.http.impl.client.HttpClients;
+
 import colorFunction.*;
 import javafx.application.*;
 import javafx.beans.value.*;
@@ -54,6 +68,9 @@ public class OptionsEditor
 	private ComplexBigDecimal currentSeed;
 	private int tabNumber;
 	private ArrayList<CustomColorFunction> savedColors;
+	private TextField uploadNameField, uploadAuthorField;
+	private TextArea uploadDescriptionArea;
+	private ChoiceBox<String> uploadTypeChoiceBox;
 	
 	/**
 	 * Constructs this editor with a reference to the gui that created it.
@@ -149,6 +166,7 @@ public class OptionsEditor
 		TabPane tabPane = new TabPane();
 		tabPane.getTabs().add(buildOptionsTab());
 		tabPane.getTabs().add(buildColorTab());
+		tabPane.getTabs().add(buildUploadTab());
 		layout.setCenter(tabPane);
 		tabPane.getSelectionModel().select(tabNumber);
 		
@@ -776,6 +794,154 @@ public class OptionsEditor
 		return addStopButton;
 	}
 
+	private Tab buildUploadTab()
+	{
+		Tab tab = new Tab("Upload");
+		tab.setClosable(false);
+		GridPane grid;
+		grid= new GridPane();
+		grid.setVgap(10);
+		grid.setHgap(10);
+		grid.setPadding(new Insets(30,30,30,30));
+		
+		uploadNameField = new TextField();
+		uploadAuthorField = new TextField();
+		uploadDescriptionArea = new TextArea();
+		
+		grid.add(new Label("Name:"), 0, 0);
+		grid.add(uploadNameField,0,1);
+		grid.add(new Label("Author (leave blank for anonymous):"), 0, 2);
+		grid.add(uploadAuthorField, 0, 3);
+		grid.add(new Label("Description:"), 0, 4);
+		grid.add(uploadDescriptionArea, 0, 5);
+		grid.add(buildUploadButton(), 0, 6);
+		
+		grid.add(buildUploadTypeChoiceBox(), 1, 0);
+		tab.setContent(grid);
+		return tab;
+		
+	}
+	
+	private Button buildUploadButton()
+	{
+		Button uploadButton = new Button("Upload Image");
+		uploadButton.setOnAction(e->{
+			String type = uploadTypeChoiceBox.getSelectionModel().getSelectedItem();
+			if(type.equals("Image")){
+				showUploadImageDialog();
+			} else if(type.equals("Region")) {
+				showUploadRegionDialog();
+			} else if(type.equals("Color")) {
+				showUploadColorDialog();
+			} else {
+				System.out.println("UNKNOWN TYPE");
+			}
+		});
+		return uploadButton;
+	}
+	
+	private void showUploadImageDialog() {
+		if(!checkUploadValues()){
+			return;
+		}
+		new ImageSaverDialog(gui).showSaverDialog(false, ()->{
+			uploadImage();
+			
+		});
+	}
+	
+	private boolean checkUploadValues() {
+		return !(uploadNameField.getText() =="" || uploadDescriptionArea.getText() =="");
+	}
+	
+	private void uploadImage(){
+		DateFormat dateFormat = new SimpleDateFormat("yyyy-mm-dd");
+		HttpClient client = HttpClients.createDefault();
+		HttpPost post = new HttpPost("http://www.ezstein.xyz/uploader.php");
+		HttpResponse response = null;
+		BufferedReader in = null;
+		try {
+			//String imageType = "png";
+			//File file = new File(Locator.locateFile("tmp/uploadFile." + imageType));
+			File[] files = new File(Locator.getBaseDirectoryPath() + File.separator + "tmp").listFiles(new FilenameFilter(){
+
+				@Override
+				public boolean accept(File dir, String name) {
+					return name.startsWith("uploadFile.");
+				}
+			});
+			File file = files[0];
+			String name = file.getName();
+			String imageType = name.substring(name.lastIndexOf(".") + 1);
+			
+			HttpEntity entity = MultipartEntityBuilder.create().addBinaryBody(
+					"uploadFile", file, ContentType.create("image/" + imageType), file.getName())
+					.addTextBody("pass", "uploaderPassword")
+					.addTextBody("Name", uploadNameField.getText())
+					.addTextBody("Author", (uploadAuthorField.getText().equals("") ? "Anonymous" : uploadAuthorField.getText()))
+					.addTextBody("Description", uploadDescriptionArea.getText())
+					.addTextBody("UploadDate", dateFormat.format(new Date()))
+					.addTextBody("SetType", gui.julia?"J":"M")
+					.build();
+			post.setEntity(entity);
+			response = client.execute(post);
+			in = new BufferedReader(new InputStreamReader(response.getEntity().getContent()));
+			
+			String input;
+			while((input = in.readLine()) !=null)
+			{
+				System.out.println(input);
+			}
+		} catch (ClientProtocolException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		finally
+		{
+			
+				try {
+					if(in!=null){
+						in.close();
+					}
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+		}
+		
+		Platform.runLater(()->{
+			Alert alert = new Alert(AlertType.INFORMATION);
+			alert.setContentText("Upload Success.");
+			alert.show();
+			});
+		
+	}
+	
+	private void showUploadRegionDialog() {
+		
+	}
+	private void showUploadColorDialog() {
+	
+	}
+	
+	private ChoiceBox<String> buildUploadTypeChoiceBox()
+	{
+		uploadTypeChoiceBox =
+				new ChoiceBox<String>(FXCollections.observableList(
+						new ArrayList<String>(Arrays.asList("Image","Region","Color"))));
+		uploadTypeChoiceBox.getSelectionModel().selectedIndexProperty().addListener(new ChangeListener<Number>(){
+
+			@Override
+			public void changed(ObservableValue<? extends Number> observable, Number oldValue, Number newValue) {
+			}
+		});
+		uploadTypeChoiceBox.getSelectionModel().select(0);
+		return  uploadTypeChoiceBox;
+	}
+	
 	private Button buildApplyAndRerenderButton()
 	{
 		Button applyAndRerenderButton = new Button("Apply And Rerender");
