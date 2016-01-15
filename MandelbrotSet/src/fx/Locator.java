@@ -60,6 +60,54 @@ public class Locator
 		return file.getAbsolutePath();
 	}
 	
+	public static String locateFileAndDelete(String pathName) throws FileNotFoundException
+	{
+		File dir = new File(getBaseDirectoryPath());
+		if(!dir.exists())
+		{
+			dir.mkdirs();
+		}
+		
+		if(new File(pathName).getParent() != null)
+		{
+			File dir2 =new File(dir.getAbsolutePath() + File.separator + new File(pathName).getParent());
+			if(!dir2.exists())
+			{
+				dir2.mkdirs();
+			}
+		}
+		
+		
+		File file = new File(dir.getAbsolutePath() + File.separator + pathName);
+		if(file.exists())
+		{
+			file.delete();
+		}
+		return file.getAbsolutePath();
+	}
+	
+	/**
+	 * Deletes the contents of the tmp folder returns the path to the file to be created in it.
+	 * @param fileName
+	 * @return
+	 * @throws FileNotFoundException
+	 */
+	public static String locateFileInTmp(String fileName) throws FileNotFoundException
+	{
+		File dir = new File(getBaseDirectoryPath() + "/tmp");
+		if(!dir.exists())
+		{
+			dir.mkdirs();
+		}
+		File[] files = dir.listFiles();
+		for(File file: files)
+		{
+			file.delete();
+		}
+		
+		return dir.getAbsolutePath() + "/" + fileName;
+	}
+	
 	/**
 	 * Determines whether the file exists in the file system.
 	 * @param fileName	The path of the file which may or may not exist.

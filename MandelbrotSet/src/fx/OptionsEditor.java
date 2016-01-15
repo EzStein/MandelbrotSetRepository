@@ -70,7 +70,7 @@ public class OptionsEditor
 	private ArrayList<CustomColorFunction> savedColors;
 	private TextField uploadNameField, uploadAuthorField;
 	private TextArea uploadDescriptionArea;
-	private ChoiceBox<String> uploadTypeChoiceBox;
+	private ChoiceBox<String> uploadTypeChoiceBox, downloadTypeChoiceBox;
 	
 	/**
 	 * Constructs this editor with a reference to the gui that created it.
@@ -167,6 +167,7 @@ public class OptionsEditor
 		tabPane.getTabs().add(buildOptionsTab());
 		tabPane.getTabs().add(buildColorTab());
 		tabPane.getTabs().add(buildUploadTab());
+		tabPane.getTabs().add(buildDownloadTab());
 		layout.setCenter(tabPane);
 		tabPane.getSelectionModel().select(tabNumber);
 		
@@ -819,7 +820,6 @@ public class OptionsEditor
 		grid.add(buildUploadTypeChoiceBox(), 1, 0);
 		tab.setContent(grid);
 		return tab;
-		
 	}
 	
 	private Button buildUploadButton()
@@ -846,7 +846,6 @@ public class OptionsEditor
 		}
 		new ImageSaverDialog(gui).showSaverDialog(false, ()->{
 			uploadImage();
-			
 		});
 	}
 	
@@ -855,14 +854,15 @@ public class OptionsEditor
 	}
 	
 	private void uploadImage(){
-		DateFormat dateFormat = new SimpleDateFormat("yyyy-mm-dd");
+		UploadDialog dialog = new UploadDialog();
+		Platform.runLater(()->{dialog.show();});
+		
 		HttpClient client = HttpClients.createDefault();
 		HttpPost post = new HttpPost("http://www.ezstein.xyz/uploader.php");
 		HttpResponse response = null;
 		BufferedReader in = null;
 		try {
-			//String imageType = "png";
-			//File file = new File(Locator.locateFile("tmp/uploadFile." + imageType));
+			
 			File[] files = new File(Locator.getBaseDirectoryPath() + File.separator + "tmp").listFiles(new FilenameFilter(){
 
 				@Override
@@ -874,24 +874,29 @@ public class OptionsEditor
 			String name = file.getName();
 			String imageType = name.substring(name.lastIndexOf(".") + 1);
 			
-			HttpEntity entity = MultipartEntityBuilder.create().addBinaryBody(
-					"uploadFile", file, ContentType.create("image/" + imageType), file.getName())
+			HttpEntity entity = MultipartEntityBuilder.create()
 					.addTextBody("pass", "uploaderPassword")
 					.addTextBody("Name", uploadNameField.getText())
 					.addTextBody("Author", (uploadAuthorField.getText().equals("") ? "Anonymous" : uploadAuthorField.getText()))
 					.addTextBody("Description", uploadDescriptionArea.getText())
-					.addTextBody("UploadDate", dateFormat.format(new Date()))
 					.addTextBody("SetType", gui.julia?"J":"M")
+					.addBinaryBody("uploadFile", file, ContentType.create("image/" + imageType), file.getName())
 					.build();
 			post.setEntity(entity);
 			response = client.execute(post);
 			in = new BufferedReader(new InputStreamReader(response.getEntity().getContent()));
 			
-			String input;
+			String s = "", input = "";
 			while((input = in.readLine()) !=null)
 			{
-				System.out.println(input);
+				s += input + "\n";
 			}
+			final String s1 = s;
+			Platform.runLater(()->{
+				dialog.getResponseLabel().setText(s1);
+				dialog.enableClose();
+			});
+			
 		} catch (ClientProtocolException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -912,12 +917,6 @@ public class OptionsEditor
 				}
 		}
 		
-		Platform.runLater(()->{
-			Alert alert = new Alert(AlertType.INFORMATION);
-			alert.setContentText("Upload Success.");
-			alert.show();
-			});
-		
 	}
 	
 	private void showUploadRegionDialog() {
@@ -926,6 +925,14 @@ public class OptionsEditor
 	private void showUploadColorDialog() {
 	
 	}
+	
+	private void showUploadDialog(){
+		
+		
+	}
+	
+	
+	
 	
 	private ChoiceBox<String> buildUploadTypeChoiceBox()
 	{
@@ -940,6 +947,42 @@ public class OptionsEditor
 		});
 		uploadTypeChoiceBox.getSelectionModel().select(0);
 		return  uploadTypeChoiceBox;
+	}
+	
+	private Tab buildDownloadTab(){
+		Tab tab = new Tab("Download");
+		GridPane downloadGrid = new GridPane();
+		downloadGrid.setVgap(10);
+		downloadGrid.setHgap(10);
+		downloadGrid.setPadding(new Insets(30,30,30,30));
+		
+		
+		downloadGrid.add(buildDownloadButton(), 0, 1);
+		downloadGrid.add(buildDownloadTypeChoiceBox(), 0, 0);
+		
+		tab.setContent(downloadGrid);
+		return tab;
+	}
+	
+	private Button buildDownloadButton()
+	{
+		Button button = new Button("Download");
+		return button;
+	}
+	
+	private ChoiceBox<String> buildDownloadTypeChoiceBox()
+	{
+		downloadTypeChoiceBox =
+				new ChoiceBox<String>(FXCollections.observableList(
+						new ArrayList<String>(Arrays.asList("Image","Region","Color"))));
+		downloadTypeChoiceBox.getSelectionModel().selectedIndexProperty().addListener(new ChangeListener<Number>(){
+
+			@Override
+			public void changed(ObservableValue<? extends Number> observable, Number oldValue, Number newValue) {
+			}
+		});
+		downloadTypeChoiceBox.getSelectionModel().select(0);
+		return  downloadTypeChoiceBox;
 	}
 	
 	private Button buildApplyAndRerenderButton()
@@ -1332,6 +1375,53 @@ public class OptionsEditor
 		return returnValue;
 	}
 
+	private class UploadDialog
+	{
+		private Label responseLabel;
+		private Stage stage;
+		private Button closeButton;
+		public UploadDialog(){
+			Platform.runLater(()->{
+				stage = new Stage();
+				GridPane grid = new GridPane();
+				grid.setPadding(new Insets(25,25,25,25));
+				grid.setHgap(10);
+				grid.setVgap(10);
+				
+				responseLabel = new Label("");
+				closeButton = new Button("Close");
+				closeButton.setDisable(true);
+				closeButton.setOnAction(e->{
+					stage.close();
+				});
+				
+				grid.add(new Label("Uploading..."),0,0);
+				grid.add(responseLabel,0,1);
+				grid.add(closeButton,0,2);
+				
+				stage.setTitle("Uploading...");
+				Scene scene = new Scene(grid);
+				stage.setHeight(300);
+				stage.setWidth(400);
+				stage.setScene(scene);
+			});
+		}
+		
+		public Label getResponseLabel(){
+			return responseLabel;
+		}
+		
+		public void enableClose()
+		{
+			closeButton.setDisable(false);
+		}
+		
+		public void show()
+		{
+			stage.show();
+		}
+	}
+	
 	enum ResultType {YES, CANCEL, NO}
 	/**
 	 * A custom cell for use in the list view.

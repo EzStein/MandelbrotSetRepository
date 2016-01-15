@@ -1,9 +1,11 @@
 package fx;
 
+import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 
 import javax.imageio.ImageIO;
 
@@ -61,14 +63,14 @@ public class ImageSaverDialog
 		Label typeLabel = new Label("Image Type:");
 		sizeField = new TextField();
 		
-		ArrayList<String> writableImages = new ArrayList<String>();
+		/*ArrayList<String> writableImages = new ArrayList<String>();
 		for(String type : ImageIO.getWriterFormatNames())
 		{
 			if(!Character.isUpperCase(type.charAt(0))){
 				writableImages.add(type);
 			}
-		}
-		typeChooser = new ChoiceBox<String>(FXCollections.observableArrayList(writableImages));
+		}*/
+		typeChooser = new ChoiceBox<String>(FXCollections.observableArrayList(Arrays.asList("png", "gif", "jpg")));
 		typeChooser.setValue("png");
 		
 		Button cancelButton = new Button("Cancel");
@@ -105,7 +107,7 @@ public class ImageSaverDialog
 		if(!chooseFile)
 		{
 			try {
-				file = new File(Locator.locateFile("tmp/uploadFile." + imageType));
+				file = new File(Locator.locateFileInTmp("uploadFile." + imageType));
 			} catch (FileNotFoundException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
@@ -207,13 +209,15 @@ public class ImageSaverDialog
 			}
 			
 			
+			Platform.runLater(()->{pm.getStatusLabel().setText("Saving image...");});
 			try
 			{
-				ImageIO.write(SwingFXUtils.fromFXImage(imageGen.getImage(),null), imageType, file);
+				ImageIO.write(imageGen.getImage(), imageType, file);
 			} catch (IOException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
+			Platform.runLater(()->{pm.getStatusLabel().setText("Done");});
 			Platform.runLater(() -> {pm.close();});
 			call.call();
 		}
@@ -232,7 +236,7 @@ public class ImageSaverDialog
 		private ProgressBar progressBar;
 		private ProgressIndicator progressIndicator;
 		private Stage stage;
-		
+		private Label statusLabel;
 		public void show()
 		{
 			stage = new Stage();
@@ -240,12 +244,17 @@ public class ImageSaverDialog
 			VBox layout = new VBox(10);
 			layout.setPadding(new Insets(15,15,15,15));
 			HBox top = new HBox(10);
+			statusLabel = new Label("Generating image...");
+			
 			Button cancelButton = new Button("Cancel");
 			layout.getChildren().add(top);
+			layout.getChildren().add(statusLabel);
 			layout.getChildren().add(cancelButton);
 			progressBar = new ProgressBar();
 			progressIndicator = new ProgressIndicator();
 			top.getChildren().addAll(progressBar, progressIndicator);
+			stage.setResizable(false);
+			
 			
 			stage.setOnCloseRequest(e ->{
 				e.consume();
@@ -283,6 +292,11 @@ public class ImageSaverDialog
 		{
 			return canceled;
 		}
+		
+		public Label getStatusLabel()
+		{
+			return statusLabel;
+		}
 	}
 	
 	/**
@@ -300,7 +314,6 @@ public class ImageSaverDialog
 		{
 			this.calc = calc;
 		}
-		
 		@Override
 		public void run()
 		{
@@ -316,9 +329,12 @@ public class ImageSaverDialog
 			}	
 		}
 		
-		public WritableImage getImage()
+		public BufferedImage getImage()
 		{
-			return image;
+			BufferedImage holder = SwingFXUtils.fromFXImage(image, null);
+			BufferedImage returnImage = new BufferedImage(holder.getWidth(), holder.getHeight(), BufferedImage.OPAQUE);
+			returnImage.createGraphics().drawImage(holder, 0, 0, null);
+			return returnImage;
 		}
 		
 	}
