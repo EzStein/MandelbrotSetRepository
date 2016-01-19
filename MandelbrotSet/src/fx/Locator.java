@@ -94,7 +94,7 @@ public class Locator
 	 */
 	public static String locateFileInTmp(String fileName) throws FileNotFoundException
 	{
-		File dir = new File(getBaseDirectoryPath() + "/tmp");
+		File dir = new File(getBaseDirectoryPath() + "/tmp/" + new File(fileName).getParent());
 		if(!dir.exists())
 		{
 			dir.mkdirs();
@@ -105,7 +105,7 @@ public class Locator
 			file.delete();
 		}
 		
-		return dir.getAbsolutePath() + "/" + fileName;
+		return getBaseDirectoryPath() + "/tmp/" + fileName;
 	}
 	
 	/**

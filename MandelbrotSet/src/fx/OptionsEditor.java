@@ -50,8 +50,8 @@ public class OptionsEditor
 	private TextField iterationsField;
 	private TextField precisionField;
 	private CheckBox autoIterationsCheckBox;
-	private ChoiceBox<SavedRegion> savedRegionsChoiceBox;
-	private ChoiceBox<CustomColorFunction> colorChoiceBox;
+	private ChoiceBox<SavedRegion> savedRegionsChoiceBox, uploadRegionsChoiceBox;
+	private ChoiceBox<CustomColorFunction> colorChoiceBox, uploadColorsChoiceBox;
 	private TextField colorPositionField;
 	private TextField rangeField;
 	private Slider colorPositionSlider;
@@ -329,7 +329,10 @@ public class OptionsEditor
 			@Override
 			public void changed(ObservableValue<? extends Number> observable, Number oldValue, Number newValue) {
 				Platform.runLater(() -> {
-					loadRegion();
+					if(savedRegionsChoiceBox.getSelectionModel().getSelectedItem() != null)
+					{
+						loadRegion();
+					}
 					});
 				}
 		});
@@ -350,6 +353,7 @@ public class OptionsEditor
 			}
 			savedRegions.remove(deletedRegion);
 			savedRegionsChoiceBox.getItems().remove(deletedRegion);
+			uploadRegionsChoiceBox.getItems().remove(deletedRegion);
 			try
 			{
 				/*Overwrites File*/
@@ -435,6 +439,7 @@ public class OptionsEditor
 			
 			savedColors.remove(colorToRemove);
 			colorChoiceBox.getItems().remove(colorToRemove);
+			uploadColorsChoiceBox.getItems().remove(colorToRemove);
 			
 			try
 			{
@@ -679,6 +684,8 @@ public class OptionsEditor
 		colorChoiceBox.getItems().add(color);
 		colorChoiceBox.setValue(color);
 		savedColors.add(color);
+		
+		uploadColorsChoiceBox.getItems().add(color);
 		try
 		{
 			colorOut = new ObjectOutputStream(new FileOutputStream(colorFile));
@@ -799,27 +806,78 @@ public class OptionsEditor
 	{
 		Tab tab = new Tab("Upload");
 		tab.setClosable(false);
-		GridPane grid;
-		grid= new GridPane();
-		grid.setVgap(10);
-		grid.setHgap(10);
-		grid.setPadding(new Insets(30,30,30,30));
+		GridPane uploadGrid= new GridPane();
+		uploadGrid.setVgap(10);
+		uploadGrid.setHgap(10);
+		uploadGrid.setPadding(new Insets(30,30,30,30));
 		
 		uploadNameField = new TextField();
 		uploadAuthorField = new TextField();
 		uploadDescriptionArea = new TextArea();
 		
-		grid.add(new Label("Name:"), 0, 0);
-		grid.add(uploadNameField,0,1);
-		grid.add(new Label("Author (leave blank for anonymous):"), 0, 2);
-		grid.add(uploadAuthorField, 0, 3);
-		grid.add(new Label("Description:"), 0, 4);
-		grid.add(uploadDescriptionArea, 0, 5);
-		grid.add(buildUploadButton(), 0, 6);
+		uploadGrid.add(new Label("Name:"), 0, 0);
+		uploadGrid.add(uploadNameField,0,1);
+		uploadGrid.add(new Label("Author (leave blank for anonymous):"), 0, 2);
+		uploadGrid.add(uploadAuthorField, 0, 3);
+		uploadGrid.add(new Label("Description:"), 0, 4);
+		uploadGrid.add(uploadDescriptionArea, 0, 5);
+		uploadGrid.add(buildUploadButton(), 0, 6);
 		
-		grid.add(buildUploadTypeChoiceBox(), 1, 0);
-		tab.setContent(grid);
+		
+		
+		uploadGrid.add(buildUploadTypeChoiceBox(), 1, 0);
+		uploadGrid.add(new Label("Upload Region: "), 1, 1);
+		uploadGrid.add(buildUploadRegionsChoiceBox(), 1, 2);
+		uploadGrid.add(new Label("Upload Color: "), 1, 3);
+		uploadGrid.add(buildUploadColorsChoiceBox(), 1, 4);
+		tab.setContent(uploadGrid);
+		
+		uploadColorsChoiceBox.getSelectionModel().select(0);
+		uploadRegionsChoiceBox.getSelectionModel().select(0);
+		uploadTypeChoiceBox.getSelectionModel().select(0);
 		return tab;
+	}
+	
+	private ChoiceBox<SavedRegion> buildUploadRegionsChoiceBox(){
+		uploadRegionsChoiceBox = new ChoiceBox<SavedRegion>(FXCollections.observableArrayList(savedRegions));
+		uploadRegionsChoiceBox.setConverter(new StringConverter<SavedRegion>(){
+
+			@Override
+			public String toString(SavedRegion sr)
+			{
+				return sr.name;
+			}
+
+			@Override
+			public SavedRegion fromString(String string) {
+				return null;
+			}
+			
+		});
+		uploadRegionsChoiceBox.getSelectionModel().selectedItemProperty().addListener(new ChangeListener<SavedRegion>(){
+
+			@Override
+			public void changed(ObservableValue<? extends SavedRegion> observable, SavedRegion oldValue,
+					SavedRegion newValue) {
+				uploadNameField.setText(newValue.name);
+			}
+		});
+		uploadRegionsChoiceBox.setDisable(true);
+		return uploadRegionsChoiceBox;
+	}
+	
+	private ChoiceBox<CustomColorFunction> buildUploadColorsChoiceBox(){
+		uploadColorsChoiceBox = new ChoiceBox<CustomColorFunction>(FXCollections.observableArrayList(savedColors));
+		uploadColorsChoiceBox.getSelectionModel().selectedItemProperty().addListener(new ChangeListener<CustomColorFunction>(){
+
+			@Override
+			public void changed(ObservableValue<? extends CustomColorFunction> observable, CustomColorFunction oldValue,
+					CustomColorFunction newValue) {
+				uploadNameField.setText(newValue.getName());
+			}
+		});
+		uploadColorsChoiceBox.setDisable(true);
+		return uploadColorsChoiceBox;
 	}
 	
 	private Button buildUploadButton()
@@ -841,6 +899,7 @@ public class OptionsEditor
 	}
 	
 	private void showUploadImageDialog() {
+		System.out.println(checkUploadValues());
 		if(!checkUploadValues()){
 			return;
 		}
@@ -850,7 +909,189 @@ public class OptionsEditor
 	}
 	
 	private boolean checkUploadValues() {
-		return !(uploadNameField.getText() =="" || uploadDescriptionArea.getText() =="");
+		if(uploadNameField.getText() == null){
+			return false;
+		}
+		if((uploadNameField.getText().equals("") || uploadDescriptionArea.getText().equals(""))){
+			return false;
+		}
+		if(uploadTypeChoiceBox.getSelectionModel().getSelectedItem().equals("Region"))
+		{
+			if(uploadRegionsChoiceBox.getSelectionModel().getSelectedItem() == null)
+			{
+				return false;
+			}
+		}
+		else if(uploadTypeChoiceBox.getSelectionModel().getSelectedItem().equals("Color"))
+		{
+			if(uploadColorsChoiceBox.getSelectionModel().getSelectedItem() == null)
+			{
+				return false;
+			}
+		}
+		return true;
+	}
+	
+	private void uploadRegion(){
+		UploadDialog dialog = new UploadDialog();
+		Platform.runLater(()->{dialog.show();});
+		HttpClient client = HttpClients.createDefault();
+		HttpPost post = new HttpPost("http://www.ezstein.xyz/regionUploader.php");
+		HttpResponse response = null;
+		ObjectOutputStream fileOut = null, fileOut2 = null;
+		try
+		{
+			fileOut = new ObjectOutputStream(new FileOutputStream(Locator.locateFileInTmp("region/uploadFile.txt")));
+			fileOut.writeObject(uploadRegionsChoiceBox.getSelectionModel().getSelectedItem());
+			fileOut2 = new ObjectOutputStream(new FileOutputStream(Locator.locateFileInTmp("color/uploadFile.txt")));
+			fileOut2.writeObject(uploadRegionsChoiceBox.getSelectionModel().getSelectedItem().colorFunction);
+			
+		}
+		catch(IOException ioe)
+		{
+			ioe.printStackTrace();
+		}
+		finally
+		{
+			try {
+				if(fileOut != null)
+				{
+					fileOut.close();
+				}
+				if(fileOut2 != null)
+				{
+					fileOut2.close();
+				}
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+		
+		BufferedReader in = null;
+		File regionFile = new File(Locator.getBaseDirectoryPath() + File.separator + "tmp" + File.separator  + "region").listFiles()[0];
+		File colorFile = new File(Locator.getBaseDirectoryPath() + File.separator + "tmp" + File.separator  + "color").listFiles()[0];
+		HttpEntity entity = MultipartEntityBuilder.create()
+				.addTextBody("pass", "uploaderPassword")
+				.addTextBody("Name", uploadNameField.getText())
+				.addTextBody("Author", (uploadAuthorField.getText().equals("") ? "Anonymous" : uploadAuthorField.getText()))
+				.addTextBody("Description", uploadDescriptionArea.getText())
+				.addBinaryBody("region", regionFile, ContentType.TEXT_PLAIN, regionFile.getName())
+				.addTextBody("ColorName", uploadRegionsChoiceBox.getSelectionModel().getSelectedItem().colorFunction.getName())
+				.addBinaryBody("color", colorFile, ContentType.TEXT_PLAIN, colorFile.getName())
+				.build();
+		post.setEntity(entity);
+		try{
+			response = client.execute(post);
+			in = new BufferedReader(new InputStreamReader(response.getEntity().getContent()));
+			String s = "", input = "";
+			while((input = in.readLine()) !=null)
+			{
+				s += input + "\n";
+			}
+			final String s1 = s;
+			Platform.runLater(()->{
+				dialog.getResponseLabel().setText(s1);
+				dialog.enableClose();
+			});
+		}
+		catch(ClientProtocolException e)
+		{
+			e.printStackTrace();
+		}
+		catch(IOException ioe)
+		{
+			ioe.printStackTrace();
+		}
+		finally{
+			try {
+				if(in !=null)
+				{
+					in.close();
+				}
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+		
+		
+		
+	}
+	
+	private void uploadColor()
+	{
+		UploadDialog dialog = new UploadDialog();
+		Platform.runLater(()->{dialog.show();});
+		HttpClient client = HttpClients.createDefault();
+		HttpPost post = new HttpPost("http://www.ezstein.xyz/colorUploader.php");
+		HttpResponse response = null;
+		ObjectOutputStream fileOut = null;
+		try
+		{
+			fileOut = new ObjectOutputStream(new FileOutputStream(Locator.locateFileInTmp("color/uploadFile.txt")));
+			fileOut.writeObject(uploadColorsChoiceBox.getSelectionModel().getSelectedItem());
+			
+		}
+		catch(IOException ioe)
+		{
+			ioe.printStackTrace();
+		}
+		finally
+		{
+			try {
+				if(fileOut != null)
+				{
+					fileOut.close();
+				}
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+		
+		BufferedReader in = null;
+		File colorFile = new File(Locator.getBaseDirectoryPath() + File.separator + "tmp" + File.separator + "color").listFiles()[0];
+		HttpEntity entity = MultipartEntityBuilder.create()
+				.addTextBody("pass", "uploaderPassword")
+				.addTextBody("Name", uploadNameField.getText())
+				.addTextBody("Author", (uploadAuthorField.getText().equals("") ? "Anonymous" : uploadAuthorField.getText()))
+				.addTextBody("Description", uploadDescriptionArea.getText())
+				.addBinaryBody("color", colorFile, ContentType.TEXT_PLAIN, colorFile.getName()).build();
+		post.setEntity(entity);
+		try{
+			response = client.execute(post);
+			in = new BufferedReader(new InputStreamReader(response.getEntity().getContent()));
+			String s = "", input = "";
+			while((input = in.readLine()) !=null)
+			{
+				s += input + "\n";
+			}
+			final String s1 = s;
+			Platform.runLater(()->{
+				dialog.getResponseLabel().setText(s1);
+				dialog.enableClose();
+			});
+		}
+		catch(ClientProtocolException e)
+		{
+			e.printStackTrace();
+		}
+		catch(IOException ioe)
+		{
+			ioe.printStackTrace();
+		}
+		finally{
+			try {
+				if(in !=null)
+				{
+					in.close();
+				}
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
 	}
 	
 	private void uploadImage(){
@@ -858,31 +1099,60 @@ public class OptionsEditor
 		Platform.runLater(()->{dialog.show();});
 		
 		HttpClient client = HttpClients.createDefault();
-		HttpPost post = new HttpPost("http://www.ezstein.xyz/uploader.php");
+		HttpPost post = new HttpPost("http://www.ezstein.xyz/imageUploader.php");
 		HttpResponse response = null;
 		BufferedReader in = null;
-		try {
-			
-			File[] files = new File(Locator.getBaseDirectoryPath() + File.separator + "tmp").listFiles(new FilenameFilter(){
+		
 
-				@Override
-				public boolean accept(File dir, String name) {
-					return name.startsWith("uploadFile.");
+		ObjectOutputStream fileOut = null, fileOut2 = null;
+		try
+		{
+			fileOut = new ObjectOutputStream(new FileOutputStream(Locator.locateFileInTmp("color/uploadFile.txt")));
+			fileOut.writeObject(gui.mainCalculator.getColorFunction());
+			fileOut2 = new ObjectOutputStream(new FileOutputStream(Locator.locateFileInTmp("region/uploadFile.txt")));
+			fileOut2.writeObject(new SavedRegion("NO NAME", gui.autoIterations, gui.iterations,
+					gui.precision, gui.threadCount, gui.currentRegion,gui.arbitraryPrecision,
+					gui.julia,gui.juliaSeed,gui.mainCalculator.getColorFunction()));
+		}
+		catch(IOException ioe)
+		{
+			ioe.printStackTrace();
+		}
+		finally
+		{
+			try {
+				if(fileOut != null)
+				{
+					fileOut.close();
 				}
-			});
-			File file = files[0];
-			String name = file.getName();
-			String imageType = name.substring(name.lastIndexOf(".") + 1);
-			
-			HttpEntity entity = MultipartEntityBuilder.create()
-					.addTextBody("pass", "uploaderPassword")
-					.addTextBody("Name", uploadNameField.getText())
-					.addTextBody("Author", (uploadAuthorField.getText().equals("") ? "Anonymous" : uploadAuthorField.getText()))
-					.addTextBody("Description", uploadDescriptionArea.getText())
-					.addTextBody("SetType", gui.julia?"J":"M")
-					.addBinaryBody("uploadFile", file, ContentType.create("image/" + imageType), file.getName())
-					.build();
-			post.setEntity(entity);
+				if(fileOut2 != null)
+				{
+					fileOut2.close();
+				}
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+		File imageFile = new File(Locator.getBaseDirectoryPath() + File.separator + "tmp" + File.separator + "image").listFiles()[0];
+		File regionFile = new File(Locator.getBaseDirectoryPath() + File.separator + "tmp" + File.separator + "region").listFiles()[0];
+		File colorFile = new File(Locator.getBaseDirectoryPath() + File.separator + "tmp" + File.separator + "color").listFiles()[0];
+		String name = imageFile.getName();
+		String imageType = name.substring(name.lastIndexOf(".") + 1);
+		
+		HttpEntity entity = MultipartEntityBuilder.create()
+				.addTextBody("pass", "uploaderPassword")
+				.addTextBody("Name", uploadNameField.getText())
+				.addTextBody("Author", (uploadAuthorField.getText().equals("") ? "Anonymous" : uploadAuthorField.getText()))
+				.addTextBody("Description", uploadDescriptionArea.getText())
+				.addTextBody("SetType", gui.julia?"J":"M")
+				.addBinaryBody("image", imageFile, ContentType.create("image/" + imageType), imageFile.getName())
+				.addBinaryBody("region", regionFile, ContentType.TEXT_PLAIN, regionFile.getName())
+				.addTextBody("ColorName", gui.mainCalculator.getColorFunction().getName())
+				.addBinaryBody("color", colorFile, ContentType.TEXT_PLAIN, colorFile.getName())
+				.build();
+		post.setEntity(entity);
+		try {
 			response = client.execute(post);
 			in = new BufferedReader(new InputStreamReader(response.getEntity().getContent()));
 			
@@ -920,19 +1190,20 @@ public class OptionsEditor
 	}
 	
 	private void showUploadRegionDialog() {
-		
+		System.out.println(checkUploadValues());
+		if(!checkUploadValues()){
+			return;
+		}
+		uploadRegion();
 	}
+	
 	private void showUploadColorDialog() {
-	
+		System.out.println(checkUploadValues());
+		if(!checkUploadValues()){
+			return;
+		}
+		uploadColor();
 	}
-	
-	private void showUploadDialog(){
-		
-		
-	}
-	
-	
-	
 	
 	private ChoiceBox<String> buildUploadTypeChoiceBox()
 	{
@@ -940,12 +1211,30 @@ public class OptionsEditor
 				new ChoiceBox<String>(FXCollections.observableList(
 						new ArrayList<String>(Arrays.asList("Image","Region","Color"))));
 		uploadTypeChoiceBox.getSelectionModel().selectedIndexProperty().addListener(new ChangeListener<Number>(){
-
 			@Override
 			public void changed(ObservableValue<? extends Number> observable, Number oldValue, Number newValue) {
+				if(uploadTypeChoiceBox.getItems().get(newValue.intValue()).equals("Region")){
+					uploadNameField.setDisable(true);
+					uploadNameField.setText(
+							uploadRegionsChoiceBox.getSelectionModel().getSelectedItem()!= null ? uploadRegionsChoiceBox.getSelectionModel().getSelectedItem().name : "");
+					uploadRegionsChoiceBox.setDisable(false);
+					uploadColorsChoiceBox.setDisable(true);
+					
+				} else if(uploadTypeChoiceBox.getItems().get(newValue.intValue()).equals("Color")){
+					uploadNameField.setDisable(true);
+					uploadNameField.setText(uploadColorsChoiceBox.getSelectionModel().getSelectedItem()!=null ? uploadColorsChoiceBox.getSelectionModel().getSelectedItem().getName():"");
+					uploadRegionsChoiceBox.setDisable(true);
+					uploadColorsChoiceBox.setDisable(false);
+				} if(uploadTypeChoiceBox.getItems().get(newValue.intValue()).equals("Image")){
+					uploadNameField.setDisable(false);
+					uploadNameField.setText("");
+					uploadRegionsChoiceBox.setDisable(true);
+					uploadColorsChoiceBox.setDisable(true);
+					
+				}
 			}
 		});
-		uploadTypeChoiceBox.getSelectionModel().select(0);
+		//uploadTypeChoiceBox.getSelectionModel().select(0);
 		return  uploadTypeChoiceBox;
 	}
 	
@@ -1060,6 +1349,7 @@ public class OptionsEditor
 			savedRegions.add(savedRegion);
 			savedRegionsChoiceBox.getItems().add(savedRegion);
 			savedRegionsChoiceBox.setValue(savedRegion);
+			uploadRegionsChoiceBox.getItems().add(savedRegion);
 			try
 			{
 				/*Overwrites File*/

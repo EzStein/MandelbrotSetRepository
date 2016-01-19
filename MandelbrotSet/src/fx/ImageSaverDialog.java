@@ -107,7 +107,7 @@ public class ImageSaverDialog
 		if(!chooseFile)
 		{
 			try {
-				file = new File(Locator.locateFileInTmp("uploadFile." + imageType));
+				file = new File(Locator.locateFileInTmp("image/uploadFile." + imageType));
 			} catch (FileNotFoundException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
