@@ -1014,9 +1014,6 @@ public class OptionsEditor
 				e.printStackTrace();
 			}
 		}
-		
-		
-		
 	}
 	
 	private void uploadColor()
@@ -1691,8 +1688,8 @@ public class OptionsEditor
 				
 				stage.setTitle("Uploading...");
 				Scene scene = new Scene(grid);
-				stage.setHeight(300);
-				stage.setWidth(400);
+				stage.setHeight(200);
+				stage.setWidth(300);
 				stage.setScene(scene);
 			});
 		}

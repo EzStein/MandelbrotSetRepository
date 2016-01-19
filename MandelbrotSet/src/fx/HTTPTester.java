@@ -20,11 +20,11 @@ public class HTTPTester {
 		ResultSet set=null;
 		try {
 			//THIS DISPLAYS PASS IN PLAINTEXT!!!!
-			conn = DriverManager.getConnection("jdbc:mysql://www.ezstein.xyz:3306/WebDatabase", "root", "*4208UrLemon*");
+			conn = DriverManager.getConnection("jdbc:mysql://www.ezstein.xyz:3306/WebDatabase", "java", "javaPass");
 			stmt = conn.createStatement();
 			set = stmt.executeQuery("SELECT * FROM Images");
 			while(set.next()){
-				for(int i = 0; i<12; i++)
+				for(int i = 2; i<12; i++)
 				{
 					System.out.println(set.getString(i));
 				}
