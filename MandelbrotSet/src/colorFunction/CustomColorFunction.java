@@ -277,7 +277,7 @@ public class CustomColorFunction implements Serializable {
 		if(o instanceof CustomColorFunction)
 		{
 			CustomColorFunction other = (CustomColorFunction) o;
-			if(other.getRange() == range && other.getName().equals(name) && other.getColorMap().equals(colorMap))
+			if(other.getRange() == range && other.getColorMap().equals(colorMap))
 			{
 				return true;
 			}
@@ -295,7 +295,7 @@ public class CustomColorFunction implements Serializable {
 	@Override
 	public int hashCode()
 	{
-		return name.hashCode()*range + colorMap.hashCode();
+		return range + colorMap.hashCode();
 	}
 	
 	/**

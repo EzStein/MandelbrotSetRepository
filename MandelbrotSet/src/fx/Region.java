@@ -147,4 +147,39 @@ public class Region<T extends Number> implements Serializable
 		);
 		return r;
 	}
+	
+	
+	
+	@Override
+	public boolean equals(Object object)
+	{
+		if(object == null)
+		{
+			return false;
+		}
+		if(object == this)
+		{
+			return true;
+		}
+		if(!(object instanceof Region<?>))
+		{
+			return false;
+		}
+		
+		Region<?> r = (Region<?>) object;
+		if(r.x1.equals(x1) && r.x2.equals(x2) && r.y1.equals(y1) && r.y2.equals(y2))
+		{
+			return true;
+		}
+		else
+		{
+			return false;
+		}
+	}
+	
+	@Override
+	public int hashCode()
+	{
+		return x1.hashCode() + x2.hashCode() + y1.hashCode() + y2.hashCode();
+	}
 }

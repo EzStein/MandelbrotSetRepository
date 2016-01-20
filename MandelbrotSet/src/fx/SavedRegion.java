@@ -72,7 +72,15 @@ public class SavedRegion implements Serializable
 		}
 		
 		SavedRegion sr = (SavedRegion) object;
-		if(sr.name.equals(name))
+		if(sr.autoIterations == autoIterations
+				&& sr.iterations == iterations
+				&& sr.precision == precision
+				&& sr.threadCount == threadCount
+				&& sr.colorFunction.equals(colorFunction)
+				&& sr.region.equals(region)
+				&& sr.julia == julia
+				&& sr.arbitraryPrecision == arbitraryPrecision
+				&& sr.seed.equals(seed))
 		{
 			return true;
 		}
@@ -85,6 +93,8 @@ public class SavedRegion implements Serializable
 	@Override
 	public int hashCode()
 	{
-		return name.hashCode();
+		return (autoIterations?1:2) + 11*iterations
+				+ 100*precision + 55*threadCount + colorFunction.hashCode()
+				+ region.hashCode() + (julia?100:200) + (arbitraryPrecision?1000:2000) + seed.hashCode();
 	}
 }

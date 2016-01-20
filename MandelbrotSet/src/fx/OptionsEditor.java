@@ -138,7 +138,9 @@ public class OptionsEditor
 							set.getString("Description"),
 							set.getString("file"),
 							set.getInt("Size"),
-							set.getInt("Date")));
+							set.getInt("Date"),
+							set.getInt("HashCode")
+							));
 				}
 			downloadRegionTable.setItems(FXCollections.observableArrayList(dataRegion));
 			
@@ -153,7 +155,8 @@ public class OptionsEditor
 							set.getString("Description"),
 							set.getString("file"),
 							set.getInt("Size"),
-							set.getInt("Date")));
+							set.getInt("Date"),
+							set.getInt("HashCode")));
 				}
 			downloadColorTable.setItems(FXCollections.observableArrayList(dataColor));
 			
@@ -692,10 +695,10 @@ public class OptionsEditor
 			}
 			
 		});
-		stopList.getSelectionModel().selectedItemProperty().addListener(new ChangeListener<Stop>(){
+		stopList.getSelectionModel().selectedIndexProperty().addListener(new ChangeListener<Number>(){
 
 			@Override
-			public void changed(ObservableValue<? extends Stop> observable, Stop oldValue, Stop newValue) {
+			public void changed(ObservableValue<? extends Number> observable, Number oldValue, Number newValue) {
 				Stop stop = stopList.getSelectionModel().getSelectedItem();
 				if(stop == null)
 				{
@@ -1028,12 +1031,13 @@ public class OptionsEditor
 		HttpPost post = new HttpPost("http://www.ezstein.xyz/regionUploader.php");
 		HttpResponse response = null;
 		ObjectOutputStream fileOut = null, fileOut2 = null;
+		SavedRegion sr = uploadRegionsChoiceBox.getSelectionModel().getSelectedItem();
 		try
 		{
 			fileOut = new ObjectOutputStream(new FileOutputStream(Locator.locateFileInTmp("region/uploadFile.txt")));
-			fileOut.writeObject(uploadRegionsChoiceBox.getSelectionModel().getSelectedItem());
+			fileOut.writeObject(sr);
 			fileOut2 = new ObjectOutputStream(new FileOutputStream(Locator.locateFileInTmp("color/uploadFile.txt")));
-			fileOut2.writeObject(uploadRegionsChoiceBox.getSelectionModel().getSelectedItem().colorFunction);
+			fileOut2.writeObject(sr.colorFunction);
 			
 		}
 		catch(IOException ioe)
@@ -1065,8 +1069,10 @@ public class OptionsEditor
 				.addTextBody("Name", uploadNameField.getText())
 				.addTextBody("Author", (uploadAuthorField.getText().equals("") ? "Anonymous" : uploadAuthorField.getText()))
 				.addTextBody("Description", uploadDescriptionArea.getText())
+				.addTextBody("RegionHashCode", sr.hashCode() + "")
 				.addBinaryBody("region", regionFile, ContentType.TEXT_PLAIN, regionFile.getName())
 				.addTextBody("ColorName", uploadRegionsChoiceBox.getSelectionModel().getSelectedItem().colorFunction.getName())
+				.addTextBody("ColorHashCode", sr.colorFunction.hashCode() + "")
 				.addBinaryBody("color", colorFile, ContentType.TEXT_PLAIN, colorFile.getName())
 				.build();
 		post.setEntity(entity);
@@ -1147,6 +1153,7 @@ public class OptionsEditor
 				.addTextBody("Name", uploadNameField.getText())
 				.addTextBody("Author", (uploadAuthorField.getText().equals("") ? "Anonymous" : uploadAuthorField.getText()))
 				.addTextBody("Description", uploadDescriptionArea.getText())
+				.addTextBody("ColorHashCode", uploadColorsChoiceBox.getSelectionModel().getSelectedItem().hashCode() + "")
 				.addBinaryBody("color", colorFile, ContentType.TEXT_PLAIN, colorFile.getName()).build();
 		post.setEntity(entity);
 		try{
@@ -1198,14 +1205,15 @@ public class OptionsEditor
 		
 
 		ObjectOutputStream fileOut = null, fileOut2 = null;
+		SavedRegion sr = new SavedRegion("NO NAME", gui.autoIterations, gui.iterations,
+				gui.precision, gui.threadCount, gui.currentRegion,gui.arbitraryPrecision,
+				gui.julia,gui.juliaSeed,gui.mainCalculator.getColorFunction());
 		try
 		{
 			fileOut = new ObjectOutputStream(new FileOutputStream(Locator.locateFileInTmp("color/uploadFile.txt")));
 			fileOut.writeObject(gui.mainCalculator.getColorFunction());
 			fileOut2 = new ObjectOutputStream(new FileOutputStream(Locator.locateFileInTmp("region/uploadFile.txt")));
-			fileOut2.writeObject(new SavedRegion("NO NAME", gui.autoIterations, gui.iterations,
-					gui.precision, gui.threadCount, gui.currentRegion,gui.arbitraryPrecision,
-					gui.julia,gui.juliaSeed,gui.mainCalculator.getColorFunction()));
+			fileOut2.writeObject(sr);
 		}
 		catch(IOException ioe)
 		{
@@ -1240,8 +1248,10 @@ public class OptionsEditor
 				.addTextBody("Description", uploadDescriptionArea.getText())
 				.addTextBody("SetType", gui.julia?"J":"M")
 				.addBinaryBody("image", imageFile, ContentType.create("image/" + imageType), imageFile.getName())
+				.addTextBody("RegionHashCode", sr.hashCode() + "")
 				.addBinaryBody("region", regionFile, ContentType.TEXT_PLAIN, regionFile.getName())
 				.addTextBody("ColorName", gui.mainCalculator.getColorFunction().getName())
+				.addTextBody("ColorHashCode", gui.mainCalculator.getColorFunction().hashCode() + "")
 				.addBinaryBody("color", colorFile, ContentType.TEXT_PLAIN, colorFile.getName())
 				.build();
 		post.setEntity(entity);
@@ -1387,6 +1397,7 @@ public class OptionsEditor
 		TableColumn<ColorRow, String> fileColumn = new TableColumn<ColorRow, String>("File");
 		TableColumn<ColorRow, String> sizeColumn = new TableColumn<ColorRow, String>("Size");
 		TableColumn<ColorRow, String> dateColumn = new TableColumn<ColorRow, String>("Date");
+		TableColumn<ColorRow, String> hashCodeColumn = new TableColumn<ColorRow, String>("HashCode");
 		idColumn.setCellValueFactory(new PropertyValueFactory<ColorRow, String>("id"));
 		nameColumn.setCellValueFactory(new PropertyValueFactory<ColorRow, String>("name"));
 		authorColumn.setCellValueFactory(new PropertyValueFactory<ColorRow, String>("author"));
@@ -1394,16 +1405,17 @@ public class OptionsEditor
 		sizeColumn.setCellValueFactory(new PropertyValueFactory<ColorRow, String>("size"));
 		dateColumn.setCellValueFactory(new PropertyValueFactory<ColorRow, String>("date"));
 		fileColumn.setCellValueFactory(new PropertyValueFactory<ColorRow, String>("file"));
+		hashCodeColumn.setCellValueFactory(new PropertyValueFactory<ColorRow, String>("hashCode"));
 		
 		downloadColorTable.getColumns().addAll(idColumn,nameColumn,authorColumn,descriptionColumn,fileColumn,
-				sizeColumn,dateColumn);
+				sizeColumn,dateColumn,hashCodeColumn);
 		
 		return downloadColorTable;
 	}
 	
 	public class ColorRow
 	{
-		private final IntegerProperty id, size, date;
+		private final IntegerProperty id, size, date, hashCode;
 		private final StringProperty name, author, description, file;
 		
 		/**
@@ -1416,7 +1428,7 @@ public class OptionsEditor
 		 * @param size
 		 * @param date
 		 */
-		public ColorRow(int id, String name, String author, String description, String file, int size, int date)
+		public ColorRow(int id, String name, String author, String description, String file, int size, int date, int hashCode)
 		{
 			this.id = new SimpleIntegerProperty(id);
 			this.size = new SimpleIntegerProperty(size);
@@ -1425,6 +1437,7 @@ public class OptionsEditor
 			this.author = new SimpleStringProperty(author);
 			this.description = new SimpleStringProperty(description);
 			this.file = new SimpleStringProperty(file);
+			this.hashCode = new SimpleIntegerProperty(hashCode);
 		}
 		
 		public final IntegerProperty getIdProperty()
@@ -1516,6 +1529,20 @@ public class OptionsEditor
 		public final void setFile(String val)
 		{
 			file.set(val);
+		}
+		
+		
+		public final IntegerProperty getHashCodeProperty()
+		{
+			return hashCode;
+		}
+		public final int getHashCode()
+		{
+			return hashCode.get();
+		}
+		public final void setHashCode(int val)
+		{
+			hashCode.set(val);
 		}
 		
 	}
@@ -1530,6 +1557,7 @@ public class OptionsEditor
 		TableColumn<RegionRow, String> fileColumn = new TableColumn<RegionRow, String>("File");
 		TableColumn<RegionRow, String> sizeColumn = new TableColumn<RegionRow, String>("Size");
 		TableColumn<RegionRow, String> dateColumn = new TableColumn<RegionRow, String>("Date");
+		TableColumn<RegionRow, String> hashCodeColumn = new TableColumn<RegionRow, String>("HashCode");
 		idColumn.setCellValueFactory(new PropertyValueFactory<RegionRow, String>("id"));
 		nameColumn.setCellValueFactory(new PropertyValueFactory<RegionRow, String>("name"));
 		authorColumn.setCellValueFactory(new PropertyValueFactory<RegionRow, String>("author"));
@@ -1537,16 +1565,80 @@ public class OptionsEditor
 		sizeColumn.setCellValueFactory(new PropertyValueFactory<RegionRow, String>("size"));
 		dateColumn.setCellValueFactory(new PropertyValueFactory<RegionRow, String>("date"));
 		fileColumn.setCellValueFactory(new PropertyValueFactory<RegionRow, String>("file"));
+		hashCodeColumn.setCellValueFactory(new PropertyValueFactory<RegionRow, String>("hashCode"));
 		
 		downloadRegionTable.getColumns().addAll(idColumn,nameColumn,authorColumn,descriptionColumn,fileColumn,
-				sizeColumn,dateColumn);
+				sizeColumn,dateColumn,hashCodeColumn);
 		
 		return downloadRegionTable;
 	}
 	
+	private boolean existsInDatabase(CustomColorFunction ccf)
+	{
+		try
+		{
+			ResultSet set = stmt.executeQuery("SELECT HashCode FROM Colors;");
+			while(set.next())
+			{
+				if(set.getInt("HashCode") == ccf.hashCode())
+				{
+					return true;
+				}
+			}
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		return false;
+	}
+	
+	private boolean existsInDatabase(SavedRegion sr)
+	{
+		try
+		{
+			ResultSet set = stmt.executeQuery("SELECT HashCode FROM Regions;");
+			while(set.next())
+			{
+				if(set.getInt("HashCode") == sr.hashCode())
+				{
+					return true;
+				}
+			}
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		return false;
+	}
+	
+	private boolean colorExistsLocally(int hashCode)
+	{
+		for(CustomColorFunction ccf: savedColors)
+		{
+			if(ccf.hashCode()==hashCode)
+			{
+				return true;
+			}
+		}
+		return false;
+	}
+	
+	private boolean regionExistsLocally(int hashCode)
+	{
+		for(SavedRegion sr: savedRegions)
+		{
+			if(sr.hashCode()==hashCode)
+			{
+				return true;
+			}
+		}
+		return false;
+	}
+	
+	
 	public class RegionRow
 	{
-		private final IntegerProperty id, size, date;
+		private final IntegerProperty id, size, date, hashCode;
 		private final StringProperty name, author, description, file;
 		
 		/**
@@ -1559,7 +1651,7 @@ public class OptionsEditor
 		 * @param size
 		 * @param date
 		 */
-		public RegionRow(int id, String name, String author, String description, String file, int size, int date)
+		public RegionRow(int id, String name, String author, String description, String file, int size, int date, int hashCode)
 		{
 			this.id = new SimpleIntegerProperty(id);
 			this.size = new SimpleIntegerProperty(size);
@@ -1568,6 +1660,7 @@ public class OptionsEditor
 			this.author = new SimpleStringProperty(author);
 			this.description = new SimpleStringProperty(description);
 			this.file = new SimpleStringProperty(file);
+			this.hashCode = new SimpleIntegerProperty(hashCode);
 		}
 		
 		public final IntegerProperty getIdProperty()
@@ -1661,6 +1754,18 @@ public class OptionsEditor
 			file.set(val);
 		}
 		
+		public final IntegerProperty getHashCodeProperty()
+		{
+			return hashCode;
+		}
+		public final int getHashCode()
+		{
+			return hashCode.get();
+		}
+		public final void setHashCode(int val)
+		{
+			hashCode.set(val);
+		}
 	}
 	
 	private TableView<ImageRow> buildDownloadImageTable(){
@@ -1906,12 +2011,20 @@ public class OptionsEditor
 			alert.show();
 			return;
 		}
+		
+		if(colorExistsLocally(row.getHashCode()))
+		{
+			Alert alert = new Alert(AlertType.INFORMATION);
+			alert.setContentText("That color already exists on your computer.");
+			alert.show();
+			return;
+		}
+		
 		UploadDialog dialog = new UploadDialog();
 		Platform.runLater(()->{
 			dialog.show();
 			dialog.getResponseLabel().setText("Downloading Image...");
 		});
-		
 		downloadColor("http://www.ezstein.xyz/uploads/colors/" + row.getFile());
 		try
 		{
@@ -1933,11 +2046,14 @@ public class OptionsEditor
 					{
 						if(result.get().equals(buttonTypeYes))
 						{
-							set = stmt.executeQuery("SELECT File FROM Regions WHERE ID = " + regionID + ";");
+							set = stmt.executeQuery("SELECT File, HashCode FROM Regions WHERE ID = " + regionID + ";");
 							if(set.isBeforeFirst())
 							{
 								set.next();
-								downloadRegion("http://www.ezstein.xyz/uploads/regions/" + set.getString("File"));
+								if(!regionExistsLocally(set.getInt("HashCode")))
+								{
+									downloadRegion("http://www.ezstein.xyz/uploads/regions/" + set.getString("File"));
+								}
 							}
 						}
 					}
@@ -2015,6 +2131,14 @@ public class OptionsEditor
 			alert.show();
 			return;
 		}
+		if(regionExistsLocally(row.getHashCode()))
+		{
+			Alert alert = new Alert(AlertType.INFORMATION);
+			alert.setContentText("That region already exists on your computer.");
+			alert.show();
+			return;
+		}
+		
 		UploadDialog dialog = new UploadDialog();
 		Platform.runLater(()->{
 			dialog.show();
@@ -2044,8 +2168,6 @@ public class OptionsEditor
 					{
 						if(result.get().equals(buttonTypeYes))
 						{
-							
-							
 							set = stmt.executeQuery("SELECT File, FileType FROM Images WHERE ID = " + imageID + ";");
 							if(set.isBeforeFirst())
 							{
@@ -2229,29 +2351,29 @@ public class OptionsEditor
 		finally
 		{
 			
-				try {
-					if(in!=null){
-						in.close();
-					}
-					if(out !=null){
-						out.close();
-					}
-					if(objectIn !=null)
-					{
-						objectIn.close();
-					}
-					if(objectOut !=null)
-					{
-						objectOut.close();
-					}
-					if(objectOutColor !=null)
-					{
-						objectOutColor.close();
-					}
-				} catch (IOException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
+			try {
+				if(in!=null){
+					in.close();
 				}
+				if(out !=null){
+					out.close();
+				}
+				if(objectIn !=null)
+				{
+					objectIn.close();
+				}
+				if(objectOut !=null)
+				{
+					objectOut.close();
+				}
+				if(objectOutColor !=null)
+				{
+					objectOutColor.close();
+				}
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 		}
 	}
 	
@@ -2307,11 +2429,14 @@ public class OptionsEditor
 					{
 						if(result.get().equals(buttonTypeYes))
 						{
-							set = stmt.executeQuery("SELECT File FROM Regions WHERE ID = " + regionID + ";");
+							set = stmt.executeQuery("SELECT File, HashCode FROM Regions WHERE ID = " + regionID + ";");
 							if(set.isBeforeFirst())
 							{
 								set.next();
-								downloadRegion("http://www.ezstein.xyz/uploads/regions/" + set.getString("File"));
+								if(!regionExistsLocally(set.getInt("HashCode")))
+								{
+									downloadRegion("http://www.ezstein.xyz/uploads/regions/" + set.getString("File"));
+								}
 							}
 						}
 					}
