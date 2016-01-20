@@ -21,7 +21,7 @@ import javafx.scene.canvas.*;
 import javafx.scene.control.*;
 import javafx.scene.control.Alert.*;
 import javafx.scene.control.ButtonBar.*;
-import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.scene.control.cell.*;
 import javafx.scene.input.*;
 import javafx.scene.layout.*;
 import javafx.scene.paint.*;
@@ -67,7 +67,10 @@ public class OptionsEditor
 	private TextArea uploadDescriptionArea;
 	private ChoiceBox<String> uploadTypeChoiceBox, downloadTypeChoiceBox;
 	private Statement stmt;
-	private TableView<ImageRow> downloadTable;
+	private TableView<ImageRow> downloadImageTable;
+	private TableView<RegionRow> downloadRegionTable;
+	private TableView<ColorRow> downloadColorTable;
+	private TabPane tables;
 	
 	/**
 	 * Constructs this editor with a reference to the gui that created it.
@@ -98,21 +101,19 @@ public class OptionsEditor
 	
 	private void connect()
 	{
-		if(stmt != null){
-			return;
-		}
-		ArrayList<ImageRow> data = new ArrayList<ImageRow>();
+		
 		try {
 			//THIS DISPLAYS PASS IN PLAINTEXT!!!!
 			Connection conn = DriverManager.getConnection("jdbc:mysql://www.ezstein.xyz:3306/WebDatabase", "java", "javaPass");
 			stmt = conn.createStatement();
+			ArrayList<ImageRow> data = new ArrayList<ImageRow>();
 			ResultSet set = stmt.executeQuery("SELECT * FROM Images");
 			while(set.next()){
 				
 					data.add(new ImageRow(
 							set.getInt("ID"),
-							set.getString("Author"),
 							set.getString("Name"),
+							set.getString("Author"),
 							set.getString("Description"),
 							set.getString("file"),
 							set.getString("SetType"),
@@ -123,11 +124,42 @@ public class OptionsEditor
 							set.getString("FileType")
 							));
 				}
+			downloadImageTable.setItems(FXCollections.observableArrayList(data));
+			
+			
+			ArrayList<RegionRow> dataRegion = new ArrayList<RegionRow>();
+			set = stmt.executeQuery("SELECT * FROM Regions");
+			while(set.next()){
+					dataRegion.add(new RegionRow(
+							set.getInt("ID"),
+							set.getString("Name"),
+							set.getString("Author"),
+							set.getString("Description"),
+							set.getString("file"),
+							set.getInt("Size"),
+							set.getInt("Date")));
+				}
+			downloadRegionTable.setItems(FXCollections.observableArrayList(dataRegion));
+			
+			
+			ArrayList<ColorRow> dataColor = new ArrayList<ColorRow>();
+			set = stmt.executeQuery("SELECT * FROM Colors");
+			while(set.next()){
+					dataColor.add(new ColorRow(
+							set.getInt("ID"),
+							set.getString("Name"),
+							set.getString("Author"),
+							set.getString("Description"),
+							set.getString("file"),
+							set.getInt("Size"),
+							set.getInt("Date")));
+				}
+			downloadColorTable.setItems(FXCollections.observableArrayList(dataColor));
+			
 		} catch (SQLException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		downloadTable.setItems(FXCollections.observableArrayList(data));
 	}
 	
 	@SuppressWarnings("unchecked")
@@ -727,7 +759,6 @@ public class OptionsEditor
 		colorChoiceBox.getItems().add(color);
 		colorChoiceBox.setValue(color);
 		savedColors.add(color);
-		
 		uploadColorsChoiceBox.getItems().add(color);
 		try
 		{
@@ -1296,17 +1327,333 @@ public class OptionsEditor
 		downloadGrid.setHgap(10);
 		downloadGrid.setPadding(new Insets(30,30,30,30));
 		
-		downloadGrid.add(buildDownloadTypeChoiceBox(), 0, 0);
-		downloadGrid.add(buildDownloadTableView(), 0, 1, 2, 5);
+		tables = new TabPane();
+		tables.getTabs().add(buildImageTableTab());
+		tables.getTabs().add(buildRegionTableTab());
+		tables.getTabs().add(buildColorTableTab());
+		downloadGrid.add(new Label("Downloads:"), 0, 0);
+		downloadGrid.add(tables, 0, 1, 2, 5);
 		downloadGrid.add(buildDownloadButton(), 0, 6);
 		tab.setContent(downloadGrid);
-		
 		return tab;
 	}
 	
-	private TableView<ImageRow> buildDownloadTableView(){
-		downloadTable = new TableView<ImageRow>();
-		downloadTable.setEditable(false);
+	private Tab buildImageTableTab(){
+		Tab tab = new Tab("Images");
+		Group layout = new Group();
+		layout.getChildren().add(buildDownloadImageTable());
+		tab.setClosable(false);
+		tab.setContent(layout);
+		return tab;
+	}
+	
+	private Tab buildRegionTableTab(){
+		Tab tab = new Tab("Regions");
+		Group layout = new Group();
+		layout.getChildren().add(buildDownloadRegionTable());
+		tab.setClosable(false);
+		tab.setContent(layout);
+		return tab;
+	}
+	
+	private Tab buildColorTableTab(){
+		Tab tab = new Tab("Colors");
+		Group layout = new Group();
+		layout.getChildren().add(buildDownloadColorTable());
+		tab.setClosable(false);
+		tab.setContent(layout);
+		return tab;
+	}
+	
+	private TableView<ColorRow> buildDownloadColorTable(){
+		downloadColorTable = new TableView<ColorRow>();
+		
+		TableColumn<ColorRow, String> idColumn = new TableColumn<ColorRow, String>("ID");
+		TableColumn<ColorRow, String> nameColumn = new TableColumn<ColorRow, String>("Name");
+		TableColumn<ColorRow, String> authorColumn = new TableColumn<ColorRow, String>("Author");
+		TableColumn<ColorRow, String> descriptionColumn = new TableColumn<ColorRow, String>("Description");
+		TableColumn<ColorRow, String> fileColumn = new TableColumn<ColorRow, String>("File");
+		TableColumn<ColorRow, String> sizeColumn = new TableColumn<ColorRow, String>("Size");
+		TableColumn<ColorRow, String> dateColumn = new TableColumn<ColorRow, String>("Date");
+		idColumn.setCellValueFactory(new PropertyValueFactory<ColorRow, String>("id"));
+		nameColumn.setCellValueFactory(new PropertyValueFactory<ColorRow, String>("name"));
+		authorColumn.setCellValueFactory(new PropertyValueFactory<ColorRow, String>("author"));
+		descriptionColumn.setCellValueFactory(new PropertyValueFactory<ColorRow, String>("description"));
+		sizeColumn.setCellValueFactory(new PropertyValueFactory<ColorRow, String>("size"));
+		dateColumn.setCellValueFactory(new PropertyValueFactory<ColorRow, String>("date"));
+		fileColumn.setCellValueFactory(new PropertyValueFactory<ColorRow, String>("file"));
+		
+		downloadColorTable.getColumns().addAll(idColumn,nameColumn,authorColumn,descriptionColumn,fileColumn,
+				sizeColumn,dateColumn);
+		
+		return downloadColorTable;
+	}
+	
+	public class ColorRow
+	{
+		private final IntegerProperty id, size, date;
+		private final StringProperty name, author, description, file;
+		
+		/**
+		 * 
+		 * @param id
+		 * @param name
+		 * @param author
+		 * @param description
+		 * @param file
+		 * @param size
+		 * @param date
+		 */
+		public ColorRow(int id, String name, String author, String description, String file, int size, int date)
+		{
+			this.id = new SimpleIntegerProperty(id);
+			this.size = new SimpleIntegerProperty(size);
+			this.date = new SimpleIntegerProperty(date);
+			this.name = new SimpleStringProperty(name);
+			this.author = new SimpleStringProperty(author);
+			this.description = new SimpleStringProperty(description);
+			this.file = new SimpleStringProperty(file);
+		}
+		
+		public final IntegerProperty getIdProperty()
+		{
+			return id;
+		}
+		public final int getId()
+		{
+			return id.get();
+		}
+		public final void setId(int val)
+		{
+			id.set(val);
+		}
+		
+		public final IntegerProperty getSizeProperty()
+		{
+			return size;
+		}
+		public final int getSize()
+		{
+			return size.get();
+		}
+		public final void setSize(int val)
+		{
+			size.set(val);
+		}
+		
+		public final IntegerProperty getDateProperty()
+		{
+			return date;
+		}
+		public final int getDate()
+		{
+			return date.get();
+		}
+		public final void setDate(int val)
+		{
+			date.set(val);
+		}
+		
+		public final StringProperty getNameProperty()
+		{
+			return name;
+		}
+		public final String getName()
+		{
+			return name.get();
+		}
+		public final void setName(String val)
+		{
+			name.set(val);
+		}
+		
+		public final StringProperty getAuthorProperty()
+		{
+			return author;
+		}
+		public final String getAuthor()
+		{
+			return author.get();
+		}
+		public final void setAuthor(String val)
+		{
+			author.set(val);
+		}
+		
+		public final StringProperty getDescriptionProperty()
+		{
+			return description;
+		}
+		public final String getDescription()
+		{
+			return description.get();
+		}
+		public final void setDescription(String val)
+		{
+			description.set(val);
+		}
+		
+		public final StringProperty getFileProperty()
+		{
+			return file;
+		}
+		public final String getFile()
+		{
+			return file.get();
+		}
+		public final void setFile(String val)
+		{
+			file.set(val);
+		}
+		
+	}
+	
+	private TableView<RegionRow> buildDownloadRegionTable(){
+		downloadRegionTable = new TableView<RegionRow>();
+		
+		TableColumn<RegionRow, String> idColumn = new TableColumn<RegionRow, String>("ID");
+		TableColumn<RegionRow, String> nameColumn = new TableColumn<RegionRow, String>("Name");
+		TableColumn<RegionRow, String> authorColumn = new TableColumn<RegionRow, String>("Author");
+		TableColumn<RegionRow, String> descriptionColumn = new TableColumn<RegionRow, String>("Description");
+		TableColumn<RegionRow, String> fileColumn = new TableColumn<RegionRow, String>("File");
+		TableColumn<RegionRow, String> sizeColumn = new TableColumn<RegionRow, String>("Size");
+		TableColumn<RegionRow, String> dateColumn = new TableColumn<RegionRow, String>("Date");
+		idColumn.setCellValueFactory(new PropertyValueFactory<RegionRow, String>("id"));
+		nameColumn.setCellValueFactory(new PropertyValueFactory<RegionRow, String>("name"));
+		authorColumn.setCellValueFactory(new PropertyValueFactory<RegionRow, String>("author"));
+		descriptionColumn.setCellValueFactory(new PropertyValueFactory<RegionRow, String>("description"));
+		sizeColumn.setCellValueFactory(new PropertyValueFactory<RegionRow, String>("size"));
+		dateColumn.setCellValueFactory(new PropertyValueFactory<RegionRow, String>("date"));
+		fileColumn.setCellValueFactory(new PropertyValueFactory<RegionRow, String>("file"));
+		
+		downloadRegionTable.getColumns().addAll(idColumn,nameColumn,authorColumn,descriptionColumn,fileColumn,
+				sizeColumn,dateColumn);
+		
+		return downloadRegionTable;
+	}
+	
+	public class RegionRow
+	{
+		private final IntegerProperty id, size, date;
+		private final StringProperty name, author, description, file;
+		
+		/**
+		 * 
+		 * @param id
+		 * @param name
+		 * @param author
+		 * @param description
+		 * @param file
+		 * @param size
+		 * @param date
+		 */
+		public RegionRow(int id, String name, String author, String description, String file, int size, int date)
+		{
+			this.id = new SimpleIntegerProperty(id);
+			this.size = new SimpleIntegerProperty(size);
+			this.date = new SimpleIntegerProperty(date);
+			this.name = new SimpleStringProperty(name);
+			this.author = new SimpleStringProperty(author);
+			this.description = new SimpleStringProperty(description);
+			this.file = new SimpleStringProperty(file);
+		}
+		
+		public final IntegerProperty getIdProperty()
+		{
+			return id;
+		}
+		public final int getId()
+		{
+			return id.get();
+		}
+		public final void setId(int val)
+		{
+			id.set(val);
+		}
+		
+		public final IntegerProperty getSizeProperty()
+		{
+			return size;
+		}
+		public final int getSize()
+		{
+			return size.get();
+		}
+		public final void setSize(int val)
+		{
+			size.set(val);
+		}
+		
+		public final IntegerProperty getDateProperty()
+		{
+			return date;
+		}
+		public final int getDate()
+		{
+			return date.get();
+		}
+		public final void setDate(int val)
+		{
+			date.set(val);
+		}
+		
+		public final StringProperty getNameProperty()
+		{
+			return name;
+		}
+		public final String getName()
+		{
+			return name.get();
+		}
+		public final void setName(String val)
+		{
+			name.set(val);
+		}
+		
+		public final StringProperty getAuthorProperty()
+		{
+			return author;
+		}
+		public final String getAuthor()
+		{
+			return author.get();
+		}
+		public final void setAuthor(String val)
+		{
+			author.set(val);
+		}
+		
+		public final StringProperty getDescriptionProperty()
+		{
+			return description;
+		}
+		public final String getDescription()
+		{
+			return description.get();
+		}
+		public final void setDescription(String val)
+		{
+			description.set(val);
+		}
+		
+		public final StringProperty getFileProperty()
+		{
+			return file;
+		}
+		public final String getFile()
+		{
+			return file.get();
+		}
+		public final void setFile(String val)
+		{
+			file.set(val);
+		}
+		
+	}
+	
+	private TableView<ImageRow> buildDownloadImageTable(){
+		downloadImageTable = new TableView<ImageRow>();
+		downloadImageTable.setEditable(false);
 		TableColumn<ImageRow, String> idColumn = new TableColumn<ImageRow, String>("ID");
 		TableColumn<ImageRow, String> nameColumn = new TableColumn<ImageRow, String>("Name");
 		TableColumn<ImageRow, String> authorColumn = new TableColumn<ImageRow, String>("Author");
@@ -1330,12 +1677,12 @@ public class OptionsEditor
 		dateColumn.setCellValueFactory(new PropertyValueFactory<ImageRow, String>("date"));
 		fileColumn.setCellValueFactory(new PropertyValueFactory<ImageRow, String>("file"));
 		
-		downloadTable.getColumns().addAll(idColumn,nameColumn,authorColumn,descriptionColumn,fileColumn,
+		downloadImageTable.getColumns().addAll(idColumn,nameColumn,authorColumn,descriptionColumn,fileColumn,
 				setTypeColumn, widthColumn, heightColumn, sizeColumn,dateColumn, fileTypeColumn);
 		
 		
 		
-		return downloadTable;
+		return downloadImageTable;
 	}
 	
 	public class ImageRow
@@ -1521,13 +1868,160 @@ public class OptionsEditor
 	{
 		Button button = new Button("Download");
 		button.setOnAction(ae ->{
-			download();
+			String type = tables.getSelectionModel().getSelectedItem().getText();
+			if(type.equals("Images"))
+			{
+				downloadImage();
+			} else if (type.equals("Regions")) {
+				downloadRegion();
+			} else if (type.equals("Colors")) {
+				downloadColor();
+			} else {
+				System.out.println("Unknown type");
+			}
+			
 		});
 		return button;
 	}
 	
-	private void download(){
-		if(downloadTable.getSelectionModel().selectedItemProperty().get()==null)
+	private void downloadColor()
+	{
+		ColorRow row;
+		if((row = downloadColorTable.getSelectionModel().selectedItemProperty().get())==null)
+		{
+			Alert alert = new Alert(AlertType.ERROR);
+			alert.setContentText("Please Choose an entry");
+			alert.show();
+			return;
+		}
+		UploadDialog dialog = new UploadDialog();
+		Platform.runLater(()->{
+			dialog.show();
+			dialog.getResponseLabel().setText("Downloading...");
+		});
+		HttpClient client = HttpClients.createDefault();
+		HttpGet get = new HttpGet("http://www.ezstein.xyz/uploads/colors/" + row.getFile());
+		InputStream in = null;
+		OutputStream out = null;
+		ObjectInputStream objectIn = null;
+		ObjectOutputStream objectOut = null;
+		byte[] buffer = new byte[1024];
+		try{
+			HttpResponse response = client.execute(get);
+			in = response.getEntity().getContent();
+			out = new FileOutputStream(Locator.locateFileInTmp("download/downloadFile.txt"));
+			for(int length; (length = in.read(buffer)) >0;)
+			{
+				out.write(buffer, 0, length);
+			}
+			objectIn = new ObjectInputStream(new FileInputStream(Locator.locateFile("tmp/download/downloadFile.txt")));
+			CustomColorFunction ccf = (CustomColorFunction) objectIn.readObject();
+			savedColors.add(ccf);
+			colorChoiceBox.getItems().add(ccf);
+			uploadColorsChoiceBox.getItems().add(ccf);
+			objectOut = new ObjectOutputStream(new FileOutputStream(colorFile));
+			objectOut.writeObject(savedColors);
+			
+		} catch(IOException ioe){
+			ioe.printStackTrace();
+		} catch (ClassNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		Platform.runLater(()->{
+			dialog.getResponseLabel().setText("Done");
+			dialog.enableClose();
+		});
+	}
+	
+	private void downloadRegion(){
+		RegionRow row;
+		if((row = downloadRegionTable.getSelectionModel().selectedItemProperty().get())==null)
+		{
+			Alert alert = new Alert(AlertType.ERROR);
+			alert.setContentText("Please Choose an entry");
+			alert.show();
+			return;
+		}
+		UploadDialog dialog = new UploadDialog();
+		Platform.runLater(()->{
+			dialog.show();
+			dialog.getResponseLabel().setText("Downloading...");
+		});
+		HttpClient client = HttpClients.createDefault();
+		HttpGet get = new HttpGet("http://www.ezstein.xyz/uploads/regions/" + row.getFile());
+		InputStream in = null;
+		OutputStream out = null;
+		ObjectInputStream objectIn = null;
+		ObjectOutputStream objectOut = null;
+		ObjectOutputStream objectOutColor = null;
+		byte[] buffer = new byte[1024];
+		try{
+			HttpResponse response = client.execute(get);
+			in = response.getEntity().getContent();
+			out = new FileOutputStream(Locator.locateFileInTmp("download/downloadFile.txt"));
+			for(int length; (length = in.read(buffer)) >0;)
+			{
+				out.write(buffer, 0, length);
+			}
+			objectIn = new ObjectInputStream(new FileInputStream(Locator.locateFile("tmp/download/downloadFile.txt")));
+			SavedRegion sr = (SavedRegion)objectIn.readObject();
+			savedRegions.add(sr);
+			savedRegionsChoiceBox.getItems().add(sr);
+			uploadRegionsChoiceBox.getItems().add(sr);
+			objectOut = new ObjectOutputStream(new FileOutputStream(regionFile));
+			objectOut.writeObject(savedRegions);
+			if(!savedColors.contains(sr.colorFunction))
+			{
+				savedColors.add(sr.colorFunction);
+				colorChoiceBox.getItems().add(sr.colorFunction);
+				uploadColorsChoiceBox.getItems().add(sr.colorFunction);
+				objectOutColor = new ObjectOutputStream(new FileOutputStream(colorFile));
+				objectOutColor.writeObject(savedColors);
+			}
+		}catch (ClientProtocolException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (ClassNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		finally
+		{
+			
+				try {
+					if(in!=null){
+						in.close();
+					}
+					if(out !=null){
+						out.close();
+					}
+					if(objectIn !=null)
+					{
+						objectIn.close();
+					}
+					if(objectOut !=null)
+					{
+						objectOut.close();
+					}
+						
+				
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+		}
+		Platform.runLater(()->{
+			dialog.getResponseLabel().setText("Done");
+			dialog.enableClose();
+		});
+	}
+	
+	private void downloadImage(){
+		if(downloadImageTable.getSelectionModel().selectedItemProperty().get()==null)
 		{
 			Alert alert = new Alert(AlertType.ERROR);
 			alert.setContentText("Please Choose an entry");
@@ -1548,7 +2042,7 @@ public class OptionsEditor
 			dialog.getResponseLabel().setText("Downloading...");
 		});
 		String newFile = file.getAbsolutePath();
-		String imageType = downloadTable.getSelectionModel().selectedItemProperty().get().getFileType();
+		String imageType = downloadImageTable.getSelectionModel().selectedItemProperty().get().getFileType();
 		if(! newFile.endsWith("." + imageType))
 		{
 			newFile = new File(newFile + "." + imageType).getAbsolutePath();
@@ -1556,7 +2050,7 @@ public class OptionsEditor
 		
 		
 		
-		String fileName = downloadTable.getSelectionModel().selectedItemProperty().get().getFile();
+		String fileName = downloadImageTable.getSelectionModel().selectedItemProperty().get().getFile();
 		HttpClient client = HttpClients.createDefault();
 		HttpGet get = new HttpGet("http://www.ezstein.xyz/uploads/images/" + fileName);
 		InputStream in = null;
@@ -1906,6 +2400,8 @@ public class OptionsEditor
 			colorChoiceBox.getItems().add(sr.colorFunction);
 			savedColors.add(sr.colorFunction);
 			colorChoiceBox.setValue(sr.colorFunction);
+			/*Will NOT add color to file*/
+			
 		}
 		
 		
