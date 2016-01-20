@@ -1,6 +1,7 @@
 package fx;
 
 import java.io.*;
+import java.math.BigDecimal;
 import java.text.*;
 import java.util.*;
 
@@ -11,47 +12,26 @@ import org.apache.http.entity.*;
 import org.apache.http.entity.mime.*;
 import org.apache.http.impl.client.*;
 
+import colorFunction.CustomColorFunction;
+
 public class Test {
 	public static void main(String[] args)
 	{
-		HttpClient client = HttpClients.createDefault();
-		HttpGet get = new HttpGet("http://www.ezstein.xyz/uploads/MSet1024p3j.png");
-		InputStream in = null;
-		FileOutputStream out = null;
-		byte[] buffer = new byte[1024];
-		try {
-			HttpResponse response = client.execute(get);
-			in = response.getEntity().getContent();
-			out = new FileOutputStream(Locator.locateFile("tmp/downloaded.png"));
-			for(int length; (length = in.read(buffer)) >0;)
-			{
-				out.write(buffer, 0, length);
-			}
-			
-		} catch (ClientProtocolException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		finally
-		{
-			
-				try {
-					if(in!=null){
-						in.close();
-					}
-					if(out !=null){
-						out.close();
-					}
-						
-				
-				} catch (IOException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				}
-		}
-		System.out.println("SUCCESSFUL");
+		Region<BigDecimal> a = new Region<BigDecimal>(
+				new BigDecimal("-2"),
+				new BigDecimal("2"),
+				new BigDecimal("2"),
+				new BigDecimal("-2"));
+		
+		Region<BigDecimal> b = new Region<BigDecimal>(
+				new BigDecimal("-2"),
+				new BigDecimal("2"),
+				new BigDecimal("2"),
+				new BigDecimal("-2"));
+		
+		SavedRegion sr1 = new SavedRegion("", true, 10,11,12,a, true, false,
+				new ComplexBigDecimal(new BigDecimal("11"), new BigDecimal("23"), 100), CustomColorFunction.COLOR_FUNCTIONS.get(0));
+		
+		System.out.println(a.hashCode() + " " + b.hashCode());
 	}
 }

@@ -2,6 +2,8 @@ package fx;
 import java.io.Serializable;
 import java.math.*;
 
+import colorFunction.CustomColorFunction;
+
 /**
  * Defines an immutable complex number with real and imaginary components as well as some basic operations.
  * ComplexBigDecimal uses BigDecimal to achieve values up to any precision in all calculations.
@@ -136,4 +138,44 @@ public class ComplexBigDecimal implements Serializable
 	{
 		return new Complex(real.doubleValue(), imaginary.doubleValue());
 	}
+	
+	
+	
+	
+	@Override
+	public boolean equals(Object o)
+	{
+		if(o == null)
+		{
+			return false;
+		}
+		if(o == this)
+		{
+			return true;
+		}
+		if(o instanceof ComplexBigDecimal)
+		{
+			ComplexBigDecimal other = (ComplexBigDecimal) o;
+			if(other.getRealPart().equals(real) && other.getImaginaryPart().equals(imaginary) && other.getScale() == scale)
+			{
+				return true;
+			}
+			else
+			{
+				return false;
+			}
+		}
+		else
+		{
+			return false;
+		}
+	}
+	
+	@Override
+	public int hashCode()
+	{
+		return real.hashCode() + imaginary.hashCode() + scale;
+	}
+	
+	
 }

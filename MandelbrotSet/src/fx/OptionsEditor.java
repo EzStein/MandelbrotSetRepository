@@ -94,19 +94,30 @@ public class OptionsEditor
 	{
 		this.tabNumber = tabNumber;
 		readFiles();
+		openConnection();
 		buildEditDialog();
 		resetValues();
 		window.show();
+	}
+	
+	private void openConnection()
+	{
+		//THIS DISPLAYS PASS IN PLAINTEXT!!!!
+		Connection conn;
+		try {
+			conn = DriverManager.getConnection("jdbc:mysql://www.ezstein.xyz:3306/WebDatabase", "java", "javaPass");
+			stmt = conn.createStatement();
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
 	}
 	
 	private void connect()
 	{
 		
 		try {
-			//THIS DISPLAYS PASS IN PLAINTEXT!!!!
-			Connection conn = DriverManager.getConnection("jdbc:mysql://www.ezstein.xyz:3306/WebDatabase", "java", "javaPass");
-			stmt = conn.createStatement();
-			
 			ArrayList<ImageRow> dataImage = new ArrayList<ImageRow>();
 			ResultSet set = stmt.executeQuery("SELECT * FROM Images");
 			while(set.next()){
@@ -1022,6 +1033,14 @@ public class OptionsEditor
 	}
 	
 	private void uploadRegion(){
+		SavedRegion sr = uploadRegionsChoiceBox.getSelectionModel().getSelectedItem();
+		if(existsInDatabase(sr)>=0)
+		{
+			Alert alert = new Alert(AlertType.INFORMATION);
+			alert.setContentText("That region already exists in the database!");
+			alert.show();
+			return;
+		}
 		UploadDialog dialog = new UploadDialog();
 		Platform.runLater(()->{
 			dialog.show();
@@ -1031,7 +1050,7 @@ public class OptionsEditor
 		HttpPost post = new HttpPost("http://www.ezstein.xyz/regionUploader.php");
 		HttpResponse response = null;
 		ObjectOutputStream fileOut = null, fileOut2 = null;
-		SavedRegion sr = uploadRegionsChoiceBox.getSelectionModel().getSelectedItem();
+		
 		try
 		{
 			fileOut = new ObjectOutputStream(new FileOutputStream(Locator.locateFileInTmp("region/uploadFile.txt")));
@@ -1064,17 +1083,36 @@ public class OptionsEditor
 		BufferedReader in = null;
 		File regionFile = new File(Locator.getBaseDirectoryPath() + File.separator + "tmp" + File.separator  + "region").listFiles()[0];
 		File colorFile = new File(Locator.getBaseDirectoryPath() + File.separator + "tmp" + File.separator  + "color").listFiles()[0];
-		HttpEntity entity = MultipartEntityBuilder.create()
-				.addTextBody("pass", "uploaderPassword")
-				.addTextBody("Name", uploadNameField.getText())
-				.addTextBody("Author", (uploadAuthorField.getText().equals("") ? "Anonymous" : uploadAuthorField.getText()))
-				.addTextBody("Description", uploadDescriptionArea.getText())
-				.addTextBody("RegionHashCode", sr.hashCode() + "")
-				.addBinaryBody("region", regionFile, ContentType.TEXT_PLAIN, regionFile.getName())
-				.addTextBody("ColorName", uploadRegionsChoiceBox.getSelectionModel().getSelectedItem().colorFunction.getName())
-				.addTextBody("ColorHashCode", sr.colorFunction.hashCode() + "")
-				.addBinaryBody("color", colorFile, ContentType.TEXT_PLAIN, colorFile.getName())
-				.build();
+		int idOfReplica;
+		HttpEntity entity;
+		if((idOfReplica = existsInDatabase(sr.colorFunction))>=0)
+		{
+			entity = MultipartEntityBuilder.create()
+					.addTextBody("pass", "uploaderPassword")
+					.addTextBody("Name", uploadNameField.getText())
+					.addTextBody("Author", (uploadAuthorField.getText().equals("") ? "Anonymous" : uploadAuthorField.getText()))
+					.addTextBody("Description", uploadDescriptionArea.getText())
+					.addTextBody("RegionHashCode", sr.hashCode() + "")
+					.addBinaryBody("region", regionFile, ContentType.TEXT_PLAIN, regionFile.getName())
+					.addTextBody("Replica", "true")
+					.addTextBody("ColorLink", idOfReplica + "")
+					.build();
+		}
+		else
+		{
+			entity = MultipartEntityBuilder.create()
+					.addTextBody("pass", "uploaderPassword")
+					.addTextBody("Name", uploadNameField.getText())
+					.addTextBody("Author", (uploadAuthorField.getText().equals("") ? "Anonymous" : uploadAuthorField.getText()))
+					.addTextBody("Description", uploadDescriptionArea.getText())
+					.addTextBody("RegionHashCode", sr.hashCode() + "")
+					.addBinaryBody("region", regionFile, ContentType.TEXT_PLAIN, regionFile.getName())
+					.addTextBody("ColorName", uploadRegionsChoiceBox.getSelectionModel().getSelectedItem().colorFunction.getName())
+					.addTextBody("ColorHashCode", sr.colorFunction.hashCode() + "")
+					.addBinaryBody("color", colorFile, ContentType.TEXT_PLAIN, colorFile.getName())
+					.addTextBody("Replica", "false")
+					.build();
+		}
 		post.setEntity(entity);
 		try{
 			response = client.execute(post);
@@ -1113,6 +1151,13 @@ public class OptionsEditor
 	
 	private void uploadColor()
 	{
+		if(existsInDatabase(uploadColorsChoiceBox.getSelectionModel().getSelectedItem())>=0)
+		{
+			Alert alert = new Alert(AlertType.INFORMATION);
+			alert.setContentText("That color already exists in the database!");
+			alert.show();
+			return;
+		}
 		UploadDialog dialog = new UploadDialog();
 		Platform.runLater(()->{
 			dialog.show();
@@ -1241,19 +1286,81 @@ public class OptionsEditor
 		String name = imageFile.getName();
 		String imageType = name.substring(name.lastIndexOf(".") + 1);
 		
-		HttpEntity entity = MultipartEntityBuilder.create()
-				.addTextBody("pass", "uploaderPassword")
-				.addTextBody("Name", uploadNameField.getText())
-				.addTextBody("Author", (uploadAuthorField.getText().equals("") ? "Anonymous" : uploadAuthorField.getText()))
-				.addTextBody("Description", uploadDescriptionArea.getText())
-				.addTextBody("SetType", gui.julia?"J":"M")
-				.addBinaryBody("image", imageFile, ContentType.create("image/" + imageType), imageFile.getName())
-				.addTextBody("RegionHashCode", sr.hashCode() + "")
-				.addBinaryBody("region", regionFile, ContentType.TEXT_PLAIN, regionFile.getName())
-				.addTextBody("ColorName", gui.mainCalculator.getColorFunction().getName())
-				.addTextBody("ColorHashCode", gui.mainCalculator.getColorFunction().hashCode() + "")
-				.addBinaryBody("color", colorFile, ContentType.TEXT_PLAIN, colorFile.getName())
-				.build();
+		
+		
+		
+		
+		int idOfReplicaRegion, idOfReplicaColor;
+		idOfReplicaColor = existsInDatabase(sr.colorFunction);
+		idOfReplicaRegion = existsInDatabase(sr);
+		HttpEntity entity = null;
+		if(idOfReplicaColor <0 && idOfReplicaRegion <0)
+		{
+			//no replica
+			entity = MultipartEntityBuilder.create()
+					.addTextBody("pass", "uploaderPassword")
+					.addTextBody("Name", uploadNameField.getText())
+					.addTextBody("Author", (uploadAuthorField.getText().equals("") ? "Anonymous" : uploadAuthorField.getText()))
+					.addTextBody("Description", uploadDescriptionArea.getText())
+					.addTextBody("SetType", gui.julia?"J":"M")
+					.addBinaryBody("image", imageFile, ContentType.create("image/" + imageType), imageFile.getName())
+					.addTextBody("RegionHashCode", sr.hashCode() + "")
+					.addBinaryBody("region", regionFile, ContentType.TEXT_PLAIN, regionFile.getName())
+					.addTextBody("ColorName", gui.mainCalculator.getColorFunction().getName())
+					.addTextBody("ColorHashCode", gui.mainCalculator.getColorFunction().hashCode() + "")
+					.addBinaryBody("color", colorFile, ContentType.TEXT_PLAIN, colorFile.getName())
+					.addTextBody("ReplicaRegion", "false")
+					.addTextBody("ReplicaColor", "false")
+					.build();
+		} else if(idOfReplicaColor >=0 && idOfReplicaRegion <0)
+		{
+			//color replica
+			entity = MultipartEntityBuilder.create()
+					.addTextBody("pass", "uploaderPassword")
+					.addTextBody("Name", uploadNameField.getText())
+					.addTextBody("Author", (uploadAuthorField.getText().equals("") ? "Anonymous" : uploadAuthorField.getText()))
+					.addTextBody("Description", uploadDescriptionArea.getText())
+					.addTextBody("SetType", gui.julia?"J":"M")
+					.addBinaryBody("image", imageFile, ContentType.create("image/" + imageType), imageFile.getName())
+					.addTextBody("RegionHashCode", sr.hashCode() + "")
+					.addBinaryBody("region", regionFile, ContentType.TEXT_PLAIN, regionFile.getName())
+					.addTextBody("LinkedColor", idOfReplicaColor + "")
+					.addTextBody("ReplicaRegion", "false")
+					.addTextBody("ReplicaColor", "true")
+					.build();
+		} else if(idOfReplicaColor <0 && idOfReplicaRegion >=0)
+		{
+			//region replica
+			entity = MultipartEntityBuilder.create()
+					.addTextBody("pass", "uploaderPassword")
+					.addTextBody("Name", uploadNameField.getText())
+					.addTextBody("Author", (uploadAuthorField.getText().equals("") ? "Anonymous" : uploadAuthorField.getText()))
+					.addTextBody("Description", uploadDescriptionArea.getText())
+					.addTextBody("SetType", gui.julia?"J":"M")
+					.addBinaryBody("image", imageFile, ContentType.create("image/" + imageType), imageFile.getName())
+					.addTextBody("LinkedRegion", idOfReplicaRegion + "")
+					.addTextBody("ReplicaRegion", "true")
+					.addTextBody("ReplicaColor", "false")
+					.addTextBody("ColorName", gui.mainCalculator.getColorFunction().getName())
+					.addTextBody("ColorHashCode", gui.mainCalculator.getColorFunction().hashCode() + "")
+					.addBinaryBody("color", colorFile, ContentType.TEXT_PLAIN, colorFile.getName())
+					.build();
+		} else if(idOfReplicaColor >=0 && idOfReplicaRegion >=0)
+		{
+			//both replica
+			entity = MultipartEntityBuilder.create()
+					.addTextBody("pass", "uploaderPassword")
+					.addTextBody("Name", uploadNameField.getText())
+					.addTextBody("Author", (uploadAuthorField.getText().equals("") ? "Anonymous" : uploadAuthorField.getText()))
+					.addTextBody("Description", uploadDescriptionArea.getText())
+					.addTextBody("SetType", gui.julia?"J":"M")
+					.addBinaryBody("image", imageFile, ContentType.create("image/" + imageType), imageFile.getName())
+					.addTextBody("LinkedRegion", idOfReplicaRegion + "")
+					.addTextBody("LinkedColor", idOfReplicaColor + "")
+					.addTextBody("ReplicaColor", "true")
+					.addTextBody("ReplicaRegion", "true")
+					.build();
+		} 
 		post.setEntity(entity);
 		try {
 			response = client.execute(post);
@@ -1573,42 +1680,52 @@ public class OptionsEditor
 		return downloadRegionTable;
 	}
 	
-	private boolean existsInDatabase(CustomColorFunction ccf)
+	/**
+	 * Returns -1 if it does not exist and the id of the color that is the replica if it does.
+	 * @param ccf
+	 * @return
+	 */
+	private int existsInDatabase(CustomColorFunction ccf)
 	{
 		try
 		{
-			ResultSet set = stmt.executeQuery("SELECT HashCode FROM Colors;");
+			ResultSet set = stmt.executeQuery("SELECT ID, HashCode FROM Colors;");
 			while(set.next())
 			{
 				if(set.getInt("HashCode") == ccf.hashCode())
 				{
-					return true;
+					return set.getInt("ID");
 				}
 			}
 		} catch (SQLException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		return false;
+		return -1;
 	}
 	
-	private boolean existsInDatabase(SavedRegion sr)
+	/**
+	 * Returns -1 if it does not exist and the id of the color that is the replica if it does.
+	 * @param sr
+	 * @return
+	 */
+	private int existsInDatabase(SavedRegion sr)
 	{
 		try
 		{
-			ResultSet set = stmt.executeQuery("SELECT HashCode FROM Regions;");
+			ResultSet set = stmt.executeQuery("SELECT ID, HashCode FROM Regions;");
 			while(set.next())
 			{
 				if(set.getInt("HashCode") == sr.hashCode())
 				{
-					return true;
+					return set.getInt("ID");
 				}
 			}
 		} catch (SQLException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		return false;
+		return -1;
 	}
 	
 	private boolean colorExistsLocally(int hashCode)
@@ -1634,7 +1751,6 @@ public class OptionsEditor
 		}
 		return false;
 	}
-	
 	
 	public class RegionRow
 	{
