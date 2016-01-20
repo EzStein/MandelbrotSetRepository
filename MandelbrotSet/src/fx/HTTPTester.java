@@ -22,9 +22,9 @@ public class HTTPTester {
 			//THIS DISPLAYS PASS IN PLAINTEXT!!!!
 			conn = DriverManager.getConnection("jdbc:mysql://www.ezstein.xyz:3306/WebDatabase", "java", "javaPass");
 			stmt = conn.createStatement();
-			set = stmt.executeQuery("SELECT * FROM Images");
+			set = stmt.executeQuery("SELECT * FROM Linked");
 			while(set.next()){
-				for(int i = 2; i<12; i++)
+				for(int i = 1; i<3; i++)
 				{
 					System.out.println(set.getString(i));
 				}

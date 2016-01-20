@@ -2,31 +2,26 @@ package fx;
 
 import java.io.*;
 import java.math.*;
-import java.text.DateFormat;
-import java.text.SimpleDateFormat;
+import java.sql.*;
 import java.util.*;
-
-import javax.imageio.ImageIO;
-
-import org.apache.http.HttpEntity;
-import org.apache.http.HttpResponse;
-import org.apache.http.client.ClientProtocolException;
-import org.apache.http.client.HttpClient;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.entity.ContentType;
-import org.apache.http.entity.mime.MultipartEntityBuilder;
-import org.apache.http.impl.client.HttpClients;
-
+import org.apache.http.*;
+import org.apache.http.client.*;
+import org.apache.http.client.methods.*;
+import org.apache.http.entity.*;
+import org.apache.http.entity.mime.*;
+import org.apache.http.impl.client.*;
 import colorFunction.*;
 import javafx.application.*;
+import javafx.beans.property.*;
 import javafx.beans.value.*;
 import javafx.collections.*;
 import javafx.geometry.*;
 import javafx.scene.*;
 import javafx.scene.canvas.*;
 import javafx.scene.control.*;
-import javafx.scene.control.Alert.AlertType;
-import javafx.scene.control.ButtonBar.ButtonData;
+import javafx.scene.control.Alert.*;
+import javafx.scene.control.ButtonBar.*;
+import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.input.*;
 import javafx.scene.layout.*;
 import javafx.scene.paint.*;
@@ -61,7 +56,7 @@ public class OptionsEditor
 	private Rectangle gradientRectangle;
 	private ColorPicker colorPicker;
 	private ObjectOutputStream out, colorOut;
-	private File file, colorFile;
+	private File regionFile, colorFile;
 	private ArrayList<SavedRegion> savedRegions;
 	private Region<BigDecimal> currentRegion;
 	private boolean currentJulia;
@@ -71,6 +66,8 @@ public class OptionsEditor
 	private TextField uploadNameField, uploadAuthorField;
 	private TextArea uploadDescriptionArea;
 	private ChoiceBox<String> uploadTypeChoiceBox, downloadTypeChoiceBox;
+	private Statement stmt;
+	private TableView<ImageRow> downloadTable;
 	
 	/**
 	 * Constructs this editor with a reference to the gui that created it.
@@ -99,6 +96,40 @@ public class OptionsEditor
 		window.show();
 	}
 	
+	private void connect()
+	{
+		if(stmt != null){
+			return;
+		}
+		ArrayList<ImageRow> data = new ArrayList<ImageRow>();
+		try {
+			//THIS DISPLAYS PASS IN PLAINTEXT!!!!
+			Connection conn = DriverManager.getConnection("jdbc:mysql://www.ezstein.xyz:3306/WebDatabase", "java", "javaPass");
+			stmt = conn.createStatement();
+			ResultSet set = stmt.executeQuery("SELECT * FROM Images");
+			while(set.next()){
+				
+					data.add(new ImageRow(
+							set.getInt("ID"),
+							set.getString("Author"),
+							set.getString("Name"),
+							set.getString("Description"),
+							set.getString("file"),
+							set.getString("SetType"),
+							set.getInt("Width"),
+							set.getInt("Height"),
+							set.getInt("Size"),
+							set.getInt("Date"),
+							set.getString("FileType")
+							));
+				}
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		downloadTable.setItems(FXCollections.observableArrayList(data));
+	}
+	
 	@SuppressWarnings("unchecked")
 	private void readFiles()
 	{
@@ -113,8 +144,8 @@ public class OptionsEditor
 			colorIn = new ObjectInputStream(new FileInputStream(colorFile));
 			savedColors = (ArrayList<CustomColorFunction>) colorIn.readObject();
 			
-			file = new File(Locator.locateFile("SavedRegions.txt"));
-			in = new ObjectInputStream(new FileInputStream(file));
+			regionFile = new File(Locator.locateFile("SavedRegions.txt"));
+			in = new ObjectInputStream(new FileInputStream(regionFile));
 			savedRegions = (ArrayList<SavedRegion>)in.readObject();
 		}
 		catch(EOFException eofe)
@@ -170,6 +201,18 @@ public class OptionsEditor
 		tabPane.getTabs().add(buildDownloadTab());
 		layout.setCenter(tabPane);
 		tabPane.getSelectionModel().select(tabNumber);
+		tabPane.getSelectionModel().selectedIndexProperty().addListener(new ChangeListener<Number>(){
+
+			@Override
+			public void changed(ObservableValue<? extends Number> observable, Number oldValue, Number newValue) {
+				if(newValue.intValue()==3)
+				{
+					new Thread(()->{connect();}).start();
+				}
+				
+			}
+			
+		});
 		
 		HBox buttonBox = new HBox(10);
 		buttonBox.setPadding(new Insets(10,10,10,10));
@@ -357,7 +400,7 @@ public class OptionsEditor
 			try
 			{
 				/*Overwrites File*/
-				out = new ObjectOutputStream(new FileOutputStream(file));
+				out = new ObjectOutputStream(new FileOutputStream(regionFile));
 				out.writeObject(savedRegions);
 			}
 			catch (IOException ioe)
@@ -934,7 +977,10 @@ public class OptionsEditor
 	
 	private void uploadRegion(){
 		UploadDialog dialog = new UploadDialog();
-		Platform.runLater(()->{dialog.show();});
+		Platform.runLater(()->{
+			dialog.show();
+			dialog.getResponseLabel().setText("Uploading...");
+		});
 		HttpClient client = HttpClients.createDefault();
 		HttpPost post = new HttpPost("http://www.ezstein.xyz/regionUploader.php");
 		HttpResponse response = null;
@@ -1019,7 +1065,11 @@ public class OptionsEditor
 	private void uploadColor()
 	{
 		UploadDialog dialog = new UploadDialog();
-		Platform.runLater(()->{dialog.show();});
+		Platform.runLater(()->{
+			dialog.show();
+			dialog.getResponseLabel().setText("Uploading...");
+		});
+		
 		HttpClient client = HttpClients.createDefault();
 		HttpPost post = new HttpPost("http://www.ezstein.xyz/colorUploader.php");
 		HttpResponse response = null;
@@ -1093,7 +1143,10 @@ public class OptionsEditor
 	
 	private void uploadImage(){
 		UploadDialog dialog = new UploadDialog();
-		Platform.runLater(()->{dialog.show();});
+		Platform.runLater(()->{
+			dialog.show();
+			dialog.getResponseLabel().setText("Uploading...");
+		});
 		
 		HttpClient client = HttpClients.createDefault();
 		HttpPost post = new HttpPost("http://www.ezstein.xyz/imageUploader.php");
@@ -1237,23 +1290,316 @@ public class OptionsEditor
 	
 	private Tab buildDownloadTab(){
 		Tab tab = new Tab("Download");
+		tab.setClosable(false);
 		GridPane downloadGrid = new GridPane();
 		downloadGrid.setVgap(10);
 		downloadGrid.setHgap(10);
 		downloadGrid.setPadding(new Insets(30,30,30,30));
 		
-		
-		downloadGrid.add(buildDownloadButton(), 0, 1);
 		downloadGrid.add(buildDownloadTypeChoiceBox(), 0, 0);
-		
+		downloadGrid.add(buildDownloadTableView(), 0, 1, 2, 5);
+		downloadGrid.add(buildDownloadButton(), 0, 6);
 		tab.setContent(downloadGrid);
+		
 		return tab;
+	}
+	
+	private TableView<ImageRow> buildDownloadTableView(){
+		downloadTable = new TableView<ImageRow>();
+		downloadTable.setEditable(false);
+		TableColumn<ImageRow, String> idColumn = new TableColumn<ImageRow, String>("ID");
+		TableColumn<ImageRow, String> nameColumn = new TableColumn<ImageRow, String>("Name");
+		TableColumn<ImageRow, String> authorColumn = new TableColumn<ImageRow, String>("Author");
+		TableColumn<ImageRow, String> descriptionColumn = new TableColumn<ImageRow, String>("Description");
+		TableColumn<ImageRow, String> fileColumn = new TableColumn<ImageRow, String>("File");
+		TableColumn<ImageRow, String> setTypeColumn = new TableColumn<ImageRow, String>("SetType");
+		TableColumn<ImageRow, String> widthColumn = new TableColumn<ImageRow, String>("Width");
+		TableColumn<ImageRow, String> heightColumn = new TableColumn<ImageRow, String>("Height");
+		TableColumn<ImageRow, String> sizeColumn = new TableColumn<ImageRow, String>("Size");
+		TableColumn<ImageRow, String> dateColumn = new TableColumn<ImageRow, String>("Date");
+		TableColumn<ImageRow, String> fileTypeColumn = new TableColumn<ImageRow, String>("FileType");
+		idColumn.setCellValueFactory(new PropertyValueFactory<ImageRow, String>("id"));
+		nameColumn.setCellValueFactory(new PropertyValueFactory<ImageRow, String>("name"));
+		authorColumn.setCellValueFactory(new PropertyValueFactory<ImageRow, String>("author"));
+		descriptionColumn.setCellValueFactory(new PropertyValueFactory<ImageRow, String>("description"));
+		setTypeColumn.setCellValueFactory(new PropertyValueFactory<ImageRow, String>("setType"));
+		fileTypeColumn.setCellValueFactory(new PropertyValueFactory<ImageRow, String>("fileType"));
+		sizeColumn.setCellValueFactory(new PropertyValueFactory<ImageRow, String>("size"));
+		widthColumn.setCellValueFactory(new PropertyValueFactory<ImageRow, String>("width"));
+		heightColumn.setCellValueFactory(new PropertyValueFactory<ImageRow, String>("height"));
+		dateColumn.setCellValueFactory(new PropertyValueFactory<ImageRow, String>("date"));
+		fileColumn.setCellValueFactory(new PropertyValueFactory<ImageRow, String>("file"));
+		
+		downloadTable.getColumns().addAll(idColumn,nameColumn,authorColumn,descriptionColumn,fileColumn,
+				setTypeColumn, widthColumn, heightColumn, sizeColumn,dateColumn, fileTypeColumn);
+		
+		
+		
+		return downloadTable;
+	}
+	
+	public class ImageRow
+	{
+		private final IntegerProperty id, width, height, size, date;
+		private final StringProperty name, author, description, file, setType, fileType;
+		
+		/**
+		 * 
+		 * @param id
+		 * @param name
+		 * @param author
+		 * @param description
+		 * @param file
+		 * @param setType
+		 * @param width
+		 * @param height
+		 * @param size
+		 * @param date
+		 * @param fileType
+		 */
+		public ImageRow(int id, String name, String author, String description, String file, String setType,
+				int width, int height, int size, int date, String fileType)
+		{
+			this.id = new SimpleIntegerProperty(id);
+			this.width = new SimpleIntegerProperty(width);
+			this.height = new SimpleIntegerProperty(height);
+			this.size = new SimpleIntegerProperty(size);
+			this.date = new SimpleIntegerProperty(date);
+			this.name = new SimpleStringProperty(name);
+			this.author = new SimpleStringProperty(author);
+			this.description = new SimpleStringProperty(description);
+			this.file = new SimpleStringProperty(file);
+			this.fileType = new SimpleStringProperty(fileType);
+			this.setType = new SimpleStringProperty(setType);
+		}
+		
+		public final IntegerProperty getIdProperty()
+		{
+			return id;
+		}
+		public final int getId()
+		{
+			return id.get();
+		}
+		public final void setId(int val)
+		{
+			id.set(val);
+		}
+		
+		public final IntegerProperty getHeightProperty()
+		{
+			return height;
+		}
+		public final int getHeight()
+		{
+			return height.get();
+		}
+		public final void setHeight(int val)
+		{
+			height.set(val);
+		}
+		
+		public final IntegerProperty getWidthProperty()
+		{
+			return width;
+		}
+		public final int getWidth()
+		{
+			return width.get();
+		}
+		public final void setWidth(int val)
+		{
+			width.set(val);
+		}
+		
+		public final IntegerProperty getSizeProperty()
+		{
+			return size;
+		}
+		public final int getSize()
+		{
+			return size.get();
+		}
+		public final void setSize(int val)
+		{
+			size.set(val);
+		}
+		
+		public final IntegerProperty getDateProperty()
+		{
+			return date;
+		}
+		public final int getDate()
+		{
+			return date.get();
+		}
+		public final void setDate(int val)
+		{
+			date.set(val);
+		}
+		
+		public final StringProperty getNameProperty()
+		{
+			return name;
+		}
+		public final String getName()
+		{
+			return name.get();
+		}
+		public final void setName(String val)
+		{
+			name.set(val);
+		}
+		
+		public final StringProperty getAuthorProperty()
+		{
+			return author;
+		}
+		public final String getAuthor()
+		{
+			return author.get();
+		}
+		public final void setAuthor(String val)
+		{
+			author.set(val);
+		}
+		
+		public final StringProperty getDescriptionProperty()
+		{
+			return description;
+		}
+		public final String getDescription()
+		{
+			return description.get();
+		}
+		public final void setDescription(String val)
+		{
+			description.set(val);
+		}
+		
+		public final StringProperty getFileProperty()
+		{
+			return file;
+		}
+		public final String getFile()
+		{
+			return file.get();
+		}
+		public final void setFile(String val)
+		{
+			file.set(val);
+		}
+		
+		public final StringProperty getFileTypeProperty()
+		{
+			return fileType;
+		}
+		public final String getFileType()
+		{
+			return fileType.get();
+		}
+		public final void setFileType(String val)
+		{
+			fileType.set(val);
+		}
+		
+		public final StringProperty getSetTypeProperty()
+		{
+			return setType;
+		}
+		public final String getSetType()
+		{
+			return setType.get();
+		}
+		public final void setSetType(String val)
+		{
+			setType.set(val);
+		}
 	}
 	
 	private Button buildDownloadButton()
 	{
 		Button button = new Button("Download");
+		button.setOnAction(ae ->{
+			download();
+		});
 		return button;
+	}
+	
+	private void download(){
+		if(downloadTable.getSelectionModel().selectedItemProperty().get()==null)
+		{
+			Alert alert = new Alert(AlertType.ERROR);
+			alert.setContentText("Please Choose an entry");
+			alert.show();
+			return;
+		}
+		
+		FileChooser fc = new FileChooser();
+		fc.setTitle("Download");
+		File file = null;
+		if((file = fc.showSaveDialog(window)) == null)
+		{
+			return;
+		}
+		UploadDialog dialog = new UploadDialog();
+		Platform.runLater(()->{
+			dialog.show();
+			dialog.getResponseLabel().setText("Downloading...");
+		});
+		String newFile = file.getAbsolutePath();
+		String imageType = downloadTable.getSelectionModel().selectedItemProperty().get().getFileType();
+		if(! newFile.endsWith("." + imageType))
+		{
+			newFile = new File(newFile + "." + imageType).getAbsolutePath();
+		}
+		
+		
+		
+		String fileName = downloadTable.getSelectionModel().selectedItemProperty().get().getFile();
+		HttpClient client = HttpClients.createDefault();
+		HttpGet get = new HttpGet("http://www.ezstein.xyz/uploads/images/" + fileName);
+		InputStream in = null;
+		FileOutputStream out = null;
+		byte[] buffer = new byte[1024];
+		try {
+			HttpResponse response = client.execute(get);
+			in = response.getEntity().getContent();
+			out = new FileOutputStream(newFile);
+			for(int length; (length = in.read(buffer)) >0;)
+			{
+				out.write(buffer, 0, length);
+			}
+			
+		} catch (ClientProtocolException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		finally
+		{
+			
+				try {
+					if(in!=null){
+						in.close();
+					}
+					if(out !=null){
+						out.close();
+					}
+						
+				
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+		}
+		Platform.runLater(()->{
+			dialog.getResponseLabel().setText("Done");
+			dialog.enableClose();
+		});
+		
 	}
 	
 	private ChoiceBox<String> buildDownloadTypeChoiceBox()
@@ -1350,7 +1696,7 @@ public class OptionsEditor
 			try
 			{
 				/*Overwrites File*/
-				out = new ObjectOutputStream(new FileOutputStream(file));
+				out = new ObjectOutputStream(new FileOutputStream(regionFile));
 				out.writeObject(savedRegions);
 			}
 			catch (IOException ioe)
@@ -1682,11 +2028,11 @@ public class OptionsEditor
 					stage.close();
 				});
 				
-				grid.add(new Label("Uploading..."),0,0);
+				//grid.add(new Label("Uploading..."),0,0);
 				grid.add(responseLabel,0,1);
 				grid.add(closeButton,0,2);
 				
-				stage.setTitle("Uploading...");
+				stage.setTitle("Waiting");
 				Scene scene = new Scene(grid);
 				stage.setHeight(200);
 				stage.setWidth(300);
