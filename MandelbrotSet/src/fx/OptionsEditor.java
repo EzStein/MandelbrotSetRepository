@@ -56,7 +56,7 @@ public class OptionsEditor
 	private Rectangle gradientRectangle;
 	private ColorPicker colorPicker;
 	private ObjectOutputStream out, colorOut;
-	private File regionFile, colorFile;
+	//private File regionFile, colorFile;
 	private ArrayList<SavedRegion> savedRegions;
 	private Region<BigDecimal> currentRegion;
 	private boolean currentJulia;
@@ -65,7 +65,7 @@ public class OptionsEditor
 	private ArrayList<CustomColorFunction> savedColors;
 	private TextField uploadNameField, uploadAuthorField;
 	private TextArea uploadDescriptionArea;
-	private ChoiceBox<String> uploadTypeChoiceBox, downloadTypeChoiceBox;
+	private ChoiceBox<String> uploadTypeChoiceBox;
 	private Statement stmt;
 	private TableView<ImageRow> downloadImageTable;
 	private TableView<RegionRow> downloadRegionTable;
@@ -106,11 +106,12 @@ public class OptionsEditor
 			//THIS DISPLAYS PASS IN PLAINTEXT!!!!
 			Connection conn = DriverManager.getConnection("jdbc:mysql://www.ezstein.xyz:3306/WebDatabase", "java", "javaPass");
 			stmt = conn.createStatement();
-			ArrayList<ImageRow> data = new ArrayList<ImageRow>();
+			
+			ArrayList<ImageRow> dataImage = new ArrayList<ImageRow>();
 			ResultSet set = stmt.executeQuery("SELECT * FROM Images");
 			while(set.next()){
 				
-					data.add(new ImageRow(
+					dataImage.add(new ImageRow(
 							set.getInt("ID"),
 							set.getString("Name"),
 							set.getString("Author"),
@@ -124,7 +125,7 @@ public class OptionsEditor
 							set.getString("FileType")
 							));
 				}
-			downloadImageTable.setItems(FXCollections.observableArrayList(data));
+			downloadImageTable.setItems(FXCollections.observableArrayList(dataImage));
 			
 			
 			ArrayList<RegionRow> dataRegion = new ArrayList<RegionRow>();
@@ -172,12 +173,10 @@ public class OptionsEditor
 		savedColors = new ArrayList<CustomColorFunction>();
 		try
 		{
-			colorFile = new File(Locator.locateFile("SavedColors.txt"));
-			colorIn = new ObjectInputStream(new FileInputStream(colorFile));
+			colorIn = new ObjectInputStream(new FileInputStream(Locator.locateFile("SavedColors.txt")));
 			savedColors = (ArrayList<CustomColorFunction>) colorIn.readObject();
 			
-			regionFile = new File(Locator.locateFile("SavedRegions.txt"));
-			in = new ObjectInputStream(new FileInputStream(regionFile));
+			in = new ObjectInputStream(new FileInputStream(Locator.locateFile("SavedRegions.txt")));
 			savedRegions = (ArrayList<SavedRegion>)in.readObject();
 		}
 		catch(EOFException eofe)
@@ -223,6 +222,7 @@ public class OptionsEditor
 			{
 				e.consume();
 			}
+			close();
 		});
 		BorderPane layout = new BorderPane();
 		
@@ -254,6 +254,17 @@ public class OptionsEditor
 		Scene scene = new Scene(layout);
 		scene.getStylesheets().add(this.getClass().getResource("OptionsStyleSheet.css").toExternalForm());
 		window.setScene(scene);
+	}
+	
+	public void close(){
+		try{
+			if(stmt != null)
+			{	
+				stmt.close();
+			}
+		} catch(SQLException sqle){
+			sqle.printStackTrace();
+		}
 	}
 	
 	private Tab buildOptionsTab()
@@ -432,7 +443,7 @@ public class OptionsEditor
 			try
 			{
 				/*Overwrites File*/
-				out = new ObjectOutputStream(new FileOutputStream(regionFile));
+				out = new ObjectOutputStream(new FileOutputStream(Locator.locateFile("SavedRegions.txt")));
 				out.writeObject(savedRegions);
 			}
 			catch (IOException ioe)
@@ -518,7 +529,7 @@ public class OptionsEditor
 			
 			try
 			{
-				colorOut = new ObjectOutputStream(new FileOutputStream(colorFile));
+				colorOut = new ObjectOutputStream(new FileOutputStream(Locator.locateFile("SavedColors.txt")));
 				colorOut.writeObject(savedColors);
 			}
 			catch(IOException ioe)
@@ -762,7 +773,7 @@ public class OptionsEditor
 		uploadColorsChoiceBox.getItems().add(color);
 		try
 		{
-			colorOut = new ObjectOutputStream(new FileOutputStream(colorFile));
+			colorOut = new ObjectOutputStream(new FileOutputStream(Locator.locateFile("SavedColors.txt")));
 			colorOut.writeObject(savedColors);
 		}
 		catch(IOException ioe)
@@ -933,6 +944,7 @@ public class OptionsEditor
 			@Override
 			public void changed(ObservableValue<? extends SavedRegion> observable, SavedRegion oldValue,
 					SavedRegion newValue) {
+				if(newValue != null)
 				uploadNameField.setText(newValue.name);
 			}
 		});
@@ -1871,11 +1883,11 @@ public class OptionsEditor
 			String type = tables.getSelectionModel().getSelectedItem().getText();
 			if(type.equals("Images"))
 			{
-				downloadImage();
+				requestImageDownload();
 			} else if (type.equals("Regions")) {
-				downloadRegion();
+				requestRegionDownload();
 			} else if (type.equals("Colors")) {
-				downloadColor();
+				requestColorDownload();
 			} else {
 				System.out.println("Unknown type");
 			}
@@ -1884,7 +1896,7 @@ public class OptionsEditor
 		return button;
 	}
 	
-	private void downloadColor()
+	private void requestColorDownload()
 	{
 		ColorRow row;
 		if((row = downloadColorTable.getSelectionModel().selectedItemProperty().get())==null)
@@ -1897,10 +1909,228 @@ public class OptionsEditor
 		UploadDialog dialog = new UploadDialog();
 		Platform.runLater(()->{
 			dialog.show();
+			dialog.getResponseLabel().setText("Downloading Image...");
+		});
+		
+		downloadColor("http://www.ezstein.xyz/uploads/colors/" + row.getFile());
+		try
+		{
+			ResultSet set = stmt.executeQuery("SELECT * FROM Linked WHERE ColorID = " + row.getId() + ";");
+			if(set.isBeforeFirst())
+			{
+				set.next();
+				int regionID;
+				if((regionID = set.getInt("RegionID")) !=0)
+				{
+					Alert alert = new Alert(AlertType.CONFIRMATION);
+					alert.setContentText("This color is associated with a region.\n"
+							+ "Would you like to download the region as well?");
+					ButtonType buttonTypeYes = new ButtonType("Yes");
+					ButtonType buttonTypeNo = new ButtonType("No", ButtonData.CANCEL_CLOSE);
+					alert.getButtonTypes().setAll(buttonTypeYes, buttonTypeNo);
+					Optional<ButtonType> result = alert.showAndWait();
+					if(result.isPresent())
+					{
+						if(result.get().equals(buttonTypeYes))
+						{
+							set = stmt.executeQuery("SELECT File FROM Regions WHERE ID = " + regionID + ";");
+							if(set.isBeforeFirst())
+							{
+								set.next();
+								downloadRegion("http://www.ezstein.xyz/uploads/regions/" + set.getString("File"));
+							}
+						}
+					}
+				}
+				
+				set = stmt.executeQuery("SELECT * FROM Linked WHERE ColorID = " + row.getId() + ";");
+				if(set.isBeforeFirst())
+				{
+					set.next();
+					int imageID;
+					if((imageID = set.getInt("imageID")) !=0)
+					{
+						
+						Alert alert = new Alert(AlertType.CONFIRMATION);
+						alert.setContentText("This color is associated with an image.\n"
+								+ "Would you like to download the image as well?");
+						ButtonType buttonTypeYes = new ButtonType("Yes");
+						ButtonType buttonTypeNo = new ButtonType("No", ButtonData.CANCEL_CLOSE);
+						alert.getButtonTypes().setAll(buttonTypeYes, buttonTypeNo);
+						Optional<ButtonType> result = alert.showAndWait();
+						if(result.isPresent())
+						{
+							if(result.get().equals(buttonTypeYes))
+							{
+								
+								
+								set = stmt.executeQuery("SELECT File, FileType FROM Images WHERE ID = " + imageID + ";");
+								if(set.isBeforeFirst())
+								{
+									set.next();
+									
+									FileChooser fc = new FileChooser();
+									fc.setTitle("Download");
+									File file = null;
+									if((file = fc.showSaveDialog(window)) == null)
+									{
+										return;
+									}
+									
+									String newFile = file.getAbsolutePath();
+									String imageType = set.getString("FileType");
+									if(! newFile.endsWith("." + imageType))
+									{
+										newFile = new File(newFile + "." + imageType).getAbsolutePath();
+									}
+									
+									downloadImage("http://www.ezstein.xyz/uploads/images/" + set.getString("File"), newFile);
+								}
+							}
+						}
+					}
+				}
+			}
+			
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		
+		
+		
+		Platform.runLater(()->{
+			dialog.getResponseLabel().setText("Done");
+			dialog.enableClose();
+		});
+	}
+	
+	private void requestRegionDownload(){
+		RegionRow row;
+		if((row = downloadRegionTable.getSelectionModel().selectedItemProperty().get())==null)
+		{
+			Alert alert = new Alert(AlertType.ERROR);
+			alert.setContentText("Please Choose an entry");
+			alert.show();
+			return;
+		}
+		UploadDialog dialog = new UploadDialog();
+		Platform.runLater(()->{
+			dialog.show();
 			dialog.getResponseLabel().setText("Downloading...");
 		});
+		downloadRegion("http://www.ezstein.xyz/uploads/regions/" + row.getFile());
+		
+		
+		try
+		{
+			ResultSet set = stmt.executeQuery("SELECT * FROM Linked WHERE RegionID = " + row.getId() + ";");
+			if(set.isBeforeFirst())
+			{
+				set.next();
+				int imageID;
+				if((imageID = set.getInt("imageID")) !=0)
+				{
+					
+					Alert alert = new Alert(AlertType.CONFIRMATION);
+					alert.setContentText("This color is associated with an image.\n"
+							+ "Would you like to download the image as well?");
+					ButtonType buttonTypeYes = new ButtonType("Yes");
+					ButtonType buttonTypeNo = new ButtonType("No", ButtonData.CANCEL_CLOSE);
+					alert.getButtonTypes().setAll(buttonTypeYes, buttonTypeNo);
+					Optional<ButtonType> result = alert.showAndWait();
+					if(result.isPresent())
+					{
+						if(result.get().equals(buttonTypeYes))
+						{
+							
+							
+							set = stmt.executeQuery("SELECT File, FileType FROM Images WHERE ID = " + imageID + ";");
+							if(set.isBeforeFirst())
+							{
+								set.next();
+								
+								FileChooser fc = new FileChooser();
+								fc.setTitle("Download");
+								File file = null;
+								if((file = fc.showSaveDialog(window)) == null)
+								{
+									return;
+								}
+								
+								String newFile = file.getAbsolutePath();
+								String imageType = set.getString("FileType");
+								if(! newFile.endsWith("." + imageType))
+								{
+									newFile = new File(newFile + "." + imageType).getAbsolutePath();
+								}
+								
+								downloadImage("http://www.ezstein.xyz/uploads/images/" + set.getString("File"), newFile);
+							}
+						}
+					}
+				}
+			}
+		} catch(SQLException sqle)
+		{
+			sqle.printStackTrace();
+		}
+	
+		
+		Platform.runLater(()->{
+			dialog.getResponseLabel().setText("Done");
+			dialog.enableClose();
+		});
+	}
+	
+	private void downloadImage(String uri, String imagePath)
+	{
 		HttpClient client = HttpClients.createDefault();
-		HttpGet get = new HttpGet("http://www.ezstein.xyz/uploads/colors/" + row.getFile());
+		HttpGet get = new HttpGet(uri);
+		InputStream in = null;
+		FileOutputStream out = null;
+		byte[] buffer = new byte[1024];
+		try {
+			HttpResponse response = client.execute(get);
+			in = response.getEntity().getContent();
+			out = new FileOutputStream(imagePath);
+			for(int length; (length = in.read(buffer)) >0;)
+			{
+				out.write(buffer, 0, length);
+			}
+			
+		} catch (ClientProtocolException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		finally
+		{
+			
+			try
+			{
+				if(in!=null)
+				{
+					in.close();
+				}
+				if(out !=null)
+				{
+					out.close();
+				}
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+	}
+	
+	private void downloadColor(String uri)
+	{
+		HttpClient client = HttpClients.createDefault();
+		HttpGet get = new HttpGet(uri);
 		InputStream in = null;
 		OutputStream out = null;
 		ObjectInputStream objectIn = null;
@@ -1919,37 +2149,42 @@ public class OptionsEditor
 			savedColors.add(ccf);
 			colorChoiceBox.getItems().add(ccf);
 			uploadColorsChoiceBox.getItems().add(ccf);
-			objectOut = new ObjectOutputStream(new FileOutputStream(colorFile));
+			objectOut = new ObjectOutputStream(new FileOutputStream(Locator.locateFile("SavedColors.txt")));
 			objectOut.writeObject(savedColors);
-			
 		} catch(IOException ioe){
 			ioe.printStackTrace();
 		} catch (ClassNotFoundException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
+		} finally {
+			try {
+				if(in!=null){
+					in.close();
+				}
+				if(out !=null){
+					out.close();
+				}
+				if(objectIn !=null)
+				{
+					objectIn.close();
+				}
+				if(objectOut !=null)
+				{
+					objectOut.close();
+				}
+					
+			
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 		}
-		Platform.runLater(()->{
-			dialog.getResponseLabel().setText("Done");
-			dialog.enableClose();
-		});
 	}
 	
-	private void downloadRegion(){
-		RegionRow row;
-		if((row = downloadRegionTable.getSelectionModel().selectedItemProperty().get())==null)
-		{
-			Alert alert = new Alert(AlertType.ERROR);
-			alert.setContentText("Please Choose an entry");
-			alert.show();
-			return;
-		}
-		UploadDialog dialog = new UploadDialog();
-		Platform.runLater(()->{
-			dialog.show();
-			dialog.getResponseLabel().setText("Downloading...");
-		});
+	private void downloadRegion(String uri)
+	{
 		HttpClient client = HttpClients.createDefault();
-		HttpGet get = new HttpGet("http://www.ezstein.xyz/uploads/regions/" + row.getFile());
+		HttpGet get = new HttpGet(uri);
 		InputStream in = null;
 		OutputStream out = null;
 		ObjectInputStream objectIn = null;
@@ -1969,14 +2204,16 @@ public class OptionsEditor
 			savedRegions.add(sr);
 			savedRegionsChoiceBox.getItems().add(sr);
 			uploadRegionsChoiceBox.getItems().add(sr);
-			objectOut = new ObjectOutputStream(new FileOutputStream(regionFile));
+			objectOut = new ObjectOutputStream(new FileOutputStream(Locator.locateFile("SavedRegions.txt")));
 			objectOut.writeObject(savedRegions);
+			
+			/*The region may require dependencies on color functions*/
 			if(!savedColors.contains(sr.colorFunction))
 			{
 				savedColors.add(sr.colorFunction);
 				colorChoiceBox.getItems().add(sr.colorFunction);
 				uploadColorsChoiceBox.getItems().add(sr.colorFunction);
-				objectOutColor = new ObjectOutputStream(new FileOutputStream(colorFile));
+				objectOutColor = new ObjectOutputStream(new FileOutputStream(Locator.locateFile("SavedColors.txt")));
 				objectOutColor.writeObject(savedColors);
 			}
 		}catch (ClientProtocolException e) {
@@ -2007,21 +2244,20 @@ public class OptionsEditor
 					{
 						objectOut.close();
 					}
-						
-				
+					if(objectOutColor !=null)
+					{
+						objectOutColor.close();
+					}
 				} catch (IOException e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}
 		}
-		Platform.runLater(()->{
-			dialog.getResponseLabel().setText("Done");
-			dialog.enableClose();
-		});
 	}
 	
-	private void downloadImage(){
-		if(downloadImageTable.getSelectionModel().selectedItemProperty().get()==null)
+	private void requestImageDownload(){
+		ImageRow row = downloadImageTable.getSelectionModel().selectedItemProperty().get();
+		if(row==null)
 		{
 			Alert alert = new Alert(AlertType.ERROR);
 			alert.setContentText("Please Choose an entry");
@@ -2036,79 +2272,62 @@ public class OptionsEditor
 		{
 			return;
 		}
-		UploadDialog dialog = new UploadDialog();
-		Platform.runLater(()->{
-			dialog.show();
-			dialog.getResponseLabel().setText("Downloading...");
-		});
+		
 		String newFile = file.getAbsolutePath();
-		String imageType = downloadImageTable.getSelectionModel().selectedItemProperty().get().getFileType();
+		String imageType = row.getFileType();
 		if(! newFile.endsWith("." + imageType))
 		{
 			newFile = new File(newFile + "." + imageType).getAbsolutePath();
 		}
 		
 		
-		
-		String fileName = downloadImageTable.getSelectionModel().selectedItemProperty().get().getFile();
-		HttpClient client = HttpClients.createDefault();
-		HttpGet get = new HttpGet("http://www.ezstein.xyz/uploads/images/" + fileName);
-		InputStream in = null;
-		FileOutputStream out = null;
-		byte[] buffer = new byte[1024];
-		try {
-			HttpResponse response = client.execute(get);
-			in = response.getEntity().getContent();
-			out = new FileOutputStream(newFile);
-			for(int length; (length = in.read(buffer)) >0;)
-			{
-				out.write(buffer, 0, length);
-			}
-			
-		} catch (ClientProtocolException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		finally
-		{
-			
-				try {
-					if(in!=null){
-						in.close();
-					}
-					if(out !=null){
-						out.close();
-					}
-						
-				
-				} catch (IOException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				}
-		}
+		UploadDialog dialog = new UploadDialog();
 		Platform.runLater(()->{
-			dialog.getResponseLabel().setText("Done");
-			dialog.enableClose();
+			dialog.show();
+			dialog.getResponseLabel().setText("Downloading...");
 		});
-		
-	}
-	
-	private ChoiceBox<String> buildDownloadTypeChoiceBox()
-	{
-		downloadTypeChoiceBox =
-				new ChoiceBox<String>(FXCollections.observableList(
-						new ArrayList<String>(Arrays.asList("Image","Region","Color"))));
-		downloadTypeChoiceBox.getSelectionModel().selectedIndexProperty().addListener(new ChangeListener<Number>(){
-
-			@Override
-			public void changed(ObservableValue<? extends Number> observable, Number oldValue, Number newValue) {
+		downloadImage("http://www.ezstein.xyz/uploads/images/" + row.getFile(),newFile);
+		try
+		{
+			ResultSet set = stmt.executeQuery("SELECT * FROM Linked WHERE ImageID = " + row.getId() + ";");
+			if(set.isBeforeFirst())
+			{
+				set.next();
+				int regionID;
+				if((regionID = set.getInt("RegionID")) !=0)
+				{
+					Alert alert = new Alert(AlertType.CONFIRMATION);
+					alert.setContentText("This Image is associated with a region and a color.\n"
+							+ "Would you like to download the region and color as well?");
+					ButtonType buttonTypeYes = new ButtonType("Yes");
+					ButtonType buttonTypeNo = new ButtonType("No", ButtonData.CANCEL_CLOSE);
+					alert.getButtonTypes().setAll(buttonTypeYes, buttonTypeNo);
+					Optional<ButtonType> result = alert.showAndWait();
+					if(result.isPresent())
+					{
+						if(result.get().equals(buttonTypeYes))
+						{
+							set = stmt.executeQuery("SELECT File FROM Regions WHERE ID = " + regionID + ";");
+							if(set.isBeforeFirst())
+							{
+								set.next();
+								downloadRegion("http://www.ezstein.xyz/uploads/regions/" + set.getString("File"));
+							}
+						}
+					}
+				}
 			}
-		});
-		downloadTypeChoiceBox.getSelectionModel().select(0);
-		return  downloadTypeChoiceBox;
+			
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+			Platform.runLater(()->{
+				dialog.getResponseLabel().setText("Done");
+				dialog.enableClose();
+			});
+		
 	}
 	
 	private Button buildApplyAndRerenderButton()
@@ -2190,7 +2409,7 @@ public class OptionsEditor
 			try
 			{
 				/*Overwrites File*/
-				out = new ObjectOutputStream(new FileOutputStream(regionFile));
+				out = new ObjectOutputStream(new FileOutputStream(Locator.locateFile("SavedRegions.txt")));
 				out.writeObject(savedRegions);
 			}
 			catch (IOException ioe)
