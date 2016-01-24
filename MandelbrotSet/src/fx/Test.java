@@ -17,6 +17,8 @@ import colorFunction.CustomColorFunction;
 public class Test {
 	public static void main(String[] args)
 	{
+		
+		//ALIAJFEPOIJEW
 		Region<BigDecimal> a = new Region<BigDecimal>(
 				new BigDecimal("-2"),
 				new BigDecimal("2"),
