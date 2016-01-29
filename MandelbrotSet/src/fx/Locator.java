@@ -1,6 +1,9 @@
 package fx;
 
 import java.io.*;
+import java.nio.file.*;
+import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * A class used to locate files in a file structure in an OS independent way.
@@ -16,7 +19,31 @@ public class Locator
 	/**
 	 * Contains the name of the current operating system.
 	 */
-	public static final String OS_NAME = System.getProperty("os.name").toLowerCase();
+	private static final OS OS_NAME;
+	static {
+		String osName = System.getProperty("os.name").toLowerCase();
+		
+		if(osName.indexOf("mac")>=0)
+		{
+			OS_NAME =  OS.MAC;
+		}
+		else if(osName.indexOf("win")>=0)
+		{
+			OS_NAME =  OS.WINDOWS;
+		}
+		else if(osName.indexOf("nix") >= 0 || osName.indexOf("nux") >= 0 || osName.indexOf("aix") > 0 )
+		{
+			OS_NAME = OS.LINUX;
+		}
+		else if(osName.indexOf("sunos") >= 0)
+		{
+			OS_NAME = OS.SOLARIS;
+		}
+		else
+		{
+			OS_NAME = OS.UNKNOWN;
+		}
+	}
 	
 	/**
 	 * Contains the name of this program.
@@ -25,126 +52,128 @@ public class Locator
 	
 	/**
 	 * Locates this file in the file system structure.
-	 * If the text file does not currently exist, it will create it.
+	 * If the file does not currently exist, it will create it.
 	 * Returns the path to that file.
-	 * @param pathName Pathname relative to the parent directory of the file structure system.
+	 * @param filePath Pathname relative to the parent directory of the file structure system.
 	 * @return the absolute path to this file.
-	 * @throws FileNotFoundException
+	 * @throws IOException
 	 */
-	public static String locateFile(String pathName) throws FileNotFoundException
+	public static Path locateFile(Path filePath) throws IOException
 	{
-		
-		File dir = new File(getBaseDirectoryPath());
-		if(!dir.exists())
-		{
-			dir.mkdirs();
-		}
-		
-		if(new File(pathName).getParent() != null)
-		{
-			File dir2 =new File(dir.getAbsolutePath() + File.separator + new File(pathName).getParent());
-			if(!dir2.exists())
-			{
-				dir2.mkdirs();
-			}
-		}
-		
-		
-		File file = new File(dir.getAbsolutePath() + File.separator + pathName);
-		if(!file.exists())
-		{
-			/*Creates the text file and overwrites it*/
-			PrintWriter writer = new PrintWriter(file);
-			writer.close();
-		}
-		return file.getAbsolutePath();
-	}
-	
-	public static String locateFileAndDelete(String pathName) throws FileNotFoundException
-	{
-		File dir = new File(getBaseDirectoryPath());
-		if(!dir.exists())
-		{
-			dir.mkdirs();
-		}
-		
-		if(new File(pathName).getParent() != null)
-		{
-			File dir2 =new File(dir.getAbsolutePath() + File.separator + new File(pathName).getParent());
-			if(!dir2.exists())
-			{
-				dir2.mkdirs();
-			}
-		}
-		
-		
-		File file = new File(dir.getAbsolutePath() + File.separator + pathName);
-		if(file.exists())
-		{
-			file.delete();
-		}
-		return file.getAbsolutePath();
+		Path file = getBaseDirectoryPath().resolve(filePath);
+		Files.createDirectories(file.getParent());
+		Files.createFile(file);
+		return file;
 	}
 	
 	/**
-	 * Deletes the contents of the tmp folder returns the path to the file to be created in it.
-	 * @param fileName
-	 * @return
-	 * @throws FileNotFoundException
+	 * Locates this file in the file system structure.
+	 * If the file does not currently exist, it will create it.
+	 * Returns the path to that file.
+	 * @param filePath Pathname relative to the parent directory of the file structure system.
+	 * @return the absolute path to this file.
+	 * @throws IOException
 	 */
-	public static String locateFileInTmp(String fileName) throws FileNotFoundException
+	public static Path locateFile(String filePath) throws IOException
 	{
-		File dir = new File(getBaseDirectoryPath() + "/tmp/" + new File(fileName).getParent());
-		if(!dir.exists())
+		return locateFile(Paths.get(filePath));
+	}
+	
+	/**
+	 * Deletes the contents of the parent folder and then creates the file.
+	 * @param filePath
+	 * @return The path to the located file.
+	 * @throws IOException
+	 */
+	public static Path locateUniqueFile(Path filePath) throws IOException
+	{
+		Path file = getBaseDirectoryPath().resolve(filePath);
+		Files.createDirectories(file.getParent());
+		
+		/*Deletes contents of parent directory*/
+		Files.walk(filePath.getParent()).forEach(fileToDelete ->{
+			try {
+				Files.delete(fileToDelete);
+			} catch (Exception e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			});
+		Files.createFile(file);
+		return file;
+	}
+	
+	/**
+	 * Deletes the contents of the parent folder and then creates the file.
+	 * @param filePath
+	 * @return The path to the located file.
+	 * @throws IOException
+	 */
+	public static Path locateUniqueFile(String filePath) throws IOException
+	{
+		return locateUniqueFile(Paths.get(filePath));
+	}
+	
+	/**
+	 * Attempts to locate the unique file in a directory. Use this if you know the location of
+	 * a file, but not its name. This method fails if there is not exactly one file
+	 * in the directory, or if the path is not a directory.
+	 * @param dirPath
+	 * @return the path to the unique file.
+	 * @throws IOException
+	 */
+	public static Path getUniqueFile(Path dirPath) throws IOException
+	{
+		Path dir = getBaseDirectoryPath().resolve(dirPath);
+		if(! Files.isDirectory(dir))
 		{
-			dir.mkdirs();
+			throw new IOException("NOT A DIRECTORY");
 		}
-		File[] files = dir.listFiles();
-		for(File file: files)
+		List<Path> files = Files.walk(dir).collect(Collectors.toList());
+		if(files.size()>1)
 		{
-			file.delete();
+			throw new IOException("NOT UNIQUE FILE");
+		}
+		else if(files.size()==0)
+		{
+			throw new IOException("EMPTY DIRECTORY");
 		}
 		
-		return getBaseDirectoryPath() + "/tmp/" + fileName;
+		return files.get(0);
+	}
+	
+	/**
+	 * Attempts to locate the unique file in a directory. Use this if you know the location of
+	 * a file, but not its name. This method fails if there is not exactly one file
+	 * in the directory, or if the path is not a directory.
+	 * @param dirPath
+	 * @return the path to the unique file.
+	 * @throws IOException
+	 */
+	public static Path getUniqueFile(String dirPath) throws IOException
+	{
+		return getUniqueFile(Paths.get(dirPath));
 	}
 	
 	/**
 	 * Determines whether the file exists in the file system.
-	 * @param fileName	The path of the file which may or may not exist.
+	 * @param filePath	The path of the file which may or may not exist.
 	 * @return			True if the file exists. False otherwise.
 	 */
-	public static boolean exists(String fileName)
+	public static boolean exists(Path filePath)
 	{
-		File file = new File(getBaseDirectoryPath() + File.separator + fileName);
-		return file.exists();
+		Path file = getBaseDirectoryPath().resolve(filePath);
+		return Files.exists(file);
 	}
 	
 	/**
-	 * Returns the OS. Should be compared with the fields OS_MAC etc.
-	 * @return the OS. Should be compared with the fields OS_MAC etc.
+	 * Determines whether the file exists in the file system.
+	 * @param filePath	The path of the file which may or may not exist.
+	 * @return			True if the file exists. False otherwise.
 	 */
-	public static OS getOS()
+	public static boolean exists(String filePath)
 	{
-		if(OS_NAME.indexOf("mac")>=0)
-		{
-			return OS.MAC;
-		}
-		else if(OS_NAME.indexOf("win")>=0)
-		{
-			return OS.WINDOWS;
-		}
-		else if(OS_NAME.indexOf("nix") >= 0 || OS_NAME.indexOf("nux") >= 0 || OS_NAME.indexOf("aix") > 0 )
-		{
-			return OS.LINUX;
-		}
-		else if(OS_NAME.indexOf("sunos") >= 0)
-		{
-			return OS.SOLARIS;
-		}
-		else
-		{
-			return OS.UNKNOWN;
-		}
+		return exists(Paths.get(filePath));
 	}
 	
 	/**
@@ -154,32 +183,30 @@ public class Locator
 	 * For Linux and Solaris it is a hidden directory ~/.AppName
 	 * @return the absolute path to the base directory of the file system.
 	 */
-	public static String getBaseDirectoryPath()
+	public static Path getBaseDirectoryPath()
 	{
-		File dir = new File("");
 		if(isMac())
 		{
-			dir = new File(System.getProperty("user.home")+"/Library/Application Support/" + appTitle);
+			return Paths.get(System.getProperty("user.home")+"/Library/Application Support/" + appTitle);
 		}
 		else if(isWindows())
 		{
-			dir = new File(System.getenv("APPDATA")+ File.separator + appTitle);
+			return Paths.get(System.getenv("APPDATA") + File.separator + appTitle);
 		}
 		else if(isLinux())
 		{
-			dir = new File(System.getProperty("user.home") + "/." + appTitle);
+			return Paths.get(System.getProperty("user.home") + "/." + appTitle);
 			
 		}
 		else if(isSolaris())
 		{
-			dir = new File(System.getProperty("user.home") + "/." + appTitle);
+			return Paths.get(System.getProperty("user.home") + "/." + appTitle);
 		}
 		else
 		{
-			System.out.println("Unknown OS!");
+			System.out.println("***UNKNOWN OS***");
+			return Paths.get("");
 		}
-		
-		return dir.getAbsolutePath();
 	}
 	
 	/**
@@ -188,7 +215,7 @@ public class Locator
 	 */
 	public static boolean isMac()
 	{
-		return getOS().equals(OS.MAC);
+		return OS_NAME.equals(OS.MAC);
 	}
 	
 	/**
@@ -197,7 +224,7 @@ public class Locator
 	 */
 	public static boolean isWindows()
 	{
-		return getOS().equals(OS.WINDOWS);
+		return OS_NAME.equals(OS.WINDOWS);
 	}
 	
 	/**
@@ -206,7 +233,7 @@ public class Locator
 	 */
 	public static boolean isLinux()
 	{
-		return getOS().equals(OS.LINUX);
+		return OS_NAME.equals(OS.LINUX);
 	}
 	
 	/**
@@ -215,6 +242,7 @@ public class Locator
 	 */
 	public static boolean isSolaris()
 	{
-		return getOS().equals(OS.SOLARIS);
+		return OS_NAME.equals(OS.SOLARIS);
 	}
+	
 }

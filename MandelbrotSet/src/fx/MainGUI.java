@@ -152,8 +152,7 @@ public class MainGUI extends Application
 		{
 			ObjectOutputStream out = null;
 			try {
-				File file = new File(Locator.locateFile("SavedColors.txt"));
-				 out = new ObjectOutputStream(new FileOutputStream(file));
+				 out = new ObjectOutputStream(new FileOutputStream(Locator.locateFile("SavedColors.txt").toFile()));
 				out.writeObject(CustomColorFunction.COLOR_FUNCTIONS);
 			} catch (IOException e) {
 				// TODO Auto-generated catch block
@@ -261,7 +260,7 @@ public class MainGUI extends Application
 	
 	private MenuBar buildMenus()
 	{
-		if(Locator.getOS() == OS.MAC)
+		if(Locator.isMac())
 		{
 			MenuToolkit tk = MenuToolkit.toolkit();
 			Menu appMenu = tk.createDefaultApplicationMenu("Test");
@@ -285,7 +284,7 @@ public class MainGUI extends Application
 		/*Builds File Menu*/
 		Menu fileMenu = new Menu("File");
 		fileMenu.getItems().addAll(buildReadMeMenuItem(),buildSaveMenuItem());
-		if(Locator.getOS() != OS.MAC)
+		if(! Locator.isMac())
 		{
 			fileMenu.getItems().addAll(new SeparatorMenuItem(),
 					buildAboutMenuItem(),
@@ -393,8 +392,7 @@ public class MainGUI extends Application
 			
 			ObjectOutputStream out = null;
 			try {
-				File file = new File(Locator.locateFile("SavedColors.txt"));
-				 out = new ObjectOutputStream(new FileOutputStream(file));
+				 out = new ObjectOutputStream(new FileOutputStream(Locator.locateFile("SavedColors.txt").toFile()));
 				out.writeObject(CustomColorFunction.COLOR_FUNCTIONS);
 			} catch (IOException ioe) {
 				// TODO Auto-generated catch block

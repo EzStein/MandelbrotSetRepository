@@ -56,13 +56,13 @@ public class OptionsEditor
 	private Rectangle gradientRectangle;
 	private ColorPicker colorPicker;
 	private ObjectOutputStream out, colorOut;
-	//private File regionFile, colorFile;
-	private ArrayList<SavedRegion> savedRegions;
+	private SimpleListProperty<SavedRegion> savedRegions;
 	private Region<BigDecimal> currentRegion;
 	private boolean currentJulia;
 	private ComplexBigDecimal currentSeed;
 	private int tabNumber;
-	private ArrayList<CustomColorFunction> savedColors;
+	//private ArrayList<CustomColorFunction> savedColors;
+	private SimpleListProperty<CustomColorFunction> savedColors;
 	private TextField uploadNameField, uploadAuthorField;
 	private TextArea uploadDescriptionArea;
 	private ChoiceBox<String> uploadTypeChoiceBox;
@@ -183,20 +183,20 @@ public class OptionsEditor
 		ObjectInputStream in = null;
 		ObjectInputStream colorIn = null;
 		
-		savedRegions = new ArrayList<SavedRegion>();
-		savedColors = new ArrayList<CustomColorFunction>();
+		
+		savedColors = new SimpleListProperty<CustomColorFunction>();
 		try
 		{
-			colorIn = new ObjectInputStream(new FileInputStream(Locator.locateFile("SavedColors.txt")));
-			savedColors = (ArrayList<CustomColorFunction>) colorIn.readObject();
+			colorIn = new ObjectInputStream(new FileInputStream(Locator.locateFile("SavedColors.txt").toFile()));
+			savedColors = new SimpleListProperty<CustomColorFunction>(FXCollections.observableList((ArrayList<CustomColorFunction>) colorIn.readObject()));
 			
-			in = new ObjectInputStream(new FileInputStream(Locator.locateFile("SavedRegions.txt")));
-			savedRegions = (ArrayList<SavedRegion>)in.readObject();
+			in = new ObjectInputStream(new FileInputStream(Locator.locateFile("SavedRegions.txt").toFile()));
+			savedRegions = new SimpleListProperty<SavedRegion>(FXCollections.observableList((ArrayList<SavedRegion>)in.readObject()));
 		}
 		catch(EOFException eofe)
 		{
 			/*File Empty And inputStream is null*/
-			savedRegions = new ArrayList<SavedRegion>();
+			savedRegions = new SimpleListProperty<SavedRegion>();
 			//eofe.printStackTrace();
 		}
 		catch (IOException | ClassNotFoundException e)
@@ -223,6 +223,77 @@ public class OptionsEditor
 				e.printStackTrace();
 			}
 		}
+		
+		savedColors.addListener(new ChangeListener<ObservableList<CustomColorFunction>>(){
+
+			@Override
+			public void changed(ObservableValue<? extends ObservableList<CustomColorFunction>> observable,
+					ObservableList<CustomColorFunction> oldValue, ObservableList<CustomColorFunction> newValue) {
+				
+
+				
+				colorChoiceBox.setItems(savedColors);
+				uploadColorsChoiceBox.setItems(savedColors);
+				
+				try
+				{
+					colorOut = new ObjectOutputStream(new FileOutputStream(Locator.locateFile("SavedColors.txt").toFile()));
+					colorOut.writeObject(new ArrayList<CustomColorFunction>( Arrays.asList(savedColors.toArray(new CustomColorFunction[0])) ));
+				}
+				catch(IOException ioe)
+				{
+					ioe.printStackTrace();
+				}
+				finally
+				{
+					try
+					{
+						colorOut.close();
+					}
+					catch (IOException e1) {
+						// TODO Auto-generated catch block
+						e1.printStackTrace();
+					}
+				}
+				
+			}
+			
+		});
+		
+		savedRegions.addListener(new ChangeListener<ObservableList<SavedRegion>>(){
+
+			@Override
+			public void changed(ObservableValue<? extends ObservableList<SavedRegion>> observable,
+					ObservableList<SavedRegion> oldValue, ObservableList<SavedRegion> newValue) {
+				
+				savedRegionsChoiceBox.setItems(savedRegions);
+				uploadRegionsChoiceBox.setItems(savedRegions);
+				try
+				{
+					/*Overwrites File*/
+					out = new ObjectOutputStream(new FileOutputStream(Locator.locateFile("SavedRegions.txt").toFile()));
+					out.writeObject(new ArrayList<SavedRegion>( Arrays.asList(savedRegions.toArray(new SavedRegion[0])) ));
+				}
+				catch (IOException ioe)
+				{
+					ioe.printStackTrace();
+				}
+				finally
+				{
+					try
+					{
+						out.close();
+					}
+					catch (IOException ioe)
+					{
+						System.out.println("Could Not Close ObjectOutputStream");
+						ioe.printStackTrace();
+					}
+				}
+				
+			}
+			
+		});
 	}
 	
 	private void buildEditDialog()
@@ -409,7 +480,7 @@ public class OptionsEditor
 	
 	private ChoiceBox<SavedRegion> buildSavedRegionsChoiceBox()
 	{
-		savedRegionsChoiceBox = new ChoiceBox<SavedRegion>(FXCollections.observableArrayList(savedRegions));
+		savedRegionsChoiceBox = new ChoiceBox<SavedRegion>(savedRegions);
 		savedRegionsChoiceBox.setConverter(new StringConverter<SavedRegion>(){
 
 			@Override
@@ -452,30 +523,7 @@ public class OptionsEditor
 				return;
 			}
 			savedRegions.remove(deletedRegion);
-			savedRegionsChoiceBox.getItems().remove(deletedRegion);
-			uploadRegionsChoiceBox.getItems().remove(deletedRegion);
-			try
-			{
-				/*Overwrites File*/
-				out = new ObjectOutputStream(new FileOutputStream(Locator.locateFile("SavedRegions.txt")));
-				out.writeObject(savedRegions);
-			}
-			catch (IOException ioe)
-			{
-				ioe.printStackTrace();
-			}
-			finally
-			{
-				try
-				{
-					out.close();
-				}
-				catch (IOException ioe)
-				{
-					System.out.println("Could Not Close ObjectOutputStream");
-					ioe.printStackTrace();
-				}
-			}
+			
 		});
 		return removeButton;
 	}
@@ -538,29 +586,7 @@ public class OptionsEditor
 			}
 			
 			savedColors.remove(colorToRemove);
-			colorChoiceBox.getItems().remove(colorToRemove);
-			uploadColorsChoiceBox.getItems().remove(colorToRemove);
 			
-			try
-			{
-				colorOut = new ObjectOutputStream(new FileOutputStream(Locator.locateFile("SavedColors.txt")));
-				colorOut.writeObject(savedColors);
-			}
-			catch(IOException ioe)
-			{
-				ioe.printStackTrace();
-			}
-			finally
-			{
-				try
-				{
-					colorOut.close();
-				}
-				catch (IOException e1) {
-					// TODO Auto-generated catch block
-					e1.printStackTrace();
-				}
-			}
 		});
 		return removeColorButton;
 	}
@@ -614,7 +640,7 @@ public class OptionsEditor
 	
 	private ChoiceBox<CustomColorFunction> buildColorChoiceBox()
 	{
-		colorChoiceBox = new ChoiceBox<CustomColorFunction>(FXCollections.observableArrayList(savedColors));
+		colorChoiceBox = new ChoiceBox<CustomColorFunction>(savedColors);
 		colorChoiceBox.setValue(gui.mainCalculator.getColorFunction());
 		
 		colorChoiceBox.getSelectionModel().selectedIndexProperty().addListener(new ChangeListener<Number>(){
@@ -781,31 +807,7 @@ public class OptionsEditor
 		}
 		rangeField.setStyle("-fx-background-color:white");
 		CustomColorFunction color = new CustomColorFunction(new ArrayList<Stop>(stopList.getItems()),Integer.parseInt(rangeField.getText()), name);
-		colorChoiceBox.getItems().add(color);
-		colorChoiceBox.setValue(color);
 		savedColors.add(color);
-		uploadColorsChoiceBox.getItems().add(color);
-		try
-		{
-			colorOut = new ObjectOutputStream(new FileOutputStream(Locator.locateFile("SavedColors.txt")));
-			colorOut.writeObject(savedColors);
-		}
-		catch(IOException ioe)
-		{
-			ioe.printStackTrace();
-		}
-		finally
-		{
-			try
-			{
-				
-				colorOut.close();
-			}
-			catch (IOException e1) {
-				// TODO Auto-generated catch block
-				e1.printStackTrace();
-			}
-		}
 		return true;
 	}
 	
@@ -938,7 +940,7 @@ public class OptionsEditor
 	}
 	
 	private ChoiceBox<SavedRegion> buildUploadRegionsChoiceBox(){
-		uploadRegionsChoiceBox = new ChoiceBox<SavedRegion>(FXCollections.observableArrayList(savedRegions));
+		uploadRegionsChoiceBox = new ChoiceBox<SavedRegion>(savedRegions);
 		uploadRegionsChoiceBox.setConverter(new StringConverter<SavedRegion>(){
 
 			@Override
@@ -967,7 +969,7 @@ public class OptionsEditor
 	}
 	
 	private ChoiceBox<CustomColorFunction> buildUploadColorsChoiceBox(){
-		uploadColorsChoiceBox = new ChoiceBox<CustomColorFunction>(FXCollections.observableArrayList(savedColors));
+		uploadColorsChoiceBox = new ChoiceBox<CustomColorFunction>(savedColors);
 		uploadColorsChoiceBox.getSelectionModel().selectedItemProperty().addListener(new ChangeListener<CustomColorFunction>(){
 
 			@Override
@@ -1053,9 +1055,9 @@ public class OptionsEditor
 		
 		try
 		{
-			fileOut = new ObjectOutputStream(new FileOutputStream(Locator.locateFileInTmp("region/uploadFile.txt")));
+			fileOut = new ObjectOutputStream(new FileOutputStream(Locator.locateUniqueFile("tmp/region/uploadFile.txt").toFile()));
 			fileOut.writeObject(sr);
-			fileOut2 = new ObjectOutputStream(new FileOutputStream(Locator.locateFileInTmp("color/uploadFile.txt")));
+			fileOut2 = new ObjectOutputStream(new FileOutputStream(Locator.locateUniqueFile("tmp/color/uploadFile.txt").toFile()));
 			fileOut2.writeObject(sr.colorFunction);
 			
 		}
@@ -1081,8 +1083,15 @@ public class OptionsEditor
 		}
 		
 		BufferedReader in = null;
-		File regionFile = new File(Locator.getBaseDirectoryPath() + File.separator + "tmp" + File.separator  + "region").listFiles()[0];
-		File colorFile = new File(Locator.getBaseDirectoryPath() + File.separator + "tmp" + File.separator  + "color").listFiles()[0];
+		File colorFile = null;
+		File regionFile = null;
+		try {
+			regionFile = Locator.getUniqueFile("tmp/region").toFile();
+			colorFile = Locator.getUniqueFile("tmp/color").toFile();
+		} catch (IOException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		}
 		int idOfReplica;
 		HttpEntity entity;
 		if((idOfReplica = existsInDatabase(sr.colorFunction))>=0)
@@ -1170,7 +1179,7 @@ public class OptionsEditor
 		ObjectOutputStream fileOut = null;
 		try
 		{
-			fileOut = new ObjectOutputStream(new FileOutputStream(Locator.locateFileInTmp("color/uploadFile.txt")));
+			fileOut = new ObjectOutputStream(new FileOutputStream(Locator.locateUniqueFile("tmp/color/uploadFile.txt").toFile()));
 			fileOut.writeObject(uploadColorsChoiceBox.getSelectionModel().getSelectedItem());
 			
 		}
@@ -1192,7 +1201,13 @@ public class OptionsEditor
 		}
 		
 		BufferedReader in = null;
-		File colorFile = new File(Locator.getBaseDirectoryPath() + File.separator + "tmp" + File.separator + "color").listFiles()[0];
+		File colorFile = null;
+		try {
+			colorFile = Locator.getUniqueFile("tmp/color").toFile();
+		} catch (IOException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		}
 		HttpEntity entity = MultipartEntityBuilder.create()
 				.addTextBody("pass", "uploaderPassword")
 				.addTextBody("Name", uploadNameField.getText())
@@ -1255,9 +1270,9 @@ public class OptionsEditor
 				gui.julia,gui.juliaSeed,gui.mainCalculator.getColorFunction());
 		try
 		{
-			fileOut = new ObjectOutputStream(new FileOutputStream(Locator.locateFileInTmp("color/uploadFile.txt")));
+			fileOut = new ObjectOutputStream(new FileOutputStream(Locator.locateUniqueFile("tmp/color/uploadFile.txt").toFile()));
 			fileOut.writeObject(gui.mainCalculator.getColorFunction());
-			fileOut2 = new ObjectOutputStream(new FileOutputStream(Locator.locateFileInTmp("region/uploadFile.txt")));
+			fileOut2 = new ObjectOutputStream(new FileOutputStream(Locator.locateUniqueFile("tmp/region/uploadFile.txt").toFile()));
 			fileOut2.writeObject(sr);
 		}
 		catch(IOException ioe)
@@ -1280,9 +1295,19 @@ public class OptionsEditor
 				e.printStackTrace();
 			}
 		}
-		File imageFile = new File(Locator.getBaseDirectoryPath() + File.separator + "tmp" + File.separator + "image").listFiles()[0];
-		File regionFile = new File(Locator.getBaseDirectoryPath() + File.separator + "tmp" + File.separator + "region").listFiles()[0];
-		File colorFile = new File(Locator.getBaseDirectoryPath() + File.separator + "tmp" + File.separator + "color").listFiles()[0];
+		
+		File imageFile = null, regionFile =null, colorFile=null;
+		try
+		{
+			
+			imageFile = Locator.getUniqueFile("tmp/image").toFile();
+			regionFile = Locator.getUniqueFile("tmp/region").toFile();
+			colorFile = Locator.getUniqueFile("tmp/color").toFile();
+		} catch (IOException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		}
+		
 		String name = imageFile.getName();
 		String imageType = name.substring(name.lastIndexOf(".") + 1);
 		
@@ -2377,18 +2402,14 @@ public class OptionsEditor
 		try{
 			HttpResponse response = client.execute(get);
 			in = response.getEntity().getContent();
-			out = new FileOutputStream(Locator.locateFileInTmp("download/downloadFile.txt"));
+			out = new FileOutputStream(Locator.locateUniqueFile("tmp/download/downloadFile.txt").toFile());
 			for(int length; (length = in.read(buffer)) >0;)
 			{
 				out.write(buffer, 0, length);
 			}
-			objectIn = new ObjectInputStream(new FileInputStream(Locator.locateFile("tmp/download/downloadFile.txt")));
+			objectIn = new ObjectInputStream(new FileInputStream(Locator.locateFile("tmp/download/downloadFile.txt").toFile()));
 			CustomColorFunction ccf = (CustomColorFunction) objectIn.readObject();
 			savedColors.add(ccf);
-			colorChoiceBox.getItems().add(ccf);
-			uploadColorsChoiceBox.getItems().add(ccf);
-			objectOut = new ObjectOutputStream(new FileOutputStream(Locator.locateFile("SavedColors.txt")));
-			objectOut.writeObject(savedColors);
 		} catch(IOException ioe){
 			ioe.printStackTrace();
 		} catch (ClassNotFoundException e) {
@@ -2432,27 +2453,19 @@ public class OptionsEditor
 		try{
 			HttpResponse response = client.execute(get);
 			in = response.getEntity().getContent();
-			out = new FileOutputStream(Locator.locateFileInTmp("download/downloadFile.txt"));
+			out = new FileOutputStream(Locator.locateUniqueFile("tmp/download/downloadFile.txt").toFile());
 			for(int length; (length = in.read(buffer)) >0;)
 			{
 				out.write(buffer, 0, length);
 			}
-			objectIn = new ObjectInputStream(new FileInputStream(Locator.locateFile("tmp/download/downloadFile.txt")));
+			objectIn = new ObjectInputStream(new FileInputStream(Locator.locateFile("tmp/download/downloadFile.txt").toFile()));
 			SavedRegion sr = (SavedRegion)objectIn.readObject();
 			savedRegions.add(sr);
-			savedRegionsChoiceBox.getItems().add(sr);
-			uploadRegionsChoiceBox.getItems().add(sr);
-			objectOut = new ObjectOutputStream(new FileOutputStream(Locator.locateFile("SavedRegions.txt")));
-			objectOut.writeObject(savedRegions);
 			
 			/*The region may require dependencies on color functions*/
 			if(!savedColors.contains(sr.colorFunction))
 			{
 				savedColors.add(sr.colorFunction);
-				colorChoiceBox.getItems().add(sr.colorFunction);
-				uploadColorsChoiceBox.getItems().add(sr.colorFunction);
-				objectOutColor = new ObjectOutputStream(new FileOutputStream(Locator.locateFile("SavedColors.txt")));
-				objectOutColor.writeObject(savedColors);
 			}
 		}catch (ClientProtocolException e) {
 			// TODO Auto-generated catch block
@@ -2644,31 +2657,7 @@ public class OptionsEditor
 					Integer.parseInt(precisionField.getText()), Integer.parseInt(threadCountField.getText()),
 					currentRegion,arbitraryPrecision.isSelected(),currentJulia,currentSeed,colorChoiceBox.getValue());
 			savedRegions.add(savedRegion);
-			savedRegionsChoiceBox.getItems().add(savedRegion);
-			savedRegionsChoiceBox.setValue(savedRegion);
-			uploadRegionsChoiceBox.getItems().add(savedRegion);
-			try
-			{
-				/*Overwrites File*/
-				out = new ObjectOutputStream(new FileOutputStream(Locator.locateFile("SavedRegions.txt")));
-				out.writeObject(savedRegions);
-			}
-			catch (IOException ioe)
-			{
-				ioe.printStackTrace();
-			}
-			finally
-			{
-				try
-				{
-					out.close();
-				}
-				catch (IOException ioe)
-				{
-					System.out.println("Could Not Close ObjectOutputStream");
-					ioe.printStackTrace();
-				}
-			}
+			//savedRegionsChoiceBox.setValue(savedRegion);
 		});
 		return saveButton;
 	}
@@ -2857,9 +2846,6 @@ public class OptionsEditor
 		}
 		else
 		{
-			colorChoiceBox.getItems().add(sr.colorFunction);
-			savedColors.add(sr.colorFunction);
-			colorChoiceBox.setValue(sr.colorFunction);
 			/*Will NOT add color to file*/
 			
 		}
