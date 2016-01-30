@@ -1,6 +1,7 @@
 package fx;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 
 /**
  * 
@@ -32,7 +33,8 @@ public class MandelbrotFunction
 	 */
 	public static int testPoint(Complex z, Complex seed, int maxIterations)
 	{
-		Complex zNew;
+		return testPointFast(z.getRealPart(), z.getImaginaryPart(), seed.getRealPart(), seed.getImaginaryPart(), maxIterations);
+		/*Complex zNew;
 		Complex zOld = seed;
 		int i = 1;
 		while(i<= maxIterations)
@@ -45,7 +47,58 @@ public class MandelbrotFunction
 			zOld = zNew;
 			i++;
 		}
-		return 0;
+		return 0;*/
+	}
+	
+	public static int testPointFast(double zr, double zi, double sr, double si, int maxIterations)
+	{
+		int i=1;
+		double srsquare = sr*sr;
+		double sisquare = si*si;
+		while(srsquare+sisquare <4)
+		{
+			si = (sr+si)*(sr+si) - srsquare-sisquare;
+			si +=zi;
+			
+			sr=srsquare-sisquare + zr;
+			
+			
+			srsquare = sr*sr;
+			sisquare = si*si;
+			
+			i++;
+			if(i==maxIterations)
+			{
+				return 0;
+			}
+		}
+		
+		return i;
+	}
+	
+	public static int  testPointBigDecimalFast(BigDecimal zr, BigDecimal zi, BigDecimal sr, BigDecimal si, int maxIterations)
+	{
+		int i=1;
+		BigDecimal srsquare = sr.multiply(sr).setScale(zr.scale(), RoundingMode.HALF_UP);
+		BigDecimal sisquare = si.multiply(si).setScale(zr.scale(), RoundingMode.HALF_UP);
+		
+		while(srsquare.add(sisquare).compareTo(new BigDecimal("4"))<0)
+		{
+			si = sr.add(si).multiply(sr.add(si)).setScale(zr.scale(), RoundingMode.HALF_UP).subtract(srsquare).subtract(sisquare);
+			si = si.add(zi);
+			
+			sr=srsquare.subtract(sisquare).add(zr);
+			
+			srsquare = sr.multiply(sr).setScale(zr.scale(), RoundingMode.HALF_UP);
+			sisquare = si.multiply(si).setScale(zr.scale(), RoundingMode.HALF_UP);
+			i++;
+			if(i>=maxIterations)
+			{
+				return 0;
+			}
+		}
+		
+		return i;
 	}
 	
 	/**
@@ -66,7 +119,8 @@ public class MandelbrotFunction
 	 */
 	public static int testPointBigDecimal(ComplexBigDecimal z, ComplexBigDecimal seed, int maxIterations)
 	{
-		ComplexBigDecimal zNew;
+		return testPointBigDecimalFast(z.getRealPart(), z.getImaginaryPart(), seed.getRealPart(), seed.getImaginaryPart(), maxIterations);
+		/*ComplexBigDecimal zNew;
 		ComplexBigDecimal zOld = seed;
 		int i = 1;
 		while(i<= maxIterations)
@@ -79,8 +133,10 @@ public class MandelbrotFunction
 			zOld = zNew;
 			i++;
 		}
-		return 0;
+		return 0;*/
 	}
+	
+	
 	
 	/**
 	 * Performs one iteration over the complex numbers z and seed.

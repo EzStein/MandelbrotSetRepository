@@ -2,8 +2,7 @@ package fx;
 
 import java.io.*;
 import java.math.*;
-import java.net.InetAddress;
-import java.net.UnknownHostException;
+import java.net.*;
 import java.sql.*;
 import java.util.*;
 import org.apache.http.*;
@@ -166,7 +165,6 @@ public class OptionsEditor
 			downloadColorTable.setItems(FXCollections.observableArrayList(new ArrayList<ColorRow>()));
 			downloadImageTable.setItems(FXCollections.observableArrayList(new ArrayList<ImageRow>()));
 		}
-		
 	}
 	
 	private void connect()
