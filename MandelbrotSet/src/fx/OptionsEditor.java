@@ -75,7 +75,7 @@ public class OptionsEditor
 	private TabPane tables;
 	private Thread databaseUpdater;
 	private Connection conn;
-	
+	private Button uploadButton;
 	/**
 	 * Constructs this editor with a reference to the gui that created it.
 	 * @param gui
@@ -116,16 +116,24 @@ public class OptionsEditor
 						downloadRegionTable.setItems(FXCollections.observableArrayList(new ArrayList<RegionRow>()));
 						downloadColorTable.setItems(FXCollections.observableArrayList(new ArrayList<ColorRow>()));
 						downloadImageTable.setItems(FXCollections.observableArrayList(new ArrayList<ImageRow>()));
+						uploadButton.setDisable(true);
+						uploadButton.setText("Check Internet Connection");
 					});
 					
 					stmt = null;
 				}
 				else
 				{
+					
 					if(stmt == null)
 					{
 						openConnection();
 					}
+					Platform.runLater(()->{
+						uploadButton.setDisable(false);
+						uploadButton.setText("Upload");
+					});
+					
 					connect();
 				}
 				
@@ -1062,7 +1070,7 @@ public class OptionsEditor
 	
 	private Button buildUploadButton()
 	{
-		Button uploadButton = new Button("Upload Image");
+		uploadButton = new Button("Upload Image");
 		uploadButton.setOnAction(e->{
 			String type = uploadTypeChoiceBox.getSelectionModel().getSelectedItem();
 			if(type.equals("Image")){
@@ -1343,7 +1351,7 @@ public class OptionsEditor
 		
 
 		ObjectOutputStream fileOut = null, fileOut2 = null;
-		SavedRegion sr = new SavedRegion("NO NAME", gui.autoIterations, gui.iterations,
+		SavedRegion sr = new SavedRegion(uploadNameField.getText() + "_Region", gui.autoIterations, gui.iterations,
 				gui.precision, gui.threadCount, gui.currentRegion,gui.arbitraryPrecision,
 				gui.julia,gui.juliaSeed,gui.mainCalculator.getColorFunction());
 		try
@@ -1596,7 +1604,8 @@ public class OptionsEditor
 	
 	private TableView<ColorRow> buildDownloadColorTable(){
 		downloadColorTable = new TableView<ColorRow>();
-		
+		downloadColorTable.setEditable(false);
+		downloadColorTable.setPlaceholder(new Label("There is no data available.\nCheck your internet connection."));
 		TableColumn<ColorRow, String> idColumn = new TableColumn<ColorRow, String>("ID");
 		TableColumn<ColorRow, String> nameColumn = new TableColumn<ColorRow, String>("Name");
 		TableColumn<ColorRow, String> authorColumn = new TableColumn<ColorRow, String>("Author");
@@ -1792,7 +1801,8 @@ public class OptionsEditor
 	
 	private TableView<RegionRow> buildDownloadRegionTable(){
 		downloadRegionTable = new TableView<RegionRow>();
-		
+		downloadRegionTable.setEditable(false);
+		downloadRegionTable.setPlaceholder(new Label("There is no data available.\nCheck your internet connection."));
 		TableColumn<RegionRow, String> idColumn = new TableColumn<RegionRow, String>("ID");
 		TableColumn<RegionRow, String> nameColumn = new TableColumn<RegionRow, String>("Name");
 		TableColumn<RegionRow, String> authorColumn = new TableColumn<RegionRow, String>("Author");
@@ -2060,6 +2070,7 @@ public class OptionsEditor
 	
 	private TableView<ImageRow> buildDownloadImageTable(){
 		downloadImageTable = new TableView<ImageRow>();
+		downloadImageTable.setPlaceholder(new Label("There is no data available.\nCheck your internet connection."));
 		downloadImageTable.setEditable(false);
 		TableColumn<ImageRow, String> idColumn = new TableColumn<ImageRow, String>("ID");
 		TableColumn<ImageRow, String> nameColumn = new TableColumn<ImageRow, String>("Name");
