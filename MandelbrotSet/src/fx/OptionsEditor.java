@@ -2,6 +2,8 @@ package fx;
 
 import java.io.*;
 import java.math.*;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.sql.*;
 import java.util.*;
 import org.apache.http.*;
@@ -66,11 +68,13 @@ public class OptionsEditor
 	private TextField uploadNameField, uploadAuthorField;
 	private TextArea uploadDescriptionArea;
 	private ChoiceBox<String> uploadTypeChoiceBox;
-	private Statement stmt;
+	private Statement stmt = null;
 	private TableView<ImageRow> downloadImageTable;
 	private TableView<RegionRow> downloadRegionTable;
 	private TableView<ColorRow> downloadColorTable;
 	private TabPane tables;
+	private Thread databaseUpdater;
+	private Connection conn;
 	
 	/**
 	 * Constructs this editor with a reference to the gui that created it.
@@ -93,31 +97,75 @@ public class OptionsEditor
 	public void showEditDialog(int tabNumber)
 	{
 		this.tabNumber = tabNumber;
+		stmt = null;
 		readFiles();
-		openConnection();
 		buildEditDialog();
 		resetValues();
+		buildThreads();
 		window.show();
+	}
+	
+	private void buildThreads()
+	{
+		databaseUpdater = new Thread(()->{
+			while(true)
+			{
+				if(!isConnectedToInternet())
+				{
+					Platform.runLater(()->{
+						downloadRegionTable.setItems(FXCollections.observableArrayList(new ArrayList<RegionRow>()));
+						downloadColorTable.setItems(FXCollections.observableArrayList(new ArrayList<ColorRow>()));
+						downloadImageTable.setItems(FXCollections.observableArrayList(new ArrayList<ImageRow>()));
+					});
+					
+					stmt = null;
+				}
+				else
+				{
+					if(stmt == null)
+					{
+						openConnection();
+					}
+					connect();
+				}
+				
+				try
+				{
+					Thread.sleep(1000);
+				}
+				catch(InterruptedException ie)
+				{
+					break;
+				}
+			}
+		});
+		databaseUpdater.start();
 	}
 	
 	private void openConnection()
 	{
 		//THIS DISPLAYS PASS IN PLAINTEXT!!!!
-		Connection conn;
 		try {
 			conn = DriverManager.getConnection("jdbc:mysql://www.ezstein.xyz:3306/WebDatabase", "java", "javaPass");
 			stmt = conn.createStatement();
+			System.out.println(stmt.isClosed());
+			
 		} catch (SQLException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			downloadRegionTable.setItems(FXCollections.observableArrayList(new ArrayList<RegionRow>()));
+			downloadColorTable.setItems(FXCollections.observableArrayList(new ArrayList<ColorRow>()));
+			downloadImageTable.setItems(FXCollections.observableArrayList(new ArrayList<ImageRow>()));
 		}
 		
 	}
 	
 	private void connect()
 	{
-		
-		try {
+		try
+		{
+			if(!isConnectedToInternet())
+			{
+				return;
+			}
 			ArrayList<ImageRow> dataImage = new ArrayList<ImageRow>();
 			ResultSet set = stmt.executeQuery("SELECT * FROM Images");
 			while(set.next()){
@@ -136,9 +184,16 @@ public class OptionsEditor
 							set.getString("FileType")
 							));
 				}
-			downloadImageTable.setItems(FXCollections.observableArrayList(dataImage));
+			Set<ImageRow> imageRowA = new HashSet<ImageRow>(dataImage);
+			Set<ImageRow> imageRowB = new HashSet<ImageRow>(downloadImageTable.getItems());
+			/*Subtracts B From A to find difference in the two sets*/
+			imageRowA.removeAll(imageRowB);
+			downloadImageTable.getItems().addAll(imageRowA);
 			
-			
+			if(!isConnectedToInternet())
+			{
+				return;
+			}
 			ArrayList<RegionRow> dataRegion = new ArrayList<RegionRow>();
 			set = stmt.executeQuery("SELECT * FROM Regions");
 			while(set.next()){
@@ -152,10 +207,18 @@ public class OptionsEditor
 							set.getInt("Date"),
 							set.getInt("HashCode")
 							));
-				}
-			downloadRegionTable.setItems(FXCollections.observableArrayList(dataRegion));
+			}
 			
+			Set<RegionRow> regionRowA = new HashSet<RegionRow>(dataRegion);
+			Set<RegionRow> regionRowB = new HashSet<RegionRow>(downloadRegionTable.getItems());
+			/*Subtracts B From A to find difference in the two sets*/
+			regionRowA.removeAll(regionRowB);
+			downloadRegionTable.getItems().addAll(regionRowA);
 			
+			if(!isConnectedToInternet())
+			{
+				return;
+			}
 			ArrayList<ColorRow> dataColor = new ArrayList<ColorRow>();
 			set = stmt.executeQuery("SELECT * FROM Colors");
 			while(set.next()){
@@ -169,10 +232,14 @@ public class OptionsEditor
 							set.getInt("Date"),
 							set.getInt("HashCode")));
 				}
-			downloadColorTable.setItems(FXCollections.observableArrayList(dataColor));
+			Set<ColorRow> colorRowA = new HashSet<ColorRow>(dataColor);
+			Set<ColorRow> colorRowB = new HashSet<ColorRow>(downloadColorTable.getItems());
+			
+			/*Subtracts B From A to find difference in the two sets*/
+			colorRowA.removeAll(colorRowB);
+			downloadColorTable.getItems().addAll(colorRowA);
 			
 		} catch (SQLException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 	}
@@ -183,7 +250,7 @@ public class OptionsEditor
 		ObjectInputStream in = null;
 		ObjectInputStream colorIn = null;
 		
-		
+		savedRegions = new SimpleListProperty<SavedRegion>();
 		savedColors = new SimpleListProperty<CustomColorFunction>();
 		try
 		{
@@ -196,7 +263,7 @@ public class OptionsEditor
 		catch(EOFException eofe)
 		{
 			/*File Empty And inputStream is null*/
-			savedRegions = new SimpleListProperty<SavedRegion>();
+			savedRegions = new SimpleListProperty<SavedRegion>(FXCollections.observableList(new ArrayList<SavedRegion>()));
 			//eofe.printStackTrace();
 		}
 		catch (IOException | ClassNotFoundException e)
@@ -324,9 +391,8 @@ public class OptionsEditor
 			public void changed(ObservableValue<? extends Number> observable, Number oldValue, Number newValue) {
 				if(newValue.intValue()==3)
 				{
-					new Thread(()->{connect();}).start();
+					//new Thread(()->{connect();}).start();
 				}
-				
 			}
 			
 		});
@@ -342,14 +408,26 @@ public class OptionsEditor
 	}
 	
 	public void close(){
+		databaseUpdater.interrupt();
+		try {
+			databaseUpdater.join();
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 		try{
 			if(stmt != null)
 			{	
 				stmt.close();
 			}
+			if(conn !=null)
+			{
+				conn.close();
+			}
 		} catch(SQLException sqle){
 			sqle.printStackTrace();
 		}
+		
 	}
 	
 	private Tab buildOptionsTab()
@@ -1312,9 +1390,6 @@ public class OptionsEditor
 		String imageType = name.substring(name.lastIndexOf(".") + 1);
 		
 		
-		
-		
-		
 		int idOfReplicaRegion, idOfReplicaColor;
 		idOfReplicaColor = existsInDatabase(sr.colorFunction);
 		idOfReplicaRegion = existsInDatabase(sr);
@@ -1677,6 +1752,42 @@ public class OptionsEditor
 			hashCode.set(val);
 		}
 		
+		@Override
+		public boolean equals(Object o)
+		{
+			if(o==null)
+			{
+				return false;
+			}
+			if(o==this)
+			{
+				return true;
+			}
+			if(o instanceof ColorRow)
+			{
+				ColorRow row = (ColorRow) o;
+				if(row.getHashCode()==hashCode.get()
+				&& row.getFile().equals(file.get())
+				&& row.getDescription().equals(description.get())
+				&& row.getAuthor().equals(author.get())
+				&& row.getName().equals(name.get())
+				&& row.getDate() == date.get()
+				&& row.getSize() == size.get()
+				&& row.getId() == id.get())
+				{
+					return true;
+				}
+			}
+			return false;
+		}
+		
+		@Override
+		public int hashCode()
+		{
+			return 100*hashCode.get() + file.get().hashCode() +
+					description.get().hashCode() + author.get().hashCode() +
+					name.get().hashCode() + 11*date.get() + 15*size.get() + 18*id.get();
+		}
 	}
 	
 	private TableView<RegionRow> buildDownloadRegionTable(){
@@ -1907,6 +2018,44 @@ public class OptionsEditor
 		{
 			hashCode.set(val);
 		}
+	
+		
+		@Override
+		public boolean equals(Object o)
+		{
+			if(o==null)
+			{
+				return false;
+			}
+			if(o==this)
+			{
+				return true;
+			}
+			if(o instanceof RegionRow)
+			{
+				RegionRow row = (RegionRow) o;
+				if(row.getHashCode()==hashCode.get()
+				&& row.getFile().equals(file.get())
+				&& row.getDescription().equals(description.get())
+				&& row.getAuthor().equals(author.get())
+				&& row.getName().equals(name.get())
+				&& row.getDate() == date.get()
+				&& row.getSize() == size.get()
+				&& row.getId() == id.get())
+				{
+					return true;
+				}
+			}
+			return false;
+		}
+		
+		@Override
+		public int hashCode()
+		{
+			return 100*hashCode.get() + file.get().hashCode() +
+					description.get().hashCode() + author.get().hashCode() +
+					name.get().hashCode() + 11*date.get() + 15*size.get() + 18*id.get();
+		}
 	}
 	
 	private TableView<ImageRow> buildDownloadImageTable(){
@@ -2119,6 +2268,47 @@ public class OptionsEditor
 		public final void setSetType(String val)
 		{
 			setType.set(val);
+		}
+	
+		@Override
+		public boolean equals(Object o)
+		{
+			if(o==null)
+			{
+				return false;
+			}
+			if(o==this)
+			{
+				return true;
+			}
+			if(o instanceof ImageRow)
+			{
+				ImageRow row = (ImageRow) o;
+				if(row.getWidth()==width.get()
+				&& row.getHeight()==height.get()
+				&& row.getSetType().equals(setType.get())
+				&& row.getFileType().equals(fileType.get())
+				&& row.getFile().equals(file.get())
+				&& row.getDescription().equals(description.get())
+				&& row.getAuthor().equals(author.get())
+				&& row.getName().equals(name.get())
+				&& row.getDate() == date.get()
+				&& row.getSize() == size.get()
+				&& row.getId() == id.get())
+				{
+					return true;
+				}
+			}
+			return false;
+		}
+		
+		@Override
+		public int hashCode()
+		{
+			return 100*width.get() + 30*height.get() + fileType.get().hashCode()
+					+ setType.get().hashCode()+ file.get().hashCode() +
+					description.get().hashCode() + author.get().hashCode() +
+					name.get().hashCode() + 11*date.get() + 15*size.get() + 18*id.get();
 		}
 	}
 	
@@ -2705,6 +2895,19 @@ public class OptionsEditor
 			window.close();
 		});
 		return cancelButton;
+	}
+	
+	private boolean isConnectedToInternet()
+	{
+		try {
+			InetAddress address = InetAddress.getByName("www.ezstein.xyz");
+			return address.isReachable(1000);
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			//e.printStackTrace();
+		}
+		return false;
+		
 	}
 	
 	/**

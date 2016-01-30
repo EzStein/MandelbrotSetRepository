@@ -62,7 +62,10 @@ public class Locator
 	{
 		Path file = getBaseDirectoryPath().resolve(filePath);
 		Files.createDirectories(file.getParent());
-		Files.createFile(file);
+		if(!Files.exists(file))
+		{
+			Files.createFile(file);
+		}
 		return file;
 	}
 	
@@ -91,15 +94,20 @@ public class Locator
 		Files.createDirectories(file.getParent());
 		
 		/*Deletes contents of parent directory*/
-		Files.walk(filePath.getParent()).forEach(fileToDelete ->{
+		Files.walk(file.getParent()).filter(Files::isRegularFile).forEach(fileToDelete ->{
 			try {
+				//System.out.println(fileToDelete.toString());
 				Files.delete(fileToDelete);
+				
 			} catch (Exception e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 			});
-		Files.createFile(file);
+		if(!Files.exists(file))
+		{
+			Files.createFile(file);
+		}
 		return file;
 	}
 	
@@ -129,7 +137,7 @@ public class Locator
 		{
 			throw new IOException("NOT A DIRECTORY");
 		}
-		List<Path> files = Files.walk(dir).collect(Collectors.toList());
+		List<Path> files = Files.walk(dir).filter(Files::isRegularFile).collect(Collectors.toList());
 		if(files.size()>1)
 		{
 			throw new IOException("NOT UNIQUE FILE");
