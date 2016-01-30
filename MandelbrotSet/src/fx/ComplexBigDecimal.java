@@ -2,8 +2,6 @@ package fx;
 import java.io.Serializable;
 import java.math.*;
 
-import colorFunction.CustomColorFunction;
-
 /**
  * Defines an immutable complex number with real and imaginary components as well as some basic operations.
  * ComplexBigDecimal uses BigDecimal to achieve values up to any precision in all calculations.

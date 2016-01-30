@@ -16,6 +16,9 @@ import javafx.scene.paint.*;
  */
 public class CustomColorFunction implements Serializable {
 	
+	/**
+	 * Creates and holds the default colors.
+	 */
 	public final static ArrayList<CustomColorFunction> COLOR_FUNCTIONS = new ArrayList<CustomColorFunction>();
 	
 	static
@@ -235,6 +238,11 @@ public class CustomColorFunction implements Serializable {
 	}
 	
 	
+	/**
+	 * Returns the color associated with a given set of iterations.
+	 * @param iterations
+	 * @return the color associated with a certain number of iterations.
+	 */
 	public Color getColor(int iterations) {
 		Color c;
 		if(name.equals("Dr. Seuss"))

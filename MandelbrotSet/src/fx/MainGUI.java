@@ -17,23 +17,15 @@ import javafx.scene.input.*;
 import javafx.scene.layout.*;
 import javafx.scene.paint.*;
 import javafx.scene.transform.*;
-
 import java.awt.Graphics2D;
-import java.awt.image.BufferedImage;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.ObjectOutputStream;
+import java.awt.image.*;
+import java.io.*;
 import java.math.*;
 import java.text.*;
 import java.util.*;
 import java.util.concurrent.*;
-
 import colorFunction.CustomColorFunction;
 import de.codecentric.centerdevice.*;
-import de.codecentric.centerdevice.glass.*;
-import de.codecentric.centerdevice.listener.*;
-import de.codecentric.centerdevice.util.*;
 import fx.Region;
 
 /**
@@ -1253,7 +1245,7 @@ public class MainGUI extends Application
 	/**
 	 * Returns the bigDecimal as a string in scientific notation
 	 * @param number
-	 * @return
+	 * @return A string
 	 */
 	public String format(BigDecimal number)
 	{

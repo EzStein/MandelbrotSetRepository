@@ -69,6 +69,7 @@ public class OptionsEditor
 	private TextArea uploadDescriptionArea;
 	private ChoiceBox<String> uploadTypeChoiceBox;
 	private Statement stmt = null;
+	private Statement stmt2 = null;
 	private TableView<ImageRow> downloadImageTable;
 	private TableView<RegionRow> downloadRegionTable;
 	private TableView<ColorRow> downloadColorTable;
@@ -98,6 +99,7 @@ public class OptionsEditor
 	{
 		this.tabNumber = tabNumber;
 		stmt = null;
+		stmt2 = null;
 		readFiles();
 		buildEditDialog();
 		resetValues();
@@ -156,7 +158,8 @@ public class OptionsEditor
 		try {
 			conn = DriverManager.getConnection("jdbc:mysql://www.ezstein.xyz:3306/WebDatabase", "java", "javaPass");
 			stmt = conn.createStatement();
-			System.out.println(stmt.isClosed());
+			Connection conn2 = DriverManager.getConnection("jdbc:mysql://www.ezstein.xyz:3306/WebDatabase", "java", "javaPass");
+			stmt2 = conn2.createStatement();
 			
 		} catch (SQLException e) {
 			downloadRegionTable.setItems(FXCollections.observableArrayList(new ArrayList<RegionRow>()));
@@ -192,6 +195,7 @@ public class OptionsEditor
 							set.getString("FileType")
 							));
 				}
+			set.close();
 			Set<ImageRow> imageRowA = new HashSet<ImageRow>(dataImage);
 			Set<ImageRow> imageRowB = new HashSet<ImageRow>(downloadImageTable.getItems());
 			/*Subtracts B From A to find difference in the two sets*/
@@ -216,7 +220,7 @@ public class OptionsEditor
 							set.getInt("HashCode")
 							));
 			}
-			
+			set.close();
 			Set<RegionRow> regionRowA = new HashSet<RegionRow>(dataRegion);
 			Set<RegionRow> regionRowB = new HashSet<RegionRow>(downloadRegionTable.getItems());
 			/*Subtracts B From A to find difference in the two sets*/
@@ -240,6 +244,7 @@ public class OptionsEditor
 							set.getInt("Date"),
 							set.getInt("HashCode")));
 				}
+			set.close();
 			Set<ColorRow> colorRowA = new HashSet<ColorRow>(dataColor);
 			Set<ColorRow> colorRowB = new HashSet<ColorRow>(downloadColorTable.getItems());
 			
@@ -427,6 +432,10 @@ public class OptionsEditor
 			if(stmt != null)
 			{	
 				stmt.close();
+			}
+			if(stmt2 != null)
+			{	
+				stmt2.close();
 			}
 			if(conn !=null)
 			{
@@ -1843,6 +1852,7 @@ public class OptionsEditor
 					return set.getInt("ID");
 				}
 			}
+			set.close();
 		} catch (SQLException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -1867,6 +1877,7 @@ public class OptionsEditor
 					return set.getInt("ID");
 				}
 			}
+			set.close();
 		} catch (SQLException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -2362,22 +2373,25 @@ public class OptionsEditor
 			return;
 		}
 		
-		UploadDialog dialog = new UploadDialog();
-		Platform.runLater(()->{
-			dialog.show();
-			dialog.getResponseLabel().setText("Downloading Image...");
-		});
-		downloadColor("http://www.ezstein.xyz/uploads/colors/" + row.getFile());
+		boolean downloadRegion = false;
+		String downloadRegionName = "";
+		boolean downloadImage = false;
+		String downloadImageName = "";
+		String newFile = "";
+		
+		
 		try
 		{
-			ResultSet set = stmt.executeQuery("SELECT * FROM Linked WHERE ColorID = " + row.getId() + ";");
+			ResultSet set = stmt2.executeQuery("SELECT * FROM Linked WHERE ColorID = " + row.getId() + ";");
 			if(set.isBeforeFirst())
 			{
 				set.next();
 				int regionID;
 				if((regionID = set.getInt("RegionID")) !=0)
 				{
+					set.close();
 					Alert alert = new Alert(AlertType.CONFIRMATION);
+					alert.initModality(Modality.APPLICATION_MODAL);
 					alert.setContentText("This color is associated with a region.\n"
 							+ "Would you like to download the region as well?");
 					ButtonType buttonTypeYes = new ButtonType("Yes");
@@ -2388,28 +2402,36 @@ public class OptionsEditor
 					{
 						if(result.get().equals(buttonTypeYes))
 						{
-							set = stmt.executeQuery("SELECT File, HashCode FROM Regions WHERE ID = " + regionID + ";");
+							set = stmt2.executeQuery("SELECT File, HashCode FROM Regions WHERE ID = " + regionID + ";");
 							if(set.isBeforeFirst())
 							{
 								set.next();
 								if(!regionExistsLocally(set.getInt("HashCode")))
 								{
-									downloadRegion("http://www.ezstein.xyz/uploads/regions/" + set.getString("File"));
+									
+									downloadRegion = true;
+									downloadRegionName = set.getString("File");
+									set.close();
 								}
 							}
 						}
 					}
 				}
+				else
+				{
+					set.close();
+				}
 				
-				set = stmt.executeQuery("SELECT * FROM Linked WHERE ColorID = " + row.getId() + ";");
+				set = stmt2.executeQuery("SELECT * FROM Linked WHERE ColorID = " + row.getId() + ";");
 				if(set.isBeforeFirst())
 				{
 					set.next();
 					int imageID;
 					if((imageID = set.getInt("imageID")) !=0)
 					{
-						
+						set.close();
 						Alert alert = new Alert(AlertType.CONFIRMATION);
+						alert.initModality(Modality.APPLICATION_MODAL);
 						alert.setContentText("This color is associated with an image.\n"
 								+ "Would you like to download the image as well?");
 						ButtonType buttonTypeYes = new ButtonType("Yes");
@@ -2422,7 +2444,7 @@ public class OptionsEditor
 							{
 								
 								
-								set = stmt.executeQuery("SELECT File, FileType FROM Images WHERE ID = " + imageID + ";");
+								set = stmt2.executeQuery("SELECT File, FileType FROM Images WHERE ID = " + imageID + ";");
 								if(set.isBeforeFirst())
 								{
 									set.next();
@@ -2435,19 +2457,38 @@ public class OptionsEditor
 										return;
 									}
 									
-									String newFile = file.getAbsolutePath();
+									newFile = file.getAbsolutePath();
 									String imageType = set.getString("FileType");
 									if(! newFile.endsWith("." + imageType))
 									{
 										newFile = new File(newFile + "." + imageType).getAbsolutePath();
 									}
 									
-									downloadImage("http://www.ezstein.xyz/uploads/images/" + set.getString("File"), newFile);
+									
+									downloadImage = true;
+									downloadImageName = set.getString("File");
+									set.close();
+								}
+								else
+								{
+									set.close();
 								}
 							}
 						}
 					}
+					else
+					{
+						set.close();
+					}
 				}
+				else
+				{
+					set.close();
+				}
+			}
+			else
+			{
+				set.close();
 			}
 			
 		} catch (SQLException e) {
@@ -2456,7 +2497,20 @@ public class OptionsEditor
 		}
 		
 		
-		
+		UploadDialog dialog = new UploadDialog();
+		Platform.runLater(()->{
+			dialog.show();
+			dialog.getResponseLabel().setText("Downloading Image...");
+		});
+		downloadColor("http://www.ezstein.xyz/uploads/colors/" + row.getFile());
+		if(downloadRegion)
+		{
+			downloadRegion("http://www.ezstein.xyz/uploads/regions/" + downloadRegionName);
+		}
+		if(downloadImage)
+		{
+			downloadImage("http://www.ezstein.xyz/uploads/images/" + downloadImageName, newFile);
+		}
 		
 		Platform.runLater(()->{
 			dialog.getResponseLabel().setText("Done");
@@ -2481,25 +2535,24 @@ public class OptionsEditor
 			return;
 		}
 		
-		UploadDialog dialog = new UploadDialog();
-		Platform.runLater(()->{
-			dialog.show();
-			dialog.getResponseLabel().setText("Downloading...");
-		});
-		downloadRegion("http://www.ezstein.xyz/uploads/regions/" + row.getFile());
 		
 		
+		
+		boolean downloadImage = false;
+		String newFile = "";
+		String fileName = "";
 		try
 		{
-			ResultSet set = stmt.executeQuery("SELECT * FROM Linked WHERE RegionID = " + row.getId() + ";");
+			ResultSet set = stmt2.executeQuery("SELECT * FROM Linked WHERE RegionID = " + row.getId() + ";");
 			if(set.isBeforeFirst())
 			{
 				set.next();
 				int imageID;
 				if((imageID = set.getInt("imageID")) !=0)
 				{
-					
+					set.close();
 					Alert alert = new Alert(AlertType.CONFIRMATION);
+					alert.initModality(Modality.APPLICATION_MODAL);
 					alert.setContentText("This color is associated with an image.\n"
 							+ "Would you like to download the image as well?");
 					ButtonType buttonTypeYes = new ButtonType("Yes");
@@ -2510,7 +2563,8 @@ public class OptionsEditor
 					{
 						if(result.get().equals(buttonTypeYes))
 						{
-							set = stmt.executeQuery("SELECT File, FileType FROM Images WHERE ID = " + imageID + ";");
+							set = stmt2.executeQuery("SELECT File, FileType FROM Images WHERE ID = " + imageID + ";");
+							System.out.println("***** " + set.isClosed());
 							if(set.isBeforeFirst())
 							{
 								set.next();
@@ -2523,24 +2577,50 @@ public class OptionsEditor
 									return;
 								}
 								
-								String newFile = file.getAbsolutePath();
+								newFile = file.getAbsolutePath();
+								System.out.println("***** " + set.isClosed());
 								String imageType = set.getString("FileType");
 								if(! newFile.endsWith("." + imageType))
 								{
 									newFile = new File(newFile + "." + imageType).getAbsolutePath();
 								}
 								
-								downloadImage("http://www.ezstein.xyz/uploads/images/" + set.getString("File"), newFile);
+								downloadImage = true;
+								fileName = set.getString("File");
+								set.close();
+							}
+							else
+							{
+								set.close();
 							}
 						}
 					}
 				}
+				else
+				{
+					set.close();
+				}
+			}
+			else
+			{
+				set.close();
 			}
 		} catch(SQLException sqle)
 		{
 			sqle.printStackTrace();
 		}
-	
+		
+		UploadDialog dialog = new UploadDialog();
+		Platform.runLater(()->{
+			dialog.show();
+			dialog.getResponseLabel().setText("Downloading...");
+		});
+		downloadRegion("http://www.ezstein.xyz/uploads/regions/" + row.getFile());
+		
+		if(downloadImage)
+		{
+			downloadImage("http://www.ezstein.xyz/uploads/images/" + fileName, newFile);
+		}
 		
 		Platform.runLater(()->{
 			dialog.getResponseLabel().setText("Done");
@@ -2733,22 +2813,22 @@ public class OptionsEditor
 		}
 		
 		
-		UploadDialog dialog = new UploadDialog();
-		Platform.runLater(()->{
-			dialog.show();
-			dialog.getResponseLabel().setText("Downloading...");
-		});
-		downloadImage("http://www.ezstein.xyz/uploads/images/" + row.getFile(),newFile);
+		
+		boolean downloadRegion =false;
+		String downloadFileName = "";
 		try
 		{
-			ResultSet set = stmt.executeQuery("SELECT * FROM Linked WHERE ImageID = " + row.getId() + ";");
+			ResultSet set = stmt2.executeQuery("SELECT * FROM Linked WHERE ImageID = " + row.getId() + ";");
 			if(set.isBeforeFirst())
 			{
 				set.next();
 				int regionID;
 				if((regionID = set.getInt("RegionID")) !=0)
 				{
+					set.close();
 					Alert alert = new Alert(AlertType.CONFIRMATION);
+					alert.initModality(Modality.APPLICATION_MODAL);
+					alert.initOwner(window);
 					alert.setContentText("This Image is associated with a region and a color.\n"
 							+ "Would you like to download the region and color as well?");
 					ButtonType buttonTypeYes = new ButtonType("Yes");
@@ -2759,18 +2839,28 @@ public class OptionsEditor
 					{
 						if(result.get().equals(buttonTypeYes))
 						{
-							set = stmt.executeQuery("SELECT File, HashCode FROM Regions WHERE ID = " + regionID + ";");
+							set = stmt2.executeQuery("SELECT File, HashCode FROM Regions WHERE ID = " + regionID + ";");
 							if(set.isBeforeFirst())
 							{
 								set.next();
 								if(!regionExistsLocally(set.getInt("HashCode")))
 								{
-									downloadRegion("http://www.ezstein.xyz/uploads/regions/" + set.getString("File"));
+									downloadRegion = true;
+									downloadFileName = set.getString("File");
 								}
 							}
+							set.close();
 						}
 					}
 				}
+				else
+				{
+					set.close();
+				}
+			}
+			else
+			{
+				set.close();
 			}
 			
 		} catch (SQLException e) {
@@ -2778,10 +2868,22 @@ public class OptionsEditor
 			e.printStackTrace();
 		}
 		
-			Platform.runLater(()->{
-				dialog.getResponseLabel().setText("Done");
-				dialog.enableClose();
-			});
+		UploadDialog dialog = new UploadDialog();
+		Platform.runLater(()->{
+			dialog.show();
+			dialog.getResponseLabel().setText("Downloading...");
+		});
+		
+		downloadImage("http://www.ezstein.xyz/uploads/images/" + row.getFile(),newFile);
+		if(downloadRegion)
+		{
+			downloadRegion("http://www.ezstein.xyz/uploads/regions/" +downloadFileName);
+		}
+		
+		Platform.runLater(()->{
+			dialog.getResponseLabel().setText("Done");
+			dialog.enableClose();
+		});
 		
 	}
 	
