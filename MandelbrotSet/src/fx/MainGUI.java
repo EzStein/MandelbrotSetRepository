@@ -41,8 +41,8 @@ public class MainGUI extends Application
 	TextArea textArea;
 	Stage window;
 	FlowPane flowPane;
-	Canvas viewerCanvas, juliaViewer, orbitCanvas;
-	GraphicsContext mainGC, juliaGC, orbitGC;
+	Canvas viewerCanvas, juliaViewer, orbitCanvasLayer1, orbitCanvasLayer2;
+	GraphicsContext mainGC, juliaGC, orbitGC1, orbitGC2;
 	ProgressBar progressBar;
 	ProgressIndicator progressIndicator;
 	Region<BigDecimal> currentRegion;
@@ -652,15 +652,22 @@ public class MainGUI extends Application
 		return hbox;
 	}
 	
-	private Canvas buildOrbitCanvas()
+	private Pane buildOrbitCanvas()
 	{
-		orbitCanvas = new Canvas();
-		orbitCanvas.setWidth(previewWidth*2);
-		orbitCanvas.setHeight(previewHeight*2);
-		orbitGC = orbitCanvas.getGraphicsContext2D();
-		orbitGC.setFill(Color.WHITE);
-		orbitGC.fillRect(0, 0, width, height);
-		return orbitCanvas;
+		orbitCanvasLayer1 = new Canvas();
+		orbitCanvasLayer1.setWidth(previewWidth*2);
+		orbitCanvasLayer1.setHeight(previewHeight*2);
+		orbitCanvasLayer2 = new Canvas();
+		orbitCanvasLayer2.setWidth(previewWidth*2);
+		orbitCanvasLayer2.setHeight(previewHeight*2);
+		orbitGC1 = orbitCanvasLayer1.getGraphicsContext2D();
+		orbitGC1.setFill(Color.WHITE);
+		orbitGC1.fillRect(0, 0, width, height);
+		orbitGC2 = orbitCanvasLayer2.getGraphicsContext2D();
+		orbitGC2.setFill(Color.TRANSPARENT);
+		orbitGC2.fillRect(0, 0, width, height);
+		orbitCanvasLayer2.toFront();
+		return new Pane(orbitCanvasLayer1, orbitCanvasLayer2);
 	}
 	
 	private void addResizeListeners()
@@ -1052,8 +1059,8 @@ public class MainGUI extends Application
 			
 			flowPane.setPrefWidth(window.getScene().getWidth()-width);
 			
-			orbitGC.setFill(Color.WHITE);
-			orbitGC.fillRect(0, 0, previewWidth, previewHeight);
+			//orbitGC1.setFill(Color.WHITE);
+			//orbitGC1.fillRect(0, 0, previewWidth, previewHeight);
 			mainGC.drawImage(displayImage, 0, 0,width,height);
 			
 			actualImage = viewerCanvas.snapshot(new SnapshotParameters(), null);
@@ -1307,22 +1314,19 @@ public class MainGUI extends Application
 		@Override
 		public void run()
 		{
-			BufferedImage imageToRender = new BufferedImage((int) orbitCanvas.getWidth(),
-					(int) orbitCanvas.getHeight(), BufferedImage.TYPE_INT_ARGB);
-			Graphics2D g2d = imageToRender.createGraphics();
 			Region<Integer> pixelRegion = new Region<Integer>(
 					0,0,
-					(int) orbitCanvas.getWidth(),
-					(int) orbitCanvas.getHeight());
+					(int) orbitCanvasLayer1.getWidth(),
+					(int) orbitCanvasLayer1.getHeight());
 			
 			x = Calculator.pointToPixelX(seed.getRealPart(), originalRegion, pixelRegion, precision);
 			y = -Calculator.pointToPixelY(seed.getImaginaryPart(), originalRegion, pixelRegion, precision);
 			oldX = x;
 			oldY = y;
+			
 			Platform.runLater(()->{
-				//g2d.setColor(java.awt.Color.WHITE);
-				//g2d.fillRect(0, 0, (int)orbitCanvas.getWidth(),(int) orbitCanvas.getHeight());
-				//orbitGC.drawImage(SwingFXUtils.toFXImage(imageToRender, null), 0, 0);
+				orbitGC2.clearRect(0, 0, orbitCanvasLayer2.getWidth(),  orbitCanvasLayer2.getHeight());
+				orbitGC1.drawImage(previewViewerImage, 0, 0, orbitCanvasLayer1.getWidth(), orbitCanvasLayer1.getHeight());
 			});
 			
 			int i = 0;
@@ -1335,13 +1339,13 @@ public class MainGUI extends Application
 			{
 				Platform.runLater(()->{
 					
-					g2d.setColor(java.awt.Color.WHITE);
-					g2d.drawLine(oldX, oldY, x, y);
-					g2d.fillRect(x, y, 1, 1);
-					g2d.drawOval(x-5, y-5, 10, 10);
+					orbitGC2.setFill(Color.WHITE);
+					orbitGC2.setStroke(Color.WHITE);
+					orbitGC2.strokeLine(oldX, oldY, x, y);
+					orbitGC2.fillRect(x, y, 1, 1);
+					orbitGC2.strokeOval(x-5, y-5, 10, 10);
 					
-					orbitGC.drawImage(previewViewerImage, 0, 0, orbitCanvas.getWidth(), orbitCanvas.getHeight());
-					orbitGC.drawImage(SwingFXUtils.toFXImage(imageToRender, null), 0, 0);
+					orbitGC1.drawImage(previewViewerImage, 0, 0, orbitCanvasLayer1.getWidth(), orbitCanvasLayer1.getHeight());
 				});
 				if(julia)
 				{
@@ -1373,13 +1377,11 @@ public class MainGUI extends Application
 			}
 			
 			Platform.runLater(()->{
-				g2d.setColor(java.awt.Color.WHITE);
-				g2d.drawLine(oldX, oldY, x, y);
-				g2d.fillRect(x, y, 1, 1);
-				g2d.drawOval(x-5, y-5, 10, 10);
-				
-				orbitGC.drawImage(previewViewerImage, 0, 0, orbitCanvas.getWidth(), orbitCanvas.getHeight());
-				orbitGC.drawImage(SwingFXUtils.toFXImage(imageToRender, null), 0, 0);
+				orbitGC2.setFill(Color.WHITE);
+				orbitGC2.setStroke(Color.WHITE);
+				orbitGC2.strokeLine(oldX, oldY, x, y);
+				orbitGC2.fillRect(x, y, 1, 1);
+				orbitGC2.strokeOval(x-5, y-5, 10, 10);
 			});
 			
 		}
