@@ -1142,7 +1142,7 @@ public class OptionsEditor
 			dialog.getResponseLabel().setText("Uploading...");
 		});
 		HttpClient client = HttpClients.createDefault();
-		HttpPost post = new HttpPost("http://www.ezstein.xyz/regionUploader.php");
+		HttpPost post = new HttpPost("http://www.ezstein.xyz/serverScripts/regionUploader.php");
 		HttpResponse response = null;
 		ObjectOutputStream fileOut = null, fileOut2 = null;
 		
@@ -1267,7 +1267,7 @@ public class OptionsEditor
 		});
 		
 		HttpClient client = HttpClients.createDefault();
-		HttpPost post = new HttpPost("http://www.ezstein.xyz/colorUploader.php");
+		HttpPost post = new HttpPost("http://www.ezstein.xyz/serverScripts/colorUploader.php");
 		HttpResponse response = null;
 		ObjectOutputStream fileOut = null;
 		try
@@ -1352,7 +1352,7 @@ public class OptionsEditor
 		});
 		
 		HttpClient client = HttpClients.createDefault();
-		HttpPost post = new HttpPost("http://www.ezstein.xyz/imageUploader.php");
+		HttpPost post = new HttpPost("http://www.ezstein.xyz/serverScripts/imageUploader.php");
 		HttpResponse response = null;
 		BufferedReader in = null;
 		
