@@ -82,14 +82,14 @@ public class OptionsEditor
 	 */
 	public OptionsEditor(MainGUI gui)
 	{
-		
-		
+
+
 		this.gui = gui;
 		currentRegion = gui.currentRegion;
 		currentJulia = gui.julia;
 		currentSeed = gui.juliaSeed;
 	}
-	
+
 	/**
 	 * Shoes the view with the given tab number.
 	 * @param tabNumber
@@ -105,7 +105,7 @@ public class OptionsEditor
 		buildThreads();
 		window.show();
 	}
-	
+
 	private void buildThreads()
 	{
 		databaseUpdater = new Thread(()->{
@@ -120,12 +120,12 @@ public class OptionsEditor
 						uploadButton.setDisable(true);
 						uploadButton.setText("Check Internet Connection");
 					});
-					
+
 					stmt = null;
 				}
 				else
 				{
-					
+
 					if(stmt == null)
 					{
 						openConnection();
@@ -134,10 +134,10 @@ public class OptionsEditor
 						uploadButton.setDisable(false);
 						uploadButton.setText("Upload");
 					});
-					
+
 					connect();
 				}
-				
+
 				try
 				{
 					Thread.sleep(1000);
@@ -150,7 +150,7 @@ public class OptionsEditor
 		});
 		databaseUpdater.start();
 	}
-	
+
 	private void openConnection()
 	{
 		//THIS DISPLAYS PASS IN PLAINTEXT!!!!
@@ -159,14 +159,14 @@ public class OptionsEditor
 			stmt = conn.createStatement();
 			Connection conn2 = DriverManager.getConnection("jdbc:mysql://www.ezstein.xyz:3306/WebDatabase", "java", "javaPass");
 			stmt2 = conn2.createStatement();
-			
+
 		} catch (SQLException e) {
 			downloadRegionTable.setItems(FXCollections.observableArrayList(new ArrayList<RegionRow>()));
 			downloadColorTable.setItems(FXCollections.observableArrayList(new ArrayList<ColorRow>()));
 			downloadImageTable.setItems(FXCollections.observableArrayList(new ArrayList<ImageRow>()));
 		}
 	}
-	
+
 	private void connect()
 	{
 		try
@@ -178,7 +178,7 @@ public class OptionsEditor
 			ArrayList<ImageRow> dataImage = new ArrayList<ImageRow>();
 			ResultSet set = stmt.executeQuery("SELECT * FROM Images");
 			while(set.next()){
-				
+
 					dataImage.add(new ImageRow(
 							set.getInt("ID"),
 							set.getString("Name"),
@@ -199,7 +199,7 @@ public class OptionsEditor
 			/*Subtracts B From A to find difference in the two sets*/
 			imageRowA.removeAll(imageRowB);
 			downloadImageTable.getItems().addAll(imageRowA);
-			
+
 			if(!isConnectedToInternet())
 			{
 				return;
@@ -224,7 +224,7 @@ public class OptionsEditor
 			/*Subtracts B From A to find difference in the two sets*/
 			regionRowA.removeAll(regionRowB);
 			downloadRegionTable.getItems().addAll(regionRowA);
-			
+
 			if(!isConnectedToInternet())
 			{
 				return;
@@ -245,29 +245,29 @@ public class OptionsEditor
 			set.close();
 			Set<ColorRow> colorRowA = new HashSet<ColorRow>(dataColor);
 			Set<ColorRow> colorRowB = new HashSet<ColorRow>(downloadColorTable.getItems());
-			
+
 			/*Subtracts B From A to find difference in the two sets*/
 			colorRowA.removeAll(colorRowB);
 			downloadColorTable.getItems().addAll(colorRowA);
-			
+
 		} catch (SQLException e) {
 			e.printStackTrace();
 		}
 	}
-	
+
 	@SuppressWarnings("unchecked")
 	private void readFiles()
 	{
 		ObjectInputStream in = null;
 		ObjectInputStream colorIn = null;
-		
+
 		savedRegions = new SimpleListProperty<SavedRegion>();
 		savedColors = new SimpleListProperty<CustomColorFunction>();
 		try
 		{
 			colorIn = new ObjectInputStream(new FileInputStream(Locator.locateFile("SavedColors.txt").toFile()));
 			savedColors = new SimpleListProperty<CustomColorFunction>(FXCollections.observableList((ArrayList<CustomColorFunction>) colorIn.readObject()));
-			
+
 			in = new ObjectInputStream(new FileInputStream(Locator.locateFile("SavedRegions.txt").toFile()));
 			savedRegions = new SimpleListProperty<SavedRegion>(FXCollections.observableList((ArrayList<SavedRegion>)in.readObject()));
 		}
@@ -287,7 +287,7 @@ public class OptionsEditor
 			{
 				if(in!=null)
 				{
-					
+
 					in.close();
 				}
 				if(colorIn != null)
@@ -301,18 +301,18 @@ public class OptionsEditor
 				e.printStackTrace();
 			}
 		}
-		
+
 		savedColors.addListener(new ChangeListener<ObservableList<CustomColorFunction>>(){
 
 			@Override
 			public void changed(ObservableValue<? extends ObservableList<CustomColorFunction>> observable,
 					ObservableList<CustomColorFunction> oldValue, ObservableList<CustomColorFunction> newValue) {
-				
 
-				
+
+
 				colorChoiceBox.setItems(savedColors);
 				uploadColorsChoiceBox.setItems(savedColors);
-				
+
 				try
 				{
 					colorOut = new ObjectOutputStream(new FileOutputStream(Locator.locateFile("SavedColors.txt").toFile()));
@@ -333,17 +333,17 @@ public class OptionsEditor
 						e1.printStackTrace();
 					}
 				}
-				
+
 			}
-			
+
 		});
-		
+
 		savedRegions.addListener(new ChangeListener<ObservableList<SavedRegion>>(){
 
 			@Override
 			public void changed(ObservableValue<? extends ObservableList<SavedRegion>> observable,
 					ObservableList<SavedRegion> oldValue, ObservableList<SavedRegion> newValue) {
-				
+
 				savedRegionsChoiceBox.setItems(savedRegions);
 				uploadRegionsChoiceBox.setItems(savedRegions);
 				try
@@ -368,12 +368,12 @@ public class OptionsEditor
 						ioe.printStackTrace();
 					}
 				}
-				
+
 			}
-			
+
 		});
 	}
-	
+
 	private void buildEditDialog()
 	{
 		window = new Stage();
@@ -388,7 +388,7 @@ public class OptionsEditor
 			close();
 		});
 		BorderPane layout = new BorderPane();
-		
+
 		TabPane tabPane = new TabPane();
 		tabPane.getTabs().add(buildOptionsTab());
 		tabPane.getTabs().add(buildColorTab());
@@ -405,19 +405,19 @@ public class OptionsEditor
 					//new Thread(()->{connect();}).start();
 				}
 			}
-			
+
 		});
-		
+
 		HBox buttonBox = new HBox(10);
 		buttonBox.setPadding(new Insets(10,10,10,10));
 		buttonBox.getChildren().addAll(buildSaveButton(), buildApplyAndRerenderButton(), buildApplyButton(), buildCancelButton());
 		layout.setBottom(buttonBox);
-		
+
 		Scene scene = new Scene(layout);
 		scene.getStylesheets().add(this.getClass().getResource("OptionsStyleSheet.css").toExternalForm());
 		window.setScene(scene);
 	}
-	
+
 	public void close(){
 		databaseUpdater.interrupt();
 		try {
@@ -428,11 +428,11 @@ public class OptionsEditor
 		}
 		try{
 			if(stmt != null)
-			{	
+			{
 				stmt.close();
 			}
 			if(stmt2 != null)
-			{	
+			{
 				stmt2.close();
 			}
 			if(conn !=null)
@@ -442,9 +442,9 @@ public class OptionsEditor
 		} catch(SQLException sqle){
 			sqle.printStackTrace();
 		}
-		
+
 	}
-	
+
 	private Tab buildOptionsTab()
 	{
 		Tab optionsTab = new Tab("Options");
@@ -454,20 +454,20 @@ public class OptionsEditor
 		optionsGridPane.setVgap(10);
 		optionsGridPane.setHgap(10);
 		optionsGridPane.setPadding(new Insets(30,30,30,30));
-		
-		
+
+
 		centerValue = new Label(gui.currentRegion.getCenterX().setScale(5, BigDecimal.ROUND_HALF_UP).stripTrailingZeros().toPlainString()
 				+ " + "
 				+ gui.currentRegion.getCenterY().setScale(5, BigDecimal.ROUND_HALF_UP).stripTrailingZeros().toPlainString() + "i");
 		boxValue = new Label(gui.currentRegion.x1.subtract(gui.currentRegion.x2).abs().setScale(5, BigDecimal.ROUND_HALF_UP).stripTrailingZeros().toPlainString()
 				+ "x"
 				+ gui.currentRegion.y1.subtract(gui.currentRegion.y2).abs().setScale(5, BigDecimal.ROUND_HALF_UP).stripTrailingZeros().toPlainString());
-		
+
 		/*Text Fields*/
 		threadCountField = new TextField(""+gui.threadCount);
 		iterationsField = new TextField("" +gui.iterations);
 		precisionField = new TextField("" + gui.precision);
-		
+
 		arbitraryPrecision = new RadioButton("Arbitrary Precision");
 		doublePrecision = new RadioButton("Double Precision");
 		ToggleGroup precisionGroup = new ToggleGroup();
@@ -481,40 +481,40 @@ public class OptionsEditor
 		{
 			doublePrecision.setSelected(true);
 		}
-		
-		
-		
-		
-		
+
+
+
+
+
 		Label savedRegionsLabel = new Label("Saved Regions:");
 		savedRegionsLabel.setFont(new Font(20));
 		optionsGridPane.add(savedRegionsLabel, 0, 0,2,1);
 		optionsGridPane.add(new Label("Iterations:"), 0, 1);
 		optionsGridPane.add(new Label("Precision:"), 0, 3);
 		optionsGridPane.add(new Label("Threads:"), 0,4);
-		
+
 		optionsGridPane.add(buildAutoIterationsCheckBox(), 1, 1);
 		optionsGridPane.add(iterationsField, 1, 2);
 		optionsGridPane.add(precisionField, 1, 3);
 		optionsGridPane.add(threadCountField, 1, 4);
 		optionsGridPane.add(doublePrecision, 1, 5);
 		optionsGridPane.add(arbitraryPrecision, 1, 6);
-		
+
 		optionsGridPane.add(buildSavedRegionsChoiceBox(), 2, 0);
 		optionsGridPane.add(buildSetLabel(), 2, 1);
 		optionsGridPane.add(new Label("Center:"), 2, 2);
 		optionsGridPane.add(new Label("Box Dimensions:"), 2, 3);
-		
+
 		optionsGridPane.add(buildRegionRemoveButton(), 3, 0);
 		optionsGridPane.add(buildSeedLabel(), 3, 1);
 		optionsGridPane.add(centerValue, 3, 2);
 		optionsGridPane.add(boxValue, 3, 3);
-		
-		
+
+
 		optionsTab.setContent(optionsGridPane);
 		return optionsTab;
 	}
-	
+
 	private Label buildSetLabel()
 	{
 		set = new Label();
@@ -528,7 +528,7 @@ public class OptionsEditor
 		}
 		return set;
 	}
-	
+
 	private Label buildSeedLabel()
 	{
 		seed = new Label();
@@ -542,7 +542,7 @@ public class OptionsEditor
 		}
 		return seed;
 	}
-	
+
 	private CheckBox buildAutoIterationsCheckBox()
 	{
 		autoIterationsCheckBox = new CheckBox("Auto Iterations");
@@ -556,7 +556,7 @@ public class OptionsEditor
 			autoIterationsCheckBox.setSelected(false);
 			iterationsField.setDisable(false);
 		}
-		
+
 		autoIterationsCheckBox.setOnAction(e ->{
 			if(autoIterationsCheckBox.isSelected())
 			{
@@ -570,7 +570,7 @@ public class OptionsEditor
 		});
 		return autoIterationsCheckBox;
 	}
-	
+
 	private ChoiceBox<SavedRegion> buildSavedRegionsChoiceBox()
 	{
 		savedRegionsChoiceBox = new ChoiceBox<SavedRegion>(savedRegions);
@@ -586,8 +586,8 @@ public class OptionsEditor
 			public SavedRegion fromString(String string) {
 				return null;
 			}
-			
-			
+
+
 		});
 		savedRegionsChoiceBox.getSelectionModel().selectedIndexProperty().addListener(new ChangeListener<Number>(){
 			@Override
@@ -602,64 +602,64 @@ public class OptionsEditor
 		});
 		return savedRegionsChoiceBox;
 	}
-	
+
 	private Button buildRegionRemoveButton()
 	{
 		Button removeButton = new Button("Remove");
 		removeButton.setOnAction(e ->{
 			SavedRegion deletedRegion = savedRegionsChoiceBox.getValue();
 			if(deletedRegion == null)
-			{ 
+			{
 				Alert alert = new Alert(AlertType.ERROR);
 				alert.setContentText("No region is selected");
 				alert.show();
 				return;
 			}
 			savedRegions.remove(deletedRegion);
-			
+
 		});
 		return removeButton;
 	}
-	
+
 	private Tab buildColorTab()
 	{
 		Tab colorTab = new Tab("Color");
 		colorTab.setClosable(false);
-		
+
 		GridPane colorGridPane= new GridPane();
 		colorGridPane.setVgap(10);
 		colorGridPane.setHgap(10);
 		colorGridPane.setPadding(new Insets(30,30,30,30));
-		
-		
+
+
 		colorGridPane.add(buildColorChoiceBox(), 0, 0);
 		//colorGridPane.add(buildGradientCheckBox(), 0, 1);
 		colorGridPane.add(buildGradientRectangle(), 0, 2, 2, 2);
 		colorGridPane.add(buildSaveColorButton(), 0, 3);
-		
+
 		colorGridPane.add(buildColorPositionSlider(), 1, 1);
 		colorGridPane.add(buildColorPositionField(), 2, 1);
 		colorGridPane.add(buildColorPicker(), 1, 0);
 		colorGridPane.add(buildRemoveColorButton(), 1, 3);
-		
+
 		colorGridPane.add(buildStopList(), 2, 2,2,1);
 		colorGridPane.add(buildAddStopButton(), 2, 3);
 		colorGridPane.add(new Label("Range:"), 2, 0);
 		rangeField = new TextField();
 		colorGridPane.add(rangeField, 3, 0);
 		colorGridPane.add(buildRemoveStopButton(), 3, 3);
-		
+
 		colorTab.setContent(colorGridPane);
-		
+
 		initializeValues();
 		return colorTab;
 	}
-	
+
 	private Button buildRemoveColorButton()
 	{
 		Button removeColorButton = new Button("Delete Color");
 		removeColorButton.setOnAction(e->{
-			
+
 			CustomColorFunction colorToRemove = colorChoiceBox.getValue();
 			int index = colorChoiceBox.getItems().indexOf(colorToRemove);
 			if(index >0)
@@ -677,13 +677,13 @@ public class OptionsEditor
 				alert.show();
 				return;
 			}
-			
+
 			savedColors.remove(colorToRemove);
-			
+
 		});
 		return removeColorButton;
 	}
-	
+
 	private void initializeValues()
 	{
 		rangeField.setText(colorChoiceBox.getValue().getRange()+"");
@@ -692,18 +692,18 @@ public class OptionsEditor
 		{
 			stopList.getItems().add(stop);
 		}
-		
+
 	}
-	
+
 	private Rectangle buildGradientRectangle()
 	{
 		gradientRectangle = new Rectangle();
 		gradientRectangle.setWidth(200);
 		gradientRectangle.setHeight(300);
-		
+
 		return gradientRectangle;
 	}
-	
+
 	private ColorPicker buildColorPicker()
 	{
 		colorPicker = new ColorPicker(Color.BLACK);
@@ -723,39 +723,39 @@ public class OptionsEditor
 		});
 		return colorPicker;
 	}
-	
+
 	private ArrayList<Stop> createGradientStops()
 	{
-		
+
 		ArrayList<Stop> returnValue = new ArrayList<Stop>(Arrays.asList(stopList.getItems().toArray(new Stop[1])));
 		return returnValue;
 	}
-	
+
 	private ChoiceBox<CustomColorFunction> buildColorChoiceBox()
 	{
 		colorChoiceBox = new ChoiceBox<CustomColorFunction>(savedColors);
 		colorChoiceBox.setValue(gui.mainCalculator.getColorFunction());
-		
+
 		colorChoiceBox.getSelectionModel().selectedIndexProperty().addListener(new ChangeListener<Number>(){
 			@Override
 			public void changed(ObservableValue<? extends Number> observable, Number oldValue, Number newValue)
 			{
-				
+
 				CustomColorFunction colorFunction = (CustomColorFunction)colorChoiceBox.getItems().get(newValue.intValue());
 				rangeField.setText(colorFunction.getRange()+"");
-				
+
 				stopList.getItems().remove(0, stopList.getItems().size());
 				for(Stop stop : colorFunction.getStops())
 				{
 					stopList.getItems().add(stop);
 				}
-				
-				
+
+
 			}
 		});
 		return colorChoiceBox;
 	}
-	
+
 	private TextField buildColorPositionField()
 	{
 		colorPositionField = new TextField("0.5");
@@ -790,7 +790,7 @@ public class OptionsEditor
 		});
 		return colorPositionField;
 	}
-	
+
 	private Slider buildColorPositionSlider()
 	{
 		colorPositionSlider = new Slider(0,1,0.5);
@@ -814,7 +814,7 @@ public class OptionsEditor
 		});
 		return colorPositionSlider;
 	}
-	
+
 	private ListView<Stop> buildStopList()
 	{
 		stopList = new ListView<Stop>();
@@ -823,7 +823,7 @@ public class OptionsEditor
 			public ListCell<Stop> call(ListView<Stop> param) {
 				return new CustomListCell();
 			}
-			
+
 		});
 		stopList.getSelectionModel().selectedIndexProperty().addListener(new ChangeListener<Number>(){
 
@@ -838,22 +838,22 @@ public class OptionsEditor
 					colorPicker.setValue(stop.getColor());
 					colorPositionSlider.setValue(stop.getOffset());
 				});
-				
+
 			}
-			
+
 		});
 		stopList.getItems().addListener(new ListChangeListener<Stop>(){
 
 			@Override
 			public void onChanged(ListChangeListener.Change<? extends Stop> c) {
 				gradientRectangle.setFill(new LinearGradient(0,0.5,1,0.5,true, CycleMethod.NO_CYCLE, createGradientStops()));
-				
+
 			}
-			
+
 		});
 		return stopList;
 	}
-	
+
 	private Button buildSaveColorButton()
 	{
 		Button saveColorButton = new Button("Save Color");
@@ -862,15 +862,15 @@ public class OptionsEditor
 			{
 				return;
 			}
-			
+
 			saveColor();
-			
+
 		});
 		return saveColorButton;
 	}
-	
+
 	/**
-	 * 
+	 *
 	 * @return true if the color was actually saved.
 	 */
 	private boolean saveColor()
@@ -903,7 +903,7 @@ public class OptionsEditor
 		savedColors.add(color);
 		return true;
 	}
-	
+
 	private boolean validateForSaveColor()
 	{
 		TreeSet<Double> set = new TreeSet<Double>();
@@ -918,8 +918,8 @@ public class OptionsEditor
 				return false;
 			}
 		}
-		
-		
+
+
 		if(stopList.getItems().size()<2)
 		{
 			Alert alert = new Alert(AlertType.ERROR);
@@ -927,9 +927,9 @@ public class OptionsEditor
 			alert.show();
 			return false;
 		}
-		
-		
-		
+
+
+
 		boolean validStart = false;
 		boolean validEnd = false;
 		for(Stop stop : stopList.getItems())
@@ -950,9 +950,9 @@ public class OptionsEditor
 			alert.show();
 			return false;
 		}
-		
-		
-		
+
+
+
 		int val;
 		try
 		{
@@ -970,28 +970,28 @@ public class OptionsEditor
 		}
 		return true;
 	}
-	
+
 	private Button buildRemoveStopButton()
 	{
 		Button removeStopButton = new Button("Remove Color");
 		removeStopButton.setOnAction(ae->{
 			Stop stop = stopList.getSelectionModel().getSelectedItem();
 			stopList.getItems().remove(stop);
-			
+
 		});
 		return removeStopButton;
 	}
-	
+
 	private Button buildAddStopButton()
 	{
 		Button addStopButton = new Button("Add Color");
 		addStopButton.setOnAction(ae->{
 			Stop stopToAdd = new Stop(colorPositionSlider.getValue(), colorPicker.getValue());
-			
-			
+
+
 			stopList.getItems().add(stopToAdd);
 			stopList.getSelectionModel().select(stopList.getItems().size()-1);
-			
+
 		});
 		return addStopButton;
 	}
@@ -1004,11 +1004,11 @@ public class OptionsEditor
 		uploadGrid.setVgap(10);
 		uploadGrid.setHgap(10);
 		uploadGrid.setPadding(new Insets(30,30,30,30));
-		
+
 		uploadNameField = new TextField();
 		uploadAuthorField = new TextField();
 		uploadDescriptionArea = new TextArea();
-		
+
 		uploadGrid.add(new Label("Name:"), 0, 0);
 		uploadGrid.add(uploadNameField,0,1);
 		uploadGrid.add(new Label("Author (leave blank for anonymous):"), 0, 2);
@@ -1016,22 +1016,22 @@ public class OptionsEditor
 		uploadGrid.add(new Label("Description:"), 0, 4);
 		uploadGrid.add(uploadDescriptionArea, 0, 5);
 		uploadGrid.add(buildUploadButton(), 0, 6);
-		
-		
-		
+
+
+
 		uploadGrid.add(buildUploadTypeChoiceBox(), 1, 0);
 		uploadGrid.add(new Label("Upload Region: "), 1, 1);
 		uploadGrid.add(buildUploadRegionsChoiceBox(), 1, 2);
 		uploadGrid.add(new Label("Upload Color: "), 1, 3);
 		uploadGrid.add(buildUploadColorsChoiceBox(), 1, 4);
 		tab.setContent(uploadGrid);
-		
+
 		uploadColorsChoiceBox.getSelectionModel().select(0);
 		uploadRegionsChoiceBox.getSelectionModel().select(0);
 		uploadTypeChoiceBox.getSelectionModel().select(0);
 		return tab;
 	}
-	
+
 	private ChoiceBox<SavedRegion> buildUploadRegionsChoiceBox(){
 		uploadRegionsChoiceBox = new ChoiceBox<SavedRegion>(savedRegions);
 		uploadRegionsChoiceBox.setConverter(new StringConverter<SavedRegion>(){
@@ -1046,7 +1046,7 @@ public class OptionsEditor
 			public SavedRegion fromString(String string) {
 				return null;
 			}
-			
+
 		});
 		uploadRegionsChoiceBox.getSelectionModel().selectedItemProperty().addListener(new ChangeListener<SavedRegion>(){
 
@@ -1060,7 +1060,7 @@ public class OptionsEditor
 		uploadRegionsChoiceBox.setDisable(true);
 		return uploadRegionsChoiceBox;
 	}
-	
+
 	private ChoiceBox<CustomColorFunction> buildUploadColorsChoiceBox(){
 		uploadColorsChoiceBox = new ChoiceBox<CustomColorFunction>(savedColors);
 		uploadColorsChoiceBox.getSelectionModel().selectedItemProperty().addListener(new ChangeListener<CustomColorFunction>(){
@@ -1074,7 +1074,7 @@ public class OptionsEditor
 		uploadColorsChoiceBox.setDisable(true);
 		return uploadColorsChoiceBox;
 	}
-	
+
 	private Button buildUploadButton()
 	{
 		uploadButton = new Button("Upload Image");
@@ -1092,7 +1092,7 @@ public class OptionsEditor
 		});
 		return uploadButton;
 	}
-	
+
 	private void showUploadImageDialog() {
 		System.out.println(checkUploadValues());
 		if(!checkUploadValues()){
@@ -1102,7 +1102,7 @@ public class OptionsEditor
 			uploadImage();
 		});
 	}
-	
+
 	private boolean checkUploadValues() {
 		if(uploadNameField.getText() == null){
 			return false;
@@ -1126,7 +1126,7 @@ public class OptionsEditor
 		}
 		return true;
 	}
-	
+
 	private void uploadRegion(){
 		SavedRegion sr = uploadRegionsChoiceBox.getSelectionModel().getSelectedItem();
 		if(existsInDatabase(sr)>=0)
@@ -1145,14 +1145,14 @@ public class OptionsEditor
 		HttpPost post = new HttpPost("http://www.ezstein.xyz/serverScripts/regionUploader.php");
 		HttpResponse response = null;
 		ObjectOutputStream fileOut = null, fileOut2 = null;
-		
+
 		try
 		{
 			fileOut = new ObjectOutputStream(new FileOutputStream(Locator.locateUniqueFile("tmp/region/uploadFile.txt").toFile()));
 			fileOut.writeObject(sr);
 			fileOut2 = new ObjectOutputStream(new FileOutputStream(Locator.locateUniqueFile("tmp/color/uploadFile.txt").toFile()));
 			fileOut2.writeObject(sr.colorFunction);
-			
+
 		}
 		catch(IOException ioe)
 		{
@@ -1174,7 +1174,7 @@ public class OptionsEditor
 				e.printStackTrace();
 			}
 		}
-		
+
 		BufferedReader in = null;
 		File colorFile = null;
 		File regionFile = null;
@@ -1250,7 +1250,7 @@ public class OptionsEditor
 			}
 		}
 	}
-	
+
 	private void uploadColor()
 	{
 		if(existsInDatabase(uploadColorsChoiceBox.getSelectionModel().getSelectedItem())>=0)
@@ -1265,7 +1265,7 @@ public class OptionsEditor
 			dialog.show();
 			dialog.getResponseLabel().setText("Uploading...");
 		});
-		
+
 		HttpClient client = HttpClients.createDefault();
 		HttpPost post = new HttpPost("http://www.ezstein.xyz/serverScripts/colorUploader.php");
 		HttpResponse response = null;
@@ -1274,7 +1274,7 @@ public class OptionsEditor
 		{
 			fileOut = new ObjectOutputStream(new FileOutputStream(Locator.locateUniqueFile("tmp/color/uploadFile.txt").toFile()));
 			fileOut.writeObject(uploadColorsChoiceBox.getSelectionModel().getSelectedItem());
-			
+
 		}
 		catch(IOException ioe)
 		{
@@ -1292,7 +1292,7 @@ public class OptionsEditor
 				e.printStackTrace();
 			}
 		}
-		
+
 		BufferedReader in = null;
 		File colorFile = null;
 		try {
@@ -1343,19 +1343,19 @@ public class OptionsEditor
 			}
 		}
 	}
-	
+
 	private void uploadImage(){
 		UploadDialog dialog = new UploadDialog();
 		Platform.runLater(()->{
 			dialog.show();
 			dialog.getResponseLabel().setText("Uploading...");
 		});
-		
+
 		HttpClient client = HttpClients.createDefault();
 		HttpPost post = new HttpPost("http://www.ezstein.xyz/serverScripts/imageUploader.php");
 		HttpResponse response = null;
 		BufferedReader in = null;
-		
+
 
 		ObjectOutputStream fileOut = null, fileOut2 = null;
 		SavedRegion sr = new SavedRegion(uploadNameField.getText() + "_Region", gui.autoIterations, gui.iterations,
@@ -1388,11 +1388,11 @@ public class OptionsEditor
 				e.printStackTrace();
 			}
 		}
-		
+
 		File imageFile = null, regionFile =null, colorFile=null;
 		try
 		{
-			
+
 			imageFile = Locator.getUniqueFile("tmp/image").toFile();
 			regionFile = Locator.getUniqueFile("tmp/region").toFile();
 			colorFile = Locator.getUniqueFile("tmp/color").toFile();
@@ -1400,11 +1400,11 @@ public class OptionsEditor
 			// TODO Auto-generated catch block
 			e1.printStackTrace();
 		}
-		
+
 		String name = imageFile.getName();
 		String imageType = name.substring(name.lastIndexOf(".") + 1);
-		
-		
+
+
 		int idOfReplicaRegion, idOfReplicaColor;
 		idOfReplicaColor = existsInDatabase(sr.colorFunction);
 		idOfReplicaRegion = existsInDatabase(sr);
@@ -1475,12 +1475,12 @@ public class OptionsEditor
 					.addTextBody("ReplicaColor", "true")
 					.addTextBody("ReplicaRegion", "true")
 					.build();
-		} 
+		}
 		post.setEntity(entity);
 		try {
 			response = client.execute(post);
 			in = new BufferedReader(new InputStreamReader(response.getEntity().getContent()));
-			
+
 			String s = "", input = "";
 			while((input = in.readLine()) !=null)
 			{
@@ -1491,7 +1491,7 @@ public class OptionsEditor
 				dialog.getResponseLabel().setText(s1);
 				dialog.enableClose();
 			});
-			
+
 		} catch (ClientProtocolException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -1501,7 +1501,7 @@ public class OptionsEditor
 		}
 		finally
 		{
-			
+
 				try {
 					if(in!=null){
 						in.close();
@@ -1511,9 +1511,9 @@ public class OptionsEditor
 					e.printStackTrace();
 				}
 		}
-		
+
 	}
-	
+
 	private void showUploadRegionDialog() {
 		System.out.println(checkUploadValues());
 		if(!checkUploadValues()){
@@ -1521,7 +1521,7 @@ public class OptionsEditor
 		}
 		uploadRegion();
 	}
-	
+
 	private void showUploadColorDialog() {
 		System.out.println(checkUploadValues());
 		if(!checkUploadValues()){
@@ -1529,7 +1529,7 @@ public class OptionsEditor
 		}
 		uploadColor();
 	}
-	
+
 	private ChoiceBox<String> buildUploadTypeChoiceBox()
 	{
 		uploadTypeChoiceBox =
@@ -1544,7 +1544,7 @@ public class OptionsEditor
 							uploadRegionsChoiceBox.getSelectionModel().getSelectedItem()!= null ? uploadRegionsChoiceBox.getSelectionModel().getSelectedItem().name : "");
 					uploadRegionsChoiceBox.setDisable(false);
 					uploadColorsChoiceBox.setDisable(true);
-					
+
 				} else if(uploadTypeChoiceBox.getItems().get(newValue.intValue()).equals("Color")){
 					uploadNameField.setDisable(true);
 					uploadNameField.setText(uploadColorsChoiceBox.getSelectionModel().getSelectedItem()!=null ? uploadColorsChoiceBox.getSelectionModel().getSelectedItem().getName():"");
@@ -1555,14 +1555,14 @@ public class OptionsEditor
 					uploadNameField.setText("");
 					uploadRegionsChoiceBox.setDisable(true);
 					uploadColorsChoiceBox.setDisable(true);
-					
+
 				}
 			}
 		});
 		//uploadTypeChoiceBox.getSelectionModel().select(0);
 		return  uploadTypeChoiceBox;
 	}
-	
+
 	private Tab buildDownloadTab(){
 		Tab tab = new Tab("Download");
 		tab.setClosable(false);
@@ -1570,7 +1570,7 @@ public class OptionsEditor
 		downloadGrid.setVgap(10);
 		downloadGrid.setHgap(10);
 		downloadGrid.setPadding(new Insets(30,30,30,30));
-		
+
 		tables = new TabPane();
 		tables.getTabs().add(buildImageTableTab());
 		tables.getTabs().add(buildRegionTableTab());
@@ -1581,7 +1581,7 @@ public class OptionsEditor
 		tab.setContent(downloadGrid);
 		return tab;
 	}
-	
+
 	private Tab buildImageTableTab(){
 		Tab tab = new Tab("Images");
 		Group layout = new Group();
@@ -1590,7 +1590,7 @@ public class OptionsEditor
 		tab.setContent(layout);
 		return tab;
 	}
-	
+
 	private Tab buildRegionTableTab(){
 		Tab tab = new Tab("Regions");
 		Group layout = new Group();
@@ -1599,7 +1599,7 @@ public class OptionsEditor
 		tab.setContent(layout);
 		return tab;
 	}
-	
+
 	private Tab buildColorTableTab(){
 		Tab tab = new Tab("Colors");
 		Group layout = new Group();
@@ -1608,7 +1608,7 @@ public class OptionsEditor
 		tab.setContent(layout);
 		return tab;
 	}
-	
+
 	private TableView<ColorRow> buildDownloadColorTable(){
 		downloadColorTable = new TableView<ColorRow>();
 		downloadColorTable.setEditable(false);
@@ -1629,20 +1629,20 @@ public class OptionsEditor
 		dateColumn.setCellValueFactory(new PropertyValueFactory<ColorRow, String>("date"));
 		fileColumn.setCellValueFactory(new PropertyValueFactory<ColorRow, String>("file"));
 		hashCodeColumn.setCellValueFactory(new PropertyValueFactory<ColorRow, String>("hashCode"));
-		
+
 		downloadColorTable.getColumns().addAll(idColumn,nameColumn,authorColumn,descriptionColumn,fileColumn,
 				sizeColumn,dateColumn,hashCodeColumn);
-		
+
 		return downloadColorTable;
 	}
-	
+
 	public class ColorRow
 	{
 		private final IntegerProperty id, size, date, hashCode;
 		private final StringProperty name, author, description, file;
-		
+
 		/**
-		 * 
+		 *
 		 * @param id
 		 * @param name
 		 * @param author
@@ -1662,7 +1662,7 @@ public class OptionsEditor
 			this.file = new SimpleStringProperty(file);
 			this.hashCode = new SimpleIntegerProperty(hashCode);
 		}
-		
+
 		public final IntegerProperty getIdProperty()
 		{
 			return id;
@@ -1675,7 +1675,7 @@ public class OptionsEditor
 		{
 			id.set(val);
 		}
-		
+
 		public final IntegerProperty getSizeProperty()
 		{
 			return size;
@@ -1688,7 +1688,7 @@ public class OptionsEditor
 		{
 			size.set(val);
 		}
-		
+
 		public final IntegerProperty getDateProperty()
 		{
 			return date;
@@ -1701,7 +1701,7 @@ public class OptionsEditor
 		{
 			date.set(val);
 		}
-		
+
 		public final StringProperty getNameProperty()
 		{
 			return name;
@@ -1714,7 +1714,7 @@ public class OptionsEditor
 		{
 			name.set(val);
 		}
-		
+
 		public final StringProperty getAuthorProperty()
 		{
 			return author;
@@ -1727,7 +1727,7 @@ public class OptionsEditor
 		{
 			author.set(val);
 		}
-		
+
 		public final StringProperty getDescriptionProperty()
 		{
 			return description;
@@ -1740,7 +1740,7 @@ public class OptionsEditor
 		{
 			description.set(val);
 		}
-		
+
 		public final StringProperty getFileProperty()
 		{
 			return file;
@@ -1753,8 +1753,8 @@ public class OptionsEditor
 		{
 			file.set(val);
 		}
-		
-		
+
+
 		public final IntegerProperty getHashCodeProperty()
 		{
 			return hashCode;
@@ -1767,7 +1767,7 @@ public class OptionsEditor
 		{
 			hashCode.set(val);
 		}
-		
+
 		@Override
 		public boolean equals(Object o)
 		{
@@ -1796,7 +1796,7 @@ public class OptionsEditor
 			}
 			return false;
 		}
-		
+
 		@Override
 		public int hashCode()
 		{
@@ -1805,7 +1805,7 @@ public class OptionsEditor
 					name.get().hashCode() + 11*date.get() + 15*size.get() + 18*id.get();
 		}
 	}
-	
+
 	private TableView<RegionRow> buildDownloadRegionTable(){
 		downloadRegionTable = new TableView<RegionRow>();
 		downloadRegionTable.setEditable(false);
@@ -1826,13 +1826,13 @@ public class OptionsEditor
 		dateColumn.setCellValueFactory(new PropertyValueFactory<RegionRow, String>("date"));
 		fileColumn.setCellValueFactory(new PropertyValueFactory<RegionRow, String>("file"));
 		hashCodeColumn.setCellValueFactory(new PropertyValueFactory<RegionRow, String>("hashCode"));
-		
+
 		downloadRegionTable.getColumns().addAll(idColumn,nameColumn,authorColumn,descriptionColumn,fileColumn,
 				sizeColumn,dateColumn,hashCodeColumn);
-		
+
 		return downloadRegionTable;
 	}
-	
+
 	/**
 	 * Returns -1 if it does not exist and the id of the color that is the replica if it does.
 	 * @param ccf
@@ -1857,7 +1857,7 @@ public class OptionsEditor
 		}
 		return -1;
 	}
-	
+
 	/**
 	 * Returns -1 if it does not exist and the id of the color that is the replica if it does.
 	 * @param sr
@@ -1882,7 +1882,7 @@ public class OptionsEditor
 		}
 		return -1;
 	}
-	
+
 	private boolean colorExistsLocally(int hashCode)
 	{
 		for(CustomColorFunction ccf: savedColors)
@@ -1894,7 +1894,7 @@ public class OptionsEditor
 		}
 		return false;
 	}
-	
+
 	private boolean regionExistsLocally(int hashCode)
 	{
 		for(SavedRegion sr: savedRegions)
@@ -1906,14 +1906,14 @@ public class OptionsEditor
 		}
 		return false;
 	}
-	
+
 	public class RegionRow
 	{
 		private final IntegerProperty id, size, date, hashCode;
 		private final StringProperty name, author, description, file;
-		
+
 		/**
-		 * 
+		 *
 		 * @param id
 		 * @param name
 		 * @param author
@@ -1933,7 +1933,7 @@ public class OptionsEditor
 			this.file = new SimpleStringProperty(file);
 			this.hashCode = new SimpleIntegerProperty(hashCode);
 		}
-		
+
 		public final IntegerProperty getIdProperty()
 		{
 			return id;
@@ -1946,7 +1946,7 @@ public class OptionsEditor
 		{
 			id.set(val);
 		}
-		
+
 		public final IntegerProperty getSizeProperty()
 		{
 			return size;
@@ -1959,7 +1959,7 @@ public class OptionsEditor
 		{
 			size.set(val);
 		}
-		
+
 		public final IntegerProperty getDateProperty()
 		{
 			return date;
@@ -1972,7 +1972,7 @@ public class OptionsEditor
 		{
 			date.set(val);
 		}
-		
+
 		public final StringProperty getNameProperty()
 		{
 			return name;
@@ -1985,7 +1985,7 @@ public class OptionsEditor
 		{
 			name.set(val);
 		}
-		
+
 		public final StringProperty getAuthorProperty()
 		{
 			return author;
@@ -1998,7 +1998,7 @@ public class OptionsEditor
 		{
 			author.set(val);
 		}
-		
+
 		public final StringProperty getDescriptionProperty()
 		{
 			return description;
@@ -2011,7 +2011,7 @@ public class OptionsEditor
 		{
 			description.set(val);
 		}
-		
+
 		public final StringProperty getFileProperty()
 		{
 			return file;
@@ -2024,7 +2024,7 @@ public class OptionsEditor
 		{
 			file.set(val);
 		}
-		
+
 		public final IntegerProperty getHashCodeProperty()
 		{
 			return hashCode;
@@ -2037,8 +2037,8 @@ public class OptionsEditor
 		{
 			hashCode.set(val);
 		}
-	
-		
+
+
 		@Override
 		public boolean equals(Object o)
 		{
@@ -2067,7 +2067,7 @@ public class OptionsEditor
 			}
 			return false;
 		}
-		
+
 		@Override
 		public int hashCode()
 		{
@@ -2076,7 +2076,7 @@ public class OptionsEditor
 					name.get().hashCode() + 11*date.get() + 15*size.get() + 18*id.get();
 		}
 	}
-	
+
 	private TableView<ImageRow> buildDownloadImageTable(){
 		downloadImageTable = new TableView<ImageRow>();
 		downloadImageTable.setPlaceholder(new Label("There is no data available.\nCheck your internet connection."));
@@ -2103,22 +2103,22 @@ public class OptionsEditor
 		heightColumn.setCellValueFactory(new PropertyValueFactory<ImageRow, String>("height"));
 		dateColumn.setCellValueFactory(new PropertyValueFactory<ImageRow, String>("date"));
 		fileColumn.setCellValueFactory(new PropertyValueFactory<ImageRow, String>("file"));
-		
+
 		downloadImageTable.getColumns().addAll(idColumn,nameColumn,authorColumn,descriptionColumn,fileColumn,
 				setTypeColumn, widthColumn, heightColumn, sizeColumn,dateColumn, fileTypeColumn);
-		
-		
-		
+
+
+
 		return downloadImageTable;
 	}
-	
+
 	public class ImageRow
 	{
 		private final IntegerProperty id, width, height, size, date;
 		private final StringProperty name, author, description, file, setType, fileType;
-		
+
 		/**
-		 * 
+		 *
 		 * @param id
 		 * @param name
 		 * @param author
@@ -2146,7 +2146,7 @@ public class OptionsEditor
 			this.fileType = new SimpleStringProperty(fileType);
 			this.setType = new SimpleStringProperty(setType);
 		}
-		
+
 		public final IntegerProperty getIdProperty()
 		{
 			return id;
@@ -2159,7 +2159,7 @@ public class OptionsEditor
 		{
 			id.set(val);
 		}
-		
+
 		public final IntegerProperty getHeightProperty()
 		{
 			return height;
@@ -2172,7 +2172,7 @@ public class OptionsEditor
 		{
 			height.set(val);
 		}
-		
+
 		public final IntegerProperty getWidthProperty()
 		{
 			return width;
@@ -2185,7 +2185,7 @@ public class OptionsEditor
 		{
 			width.set(val);
 		}
-		
+
 		public final IntegerProperty getSizeProperty()
 		{
 			return size;
@@ -2198,7 +2198,7 @@ public class OptionsEditor
 		{
 			size.set(val);
 		}
-		
+
 		public final IntegerProperty getDateProperty()
 		{
 			return date;
@@ -2211,7 +2211,7 @@ public class OptionsEditor
 		{
 			date.set(val);
 		}
-		
+
 		public final StringProperty getNameProperty()
 		{
 			return name;
@@ -2224,7 +2224,7 @@ public class OptionsEditor
 		{
 			name.set(val);
 		}
-		
+
 		public final StringProperty getAuthorProperty()
 		{
 			return author;
@@ -2237,7 +2237,7 @@ public class OptionsEditor
 		{
 			author.set(val);
 		}
-		
+
 		public final StringProperty getDescriptionProperty()
 		{
 			return description;
@@ -2250,7 +2250,7 @@ public class OptionsEditor
 		{
 			description.set(val);
 		}
-		
+
 		public final StringProperty getFileProperty()
 		{
 			return file;
@@ -2263,7 +2263,7 @@ public class OptionsEditor
 		{
 			file.set(val);
 		}
-		
+
 		public final StringProperty getFileTypeProperty()
 		{
 			return fileType;
@@ -2276,7 +2276,7 @@ public class OptionsEditor
 		{
 			fileType.set(val);
 		}
-		
+
 		public final StringProperty getSetTypeProperty()
 		{
 			return setType;
@@ -2289,7 +2289,7 @@ public class OptionsEditor
 		{
 			setType.set(val);
 		}
-	
+
 		@Override
 		public boolean equals(Object o)
 		{
@@ -2321,7 +2321,7 @@ public class OptionsEditor
 			}
 			return false;
 		}
-		
+
 		@Override
 		public int hashCode()
 		{
@@ -2331,7 +2331,7 @@ public class OptionsEditor
 					name.get().hashCode() + 11*date.get() + 15*size.get() + 18*id.get();
 		}
 	}
-	
+
 	private Button buildDownloadButton()
 	{
 		Button button = new Button("Download");
@@ -2347,11 +2347,11 @@ public class OptionsEditor
 			} else {
 				System.out.println("Unknown type");
 			}
-			
+
 		});
 		return button;
 	}
-	
+
 	private void requestColorDownload()
 	{
 		ColorRow row;
@@ -2362,7 +2362,7 @@ public class OptionsEditor
 			alert.show();
 			return;
 		}
-		
+
 		if(colorExistsLocally(row.getHashCode()))
 		{
 			Alert alert = new Alert(AlertType.INFORMATION);
@@ -2370,14 +2370,14 @@ public class OptionsEditor
 			alert.show();
 			return;
 		}
-		
+
 		boolean downloadRegion = false;
 		String downloadRegionName = "";
 		boolean downloadImage = false;
 		String downloadImageName = "";
 		String newFile = "";
-		
-		
+
+
 		try
 		{
 			ResultSet set = stmt2.executeQuery("SELECT * FROM Linked WHERE ColorID = " + row.getId() + ";");
@@ -2406,7 +2406,7 @@ public class OptionsEditor
 								set.next();
 								if(!regionExistsLocally(set.getInt("HashCode")))
 								{
-									
+
 									downloadRegion = true;
 									downloadRegionName = set.getString("File");
 									set.close();
@@ -2419,7 +2419,7 @@ public class OptionsEditor
 				{
 					set.close();
 				}
-				
+
 				set = stmt2.executeQuery("SELECT * FROM Linked WHERE ColorID = " + row.getId() + ";");
 				if(set.isBeforeFirst())
 				{
@@ -2440,13 +2440,13 @@ public class OptionsEditor
 						{
 							if(result.get().equals(buttonTypeYes))
 							{
-								
-								
+
+
 								set = stmt2.executeQuery("SELECT File, FileType FROM Images WHERE ID = " + imageID + ";");
 								if(set.isBeforeFirst())
 								{
 									set.next();
-									
+
 									FileChooser fc = new FileChooser();
 									fc.setTitle("Download");
 									File file = null;
@@ -2454,15 +2454,15 @@ public class OptionsEditor
 									{
 										return;
 									}
-									
+
 									newFile = file.getAbsolutePath();
 									String imageType = set.getString("FileType");
 									if(! newFile.endsWith("." + imageType))
 									{
 										newFile = new File(newFile + "." + imageType).getAbsolutePath();
 									}
-									
-									
+
+
 									downloadImage = true;
 									downloadImageName = set.getString("File");
 									set.close();
@@ -2488,13 +2488,13 @@ public class OptionsEditor
 			{
 				set.close();
 			}
-			
+
 		} catch (SQLException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		
-		
+
+
 		UploadDialog dialog = new UploadDialog();
 		Platform.runLater(()->{
 			dialog.show();
@@ -2509,13 +2509,13 @@ public class OptionsEditor
 		{
 			downloadImage("http://www.ezstein.xyz/uploads/images/" + downloadImageName, newFile);
 		}
-		
+
 		Platform.runLater(()->{
 			dialog.getResponseLabel().setText("Done");
 			dialog.enableClose();
 		});
 	}
-	
+
 	private void requestRegionDownload(){
 		RegionRow row;
 		if((row = downloadRegionTable.getSelectionModel().selectedItemProperty().get())==null)
@@ -2532,10 +2532,10 @@ public class OptionsEditor
 			alert.show();
 			return;
 		}
-		
-		
-		
-		
+
+
+
+
 		boolean downloadImage = false;
 		String newFile = "";
 		String fileName = "";
@@ -2566,7 +2566,7 @@ public class OptionsEditor
 							if(set.isBeforeFirst())
 							{
 								set.next();
-								
+
 								FileChooser fc = new FileChooser();
 								fc.setTitle("Download");
 								File file = null;
@@ -2574,7 +2574,7 @@ public class OptionsEditor
 								{
 									return;
 								}
-								
+
 								newFile = file.getAbsolutePath();
 								System.out.println("***** " + set.isClosed());
 								String imageType = set.getString("FileType");
@@ -2582,7 +2582,7 @@ public class OptionsEditor
 								{
 									newFile = new File(newFile + "." + imageType).getAbsolutePath();
 								}
-								
+
 								downloadImage = true;
 								fileName = set.getString("File");
 								set.close();
@@ -2607,25 +2607,25 @@ public class OptionsEditor
 		{
 			sqle.printStackTrace();
 		}
-		
+
 		UploadDialog dialog = new UploadDialog();
 		Platform.runLater(()->{
 			dialog.show();
 			dialog.getResponseLabel().setText("Downloading...");
 		});
 		downloadRegion("http://www.ezstein.xyz/uploads/regions/" + row.getFile());
-		
+
 		if(downloadImage)
 		{
 			downloadImage("http://www.ezstein.xyz/uploads/images/" + fileName, newFile);
 		}
-		
+
 		Platform.runLater(()->{
 			dialog.getResponseLabel().setText("Done");
 			dialog.enableClose();
 		});
 	}
-	
+
 	private void downloadImage(String uri, String imagePath)
 	{
 		HttpClient client = HttpClients.createDefault();
@@ -2641,7 +2641,7 @@ public class OptionsEditor
 			{
 				out.write(buffer, 0, length);
 			}
-			
+
 		} catch (ClientProtocolException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -2651,7 +2651,7 @@ public class OptionsEditor
 		}
 		finally
 		{
-			
+
 			try
 			{
 				if(in!=null)
@@ -2668,7 +2668,7 @@ public class OptionsEditor
 			}
 		}
 	}
-	
+
 	private void downloadColor(String uri)
 	{
 		HttpClient client = HttpClients.createDefault();
@@ -2710,15 +2710,15 @@ public class OptionsEditor
 				{
 					objectOut.close();
 				}
-					
-			
+
+
 			} catch (IOException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 		}
 	}
-	
+
 	private void downloadRegion(String uri)
 	{
 		HttpClient client = HttpClients.createDefault();
@@ -2740,7 +2740,7 @@ public class OptionsEditor
 			objectIn = new ObjectInputStream(new FileInputStream(Locator.locateFile("tmp/download/downloadFile.txt").toFile()));
 			SavedRegion sr = (SavedRegion)objectIn.readObject();
 			savedRegions.add(sr);
-			
+
 			/*The region may require dependencies on color functions*/
 			if(!savedColors.contains(sr.colorFunction))
 			{
@@ -2758,7 +2758,7 @@ public class OptionsEditor
 		}
 		finally
 		{
-			
+
 			try {
 				if(in!=null){
 					in.close();
@@ -2784,7 +2784,7 @@ public class OptionsEditor
 			}
 		}
 	}
-	
+
 	private void requestImageDownload(){
 		ImageRow row = downloadImageTable.getSelectionModel().selectedItemProperty().get();
 		if(row==null)
@@ -2794,7 +2794,7 @@ public class OptionsEditor
 			alert.show();
 			return;
 		}
-		
+
 		FileChooser fc = new FileChooser();
 		fc.setTitle("Download");
 		File file = null;
@@ -2802,16 +2802,16 @@ public class OptionsEditor
 		{
 			return;
 		}
-		
+
 		String newFile = file.getAbsolutePath();
 		String imageType = row.getFileType();
 		if(! newFile.endsWith("." + imageType))
 		{
 			newFile = new File(newFile + "." + imageType).getAbsolutePath();
 		}
-		
-		
-		
+
+
+
 		boolean downloadRegion =false;
 		String downloadFileName = "";
 		try
@@ -2860,36 +2860,36 @@ public class OptionsEditor
 			{
 				set.close();
 			}
-			
+
 		} catch (SQLException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		
+
 		UploadDialog dialog = new UploadDialog();
 		Platform.runLater(()->{
 			dialog.show();
 			dialog.getResponseLabel().setText("Downloading...");
 		});
-		
+
 		downloadImage("http://www.ezstein.xyz/uploads/images/" + row.getFile(),newFile);
 		if(downloadRegion)
 		{
 			downloadRegion("http://www.ezstein.xyz/uploads/regions/" +downloadFileName);
 		}
-		
+
 		Platform.runLater(()->{
 			dialog.getResponseLabel().setText("Done");
 			dialog.enableClose();
 		});
-		
+
 	}
-	
+
 	private Button buildApplyAndRerenderButton()
 	{
 		Button applyAndRerenderButton = new Button("Apply And Rerender");
 		applyAndRerenderButton.setOnAction(e->{
-			
+
 			ResultType result = askToSaveColor();
 			if(result == ResultType.CANCEL)
 			{
@@ -2901,20 +2901,20 @@ public class OptionsEditor
 					return;
 				}
 				gui.interrupt();
-				
+
 				Platform.runLater(()->{
 					setValues();
 					gui.drawSet();
 					gui.updateJuliaSetViewer();
 					window.close();
 				});
-				
+
 			});
 		});
-		
+
 		return applyAndRerenderButton;
 	}
-	
+
 	private Button buildSaveButton()
 	{
 		Button saveButton = new Button("Save As...");
@@ -2946,13 +2946,13 @@ public class OptionsEditor
 			{
 				return;
 			}
-			
+
 			/*Resets the values if a region has already been loaded*/
 			if(savedRegionsChoiceBox.getValue()!=null)
 			{
 				resetValues();
 			}
-			
+
 			SavedRegion savedRegion = new SavedRegion(name, autoIterationsCheckBox.isSelected(),
 					Integer.parseInt(iterationsField.getText()),
 					Integer.parseInt(precisionField.getText()), Integer.parseInt(threadCountField.getText()),
@@ -2962,41 +2962,41 @@ public class OptionsEditor
 		});
 		return saveButton;
 	}
-	
+
 	private Button buildApplyButton()
 	{
 		Button applyButton = new Button("Apply");
 		applyButton.setOnAction(e ->{
-			
+
 			ResultType result = askToSaveColor();
 			if(result == ResultType.CANCEL)
 			{
 				return;
 			}
-				
-				
+
+
 			gui.threadQueue.callLater(()->{
 				if(!checkValues())
 				{
 					return;
 				}
 				gui.interrupt();
-				
+
 				Platform.runLater(()->{
 					setValues();
 					window.close();
-					
+
 				});
-				
+
 			});
 		});
 		return applyButton;
 	}
-	
+
 	private Button buildCancelButton()
 	{
 		Button cancelButton = new Button("Cancel");
-		
+
 		cancelButton.setOnAction(e ->{
 			ResultType result = askToSaveColor();
 			if(result == ResultType.CANCEL)
@@ -3007,20 +3007,20 @@ public class OptionsEditor
 		});
 		return cancelButton;
 	}
-	
+
 	private boolean isConnectedToInternet()
 	{
 		try {
 			InetAddress address = InetAddress.getByName("www.ezstein.xyz");
-			return address.isReachable(1000);
+			return address.isReachable(10000);
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			//e.printStackTrace();
 		}
 		return false;
-		
+
 	}
-	
+
 	/**
 	 * Opens dialogs for prompting to save.
 	 * @return  No if it is not necessary to save a color or if No is selected.
@@ -3058,7 +3058,7 @@ public class OptionsEditor
 				{
 					return ResultType.CANCEL;
 				}
-				
+
 				if(!saveColor())
 				{
 					/*The cancel button was pressed when asking to name the color*/
@@ -3081,28 +3081,28 @@ public class OptionsEditor
 			return ResultType.NO;
 		}
 	}
-	
+
 	/**
 	 * Resets all the values to those currently in use by the gui.
 	 */
  	public void resetValues()
 	{
 		threadCountField.setText(gui.threadCount + "");
-		
+
 		autoIterationsCheckBox.setSelected(gui.autoIterations);
 		iterationsField.setDisable(gui.autoIterations);
 		iterationsField.setText(gui.iterations + "");
-		
-		
+
+
 		precisionField.setText(gui.precision + "");
 		colorChoiceBox.setValue(gui.mainCalculator.getColorFunction());
-		
+
 		arbitraryPrecision.setSelected(gui.arbitraryPrecision);
 		doublePrecision.setSelected(!gui.arbitraryPrecision);
 		currentRegion = gui.currentRegion;
 		currentJulia = gui.julia;
 		currentSeed = gui.juliaSeed;
-		
+
 		if(currentJulia)
 		{
 			set.setText("Julia set: ");
@@ -3117,11 +3117,11 @@ public class OptionsEditor
 				+ currentRegion.getCenterY().setScale(5, BigDecimal.ROUND_HALF_UP).stripTrailingZeros().toPlainString() + "i");
 		boxValue.setText(currentRegion.x1.subtract(currentRegion.x2).abs().setScale(5, BigDecimal.ROUND_HALF_UP).stripTrailingZeros().toPlainString() + "x" +
 				currentRegion.y1.subtract(currentRegion.y2).abs().setScale(5, BigDecimal.ROUND_HALF_UP).stripTrailingZeros().toPlainString());
-		
-		
+
+
 		initializeValues();
 	}
-	
+
 	/**
 	 * Loads a region from the choice box and sets all the values of the options editor.
 	 */
@@ -3131,7 +3131,7 @@ public class OptionsEditor
 		iterationsField.setText("" + sr.iterations);
 		precisionField.setText("" + sr.precision);
 		threadCountField.setText("" + sr.threadCount);
-		
+
 		autoIterationsCheckBox.setSelected(sr.autoIterations);
 		if(sr.autoIterations)
 		{
@@ -3141,7 +3141,7 @@ public class OptionsEditor
 		{
 			iterationsField.setDisable(false);
 		}
-		
+
 		if(sr.arbitraryPrecision)
 		{
 			arbitraryPrecision.setSelected(true);
@@ -3152,8 +3152,8 @@ public class OptionsEditor
 			arbitraryPrecision.setSelected(false);
 			doublePrecision.setSelected(true);
 		}
-		
-		
+
+
 		if(colorChoiceBox.getItems().contains(sr.colorFunction))
 		{
 			colorChoiceBox.setValue(sr.colorFunction);
@@ -3161,10 +3161,10 @@ public class OptionsEditor
 		else
 		{
 			/*Will NOT add color to file*/
-			
+
 		}
-		
-		
+
+
 		currentRegion = sr.region;
 		currentJulia = sr.julia;
 		currentSeed = sr.seed;
@@ -3184,21 +3184,21 @@ public class OptionsEditor
 				currentRegion.y1.subtract(currentRegion.y2).abs().setScale(5, BigDecimal.ROUND_HALF_UP).stripTrailingZeros().toPlainString());
 		gui.loggedRegions = new ArrayList<>();
 	}
-	
+
 	/**
 	 * Sets all the values of the gui to the values of the editor.
 	 */
 	public void setValues()
 	{
 		gui.threadCount = Integer.parseInt(threadCountField.getText());
-		
+
 		gui.autoIterations = autoIterationsCheckBox.isSelected();
 		if(!gui.autoIterations)
 		{
 			gui.iterations = Integer.parseInt(iterationsField.getText());
 		}
-		
-		
+
+
 		gui.precision = Integer.parseInt(precisionField.getText());
 		gui.mainCalculator.setColorFunction(colorChoiceBox.getValue());
 		gui.previewCalculator.setColorFunction(colorChoiceBox.getValue());
@@ -3207,7 +3207,7 @@ public class OptionsEditor
 		gui.julia = currentJulia;
 		gui.juliaSeed = currentSeed;
 	}
-	
+
 	/**
 	 * Validates all the values.
 	 * @return false if some values are not valid.
@@ -3260,7 +3260,7 @@ public class OptionsEditor
 			precisionField.setStyle("-fx-background-color:red");
 			returnValue = false;
 		}
-		
+
 		return returnValue;
 	}
 
@@ -3276,18 +3276,18 @@ public class OptionsEditor
 				grid.setPadding(new Insets(25,25,25,25));
 				grid.setHgap(10);
 				grid.setVgap(10);
-				
+
 				responseLabel = new Label("");
 				closeButton = new Button("Close");
 				closeButton.setDisable(true);
 				closeButton.setOnAction(e->{
 					stage.close();
 				});
-				
+
 				//grid.add(new Label("Uploading..."),0,0);
 				grid.add(responseLabel,0,1);
 				grid.add(closeButton,0,2);
-				
+
 				stage.setTitle("Waiting");
 				Scene scene = new Scene(grid);
 				stage.setHeight(200);
@@ -3295,22 +3295,22 @@ public class OptionsEditor
 				stage.setScene(scene);
 			});
 		}
-		
+
 		public Label getResponseLabel(){
 			return responseLabel;
 		}
-		
+
 		public void enableClose()
 		{
 			closeButton.setDisable(false);
 		}
-		
+
 		public void show()
 		{
 			stage.show();
 		}
 	}
-	
+
 	enum ResultType {YES, CANCEL, NO}
 	/**
 	 * A custom cell for use in the list view.
@@ -3322,7 +3322,7 @@ public class OptionsEditor
 		HBox hbox;
 		Canvas canvas;
 		Label label;
-		
+
 		/**
 		 * Constructs this cell with a label and a canvas that will hold the color of the cell.
 		 */
@@ -3336,7 +3336,7 @@ public class OptionsEditor
 			label = new Label();
 			hbox.getChildren().addAll(label, canvas);
 		}
-		
+
 		@Override
 		protected void updateItem(Stop item, boolean empty)
 		{
