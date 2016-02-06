@@ -2500,14 +2500,14 @@ public class OptionsEditor
 			dialog.show();
 			dialog.getResponseLabel().setText("Downloading Image...");
 		});
-		downloadColor("http://www.ezstein.xyz/uploads/colors/" + row.getFile());
+		downloadColor("http://www.ezstein.xyz/serverScripts/download.php?download=/uploads/colors/" + row.getFile());
 		if(downloadRegion)
 		{
-			downloadRegion("http://www.ezstein.xyz/uploads/regions/" + downloadRegionName);
+			downloadRegion("http://www.ezstein.xyz/serverScripts/download.php?download=/uploads/regions/" + downloadRegionName);
 		}
 		if(downloadImage)
 		{
-			downloadImage("http://www.ezstein.xyz/uploads/images/" + downloadImageName, newFile);
+			downloadImage("http://www.ezstein.xyz/serverScripts/download.php?download=/uploads/images/" + downloadImageName, newFile);
 		}
 		
 		Platform.runLater(()->{
@@ -2613,11 +2613,11 @@ public class OptionsEditor
 			dialog.show();
 			dialog.getResponseLabel().setText("Downloading...");
 		});
-		downloadRegion("http://www.ezstein.xyz/uploads/regions/" + row.getFile());
+		downloadRegion("http://www.ezstein.xyz/serverScripts/download.php?download=/uploads/regions/" + row.getFile());
 		
 		if(downloadImage)
 		{
-			downloadImage("http://www.ezstein.xyz/uploads/images/" + fileName, newFile);
+			downloadImage("http://www.ezstein.xyz/serverScripts/download.php?download=/uploads/images/" + fileName, newFile);
 		}
 		
 		Platform.runLater(()->{
@@ -2872,10 +2872,10 @@ public class OptionsEditor
 			dialog.getResponseLabel().setText("Downloading...");
 		});
 		
-		downloadImage("http://www.ezstein.xyz/uploads/images/" + row.getFile(),newFile);
+		downloadImage("http://www.ezstein.xyz/serverScripts/download.php?download=/uploads/images/" + row.getFile(),newFile);
 		if(downloadRegion)
 		{
-			downloadRegion("http://www.ezstein.xyz/uploads/regions/" +downloadFileName);
+			downloadRegion("http://www.ezstein.xyz/serverScripts/download.php?download=/uploads/regions/" +downloadFileName);
 		}
 		
 		Platform.runLater(()->{

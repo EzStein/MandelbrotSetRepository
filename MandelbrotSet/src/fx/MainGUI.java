@@ -22,6 +22,7 @@ import java.awt.image.*;
 import java.io.*;
 import java.math.*;
 import java.text.*;
+import java.time.LocalTime;
 import java.util.*;
 import java.util.concurrent.*;
 import colorFunction.CustomColorFunction;
@@ -70,6 +71,7 @@ public class MainGUI extends Application
 	int width, height, previewWidth, previewHeight, iterations, precision, initX, initY, imageX, imageY, threadCount;
 	int scrollX, scrollY;
 	long startTime, endTime;
+	double estimatedTime;
 	double zoomFactor;
 	
 	/**
@@ -92,8 +94,8 @@ public class MainGUI extends Application
 	{
 		writeFiles();
 		//showStartDialog();
-		width = 500;
-		height = 500;
+		width = 600;
+		height = 600;
 		initializeVariables();
 		
 		/*Sets the root*/
@@ -1155,7 +1157,7 @@ public class MainGUI extends Application
 	 */
 	public void drawSet()
 	{
-		startTime = System.currentTimeMillis();
+		
 		idle = false;
 		magnification = originalRegion.getWidth().divide(currentRegion.getWidth(), precision, BigDecimal.ROUND_HALF_UP);
 		if(autoIterations)
@@ -1174,6 +1176,7 @@ public class MainGUI extends Application
 		allocateThreadsInRectangles();
 		
 		updateTextArea();
+		startTime = System.currentTimeMillis();
 	}
 	
 	private void allocateThreadsInSquares()
@@ -1235,7 +1238,8 @@ public class MainGUI extends Application
 	public void updateTextArea()
 	{
 		Platform.runLater(()->{
-			
+			long seconds = Math.round((estimatedTime/1000)) % (24*60*60-1);
+			LocalTime timeOfDay = LocalTime.ofSecondOfDay(seconds);
 			textArea.setText("Magnification: " + format(magnification.setScale(1, BigDecimal.ROUND_HALF_UP))+ "x\n" + 
 					"Iterations: " + iterations + "\n"
 					+ "Precision: " + precision + "\n"
@@ -1245,7 +1249,7 @@ public class MainGUI extends Application
 					+ "Threads: " + threadCount + "\n"
 					+ "Color: " + mainCalculator.getColorFunction().toString() + "\n"
 					+ "Arbitrary Precision: " + arbitraryPrecision + "\n"
-					+ "Time: " + (endTime - startTime) +"\n");
+					+ "Estimated Time: " + timeOfDay.toString() +"\n");
 		});
 	}
 	
@@ -1412,13 +1416,14 @@ public class MainGUI extends Application
 				{
 					break;
 				}
-				Platform.runLater(new Runnable(){
-					public void run()
-					{
-						progressBar.setProgress(mainCalculator.getPixelsCalculated()/(viewerCanvas.getWidth()*viewerCanvas.getHeight()));
-						progressIndicator.setProgress(mainCalculator.getPixelsCalculated()/(viewerCanvas.getWidth()*viewerCanvas.getHeight()));
-					}
-				});
+				Platform.runLater(() -> {
+					double percentComplete = (double)mainCalculator.getPixelsCalculated()/((double)viewerCanvas.getWidth()*viewerCanvas.getHeight());
+						progressBar.setProgress(percentComplete);
+						progressIndicator.setProgress(percentComplete);
+						
+						estimatedTime=((System.currentTimeMillis()-startTime)/percentComplete) - (System.currentTimeMillis()-startTime);
+						updateTextArea();
+					});
 				if(mainCalculator.getPixelsCalculated() >= viewerCanvas.getWidth()*viewerCanvas.getHeight())
 				{
 					idle = true;
