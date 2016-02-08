@@ -1,0 +1,449 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.application.*?>
+<?import javafx.beans.property.*?>
+<?import javafx.beans.value.*?>
+<?import javafx.collections.*?>
+<?import javafx.geometry.*?>
+<?import javafx.scene.*?>
+<?import javafx.scene.canvas.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.control.Alert.*?>
+<?import javafx.scene.control.ButtonBar.*?>
+<?import javafx.scene.control.cell.*?>
+<?import javafx.scene.input.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.paint.*?>
+<?import javafx.scene.shape.*?>
+<?import javafx.scene.text.*?>
+<?import javafx.stage.*?>
+<?import javafx.util.*?>
+<?import javafx.scene.layout.GridPane?>
+
+<BorderPane xmlns:fx="http://javafx.com/fxml" fx:controller="fx.Test">
+	<bottom>
+		<HBox>
+			<padding>
+				<Insets>
+					<top>10</top>
+					<bottom>10</bottom>
+					<left>10</left>
+					<right>10</right>
+				</Insets>
+			</padding>
+			<spacing>10</spacing>
+			<Button>
+				<text>Apply And Rerender</text>
+			</Button>
+			<Button>
+				<text>Apply</text>
+			</Button>
+			<Button>
+				<text>Save As...</text>
+			</Button>
+			<Button>
+				<text>Cancel</text>
+			</Button>
+		</HBox>
+	</bottom>
+	<center>
+		<TabPane>
+		
+			<Tab>
+				<text>Options</text>
+				<closable>false</closable>
+				<GridPane>
+					<hgap>10</hgap>
+					<vgap>10</vgap>
+					<padding>
+						<Insets>
+							<top>10</top>
+							<bottom>10</bottom>
+							<left>10</left>
+							<right>10</right>
+						</Insets>
+					</padding>
+					<Label>
+						<text>Saved Regions</text>
+						<GridPane.columnIndex>0</GridPane.columnIndex>
+						<GridPane.rowIndex>0</GridPane.rowIndex>
+						<GridPane.columnSpan>2</GridPane.columnSpan>
+					</Label>
+					<Label>
+						<text>Iterations</text>
+						<GridPane.columnIndex>0</GridPane.columnIndex>
+						<GridPane.rowIndex>1</GridPane.rowIndex>
+					</Label>
+					<Label>
+						<text>Precision</text>
+						<GridPane.columnIndex>0</GridPane.columnIndex>
+						<GridPane.rowIndex>3</GridPane.rowIndex>
+					</Label>
+					<Label>
+						<text>Threads</text>
+						<GridPane.columnIndex>0</GridPane.columnIndex>
+						<GridPane.rowIndex>4</GridPane.rowIndex>
+					</Label>
+					
+					<CheckBox fx:id="autoIterationsCheckBox">
+						<text>Auto Iterations</text>
+						<GridPane.columnIndex>1</GridPane.columnIndex>
+						<GridPane.rowIndex>1</GridPane.rowIndex>
+					</CheckBox>
+					<TextField fx:id = "iterationsField">
+						<GridPane.columnIndex>1</GridPane.columnIndex>
+						<GridPane.rowIndex>2</GridPane.rowIndex>
+					</TextField>
+					<TextField fx:id = "precisionField">
+						<GridPane.columnIndex>1</GridPane.columnIndex>
+						<GridPane.rowIndex>3</GridPane.rowIndex>
+					</TextField>
+					<TextField fx:id = "threadsField">
+						<GridPane.columnIndex>1</GridPane.columnIndex>
+						<GridPane.rowIndex>4</GridPane.rowIndex>
+					</TextField>
+					<fx:define>
+						<ToggleGroup fx:id="precisionToggleGroup"/>
+					</fx:define>
+					<RadioButton fx:id = "doublePrecisionRadioButton" toggleGroup="$precisionToggleGroup">
+						<text>Double Precision</text>
+						<GridPane.columnIndex>1</GridPane.columnIndex>
+						<GridPane.rowIndex>5</GridPane.rowIndex>
+					</RadioButton>
+					<RadioButton fx:id="arbitraryPrecisionRadioButton" toggleGroup="$precisionToggleGroup">
+						<text>Arbitrary Precision</text>
+						<GridPane.columnIndex>1</GridPane.columnIndex>
+						<GridPane.rowIndex>6</GridPane.rowIndex>
+					</RadioButton>
+					<ComboBox fx:id="savedRegionsComboBox">
+						<GridPane.columnIndex>2</GridPane.columnIndex>
+						<GridPane.rowIndex>0</GridPane.rowIndex>
+					</ComboBox>
+					<Label fx:id="setLabel">
+						<GridPane.columnIndex>2</GridPane.columnIndex>
+						<GridPane.rowIndex>1</GridPane.rowIndex>
+					</Label>
+					<Label>
+						<text>Center:</text>
+						<GridPane.columnIndex>2</GridPane.columnIndex>
+						<GridPane.rowIndex>2</GridPane.rowIndex>
+					</Label>
+					<Label>
+						<text>Box Dimensions:</text>
+						<GridPane.columnIndex>2</GridPane.columnIndex>
+						<GridPane.rowIndex>3</GridPane.rowIndex>
+					</Label>
+					
+					<Button>
+						<text>Remove Region</text>
+						<GridPane.columnIndex>3</GridPane.columnIndex>
+						<GridPane.rowIndex>0</GridPane.rowIndex>
+					</Button>
+					<Label fx:id="seedLabel">
+						<GridPane.columnIndex>3</GridPane.columnIndex>
+						<GridPane.rowIndex>1</GridPane.rowIndex>
+					</Label>
+					<Label fx:id="centerLabel">
+						<GridPane.columnIndex>3</GridPane.columnIndex>
+						<GridPane.rowIndex>2</GridPane.rowIndex>
+					</Label>
+					<Label fx:id="dimensionsLabel">
+						<GridPane.columnIndex>3</GridPane.columnIndex>
+						<GridPane.rowIndex>3</GridPane.rowIndex>
+					</Label>
+				</GridPane>
+			</Tab>
+			
+			<Tab>
+				<text>Colors</text>
+				<closable>false</closable>
+				<GridPane>
+					<hgap>10</hgap>
+					<vgap>10</vgap>
+					<padding>
+						<Insets>
+							<top>10</top>
+							<bottom>10</bottom>
+							<left>10</left>
+							<right>10</right>
+						</Insets>
+					</padding>
+					
+					<ComboBox fx:id="colorComboBox">
+						<GridPane.columnIndex>0</GridPane.columnIndex>
+						<GridPane.rowIndex>0</GridPane.rowIndex>
+					</ComboBox>
+					<Rectangle fx:id="gradientRectangle">
+						<GridPane.columnIndex>0</GridPane.columnIndex>
+						<GridPane.rowIndex>2</GridPane.rowIndex>
+						<GridPane.rowSpan>2</GridPane.rowSpan>
+						<GridPane.columnSpan>2</GridPane.columnSpan>
+					</Rectangle>
+					<Button>
+						<text>Add Color</text>
+						<GridPane.columnIndex>0</GridPane.columnIndex>
+						<GridPane.rowIndex>3</GridPane.rowIndex>
+					</Button>
+					
+					<ColorPicker fx:id="colorPicker">
+						<GridPane.columnIndex>1</GridPane.columnIndex>
+						<GridPane.rowIndex>0</GridPane.rowIndex>
+					</ColorPicker>
+					<Slider>
+						<GridPane.columnIndex>1</GridPane.columnIndex>
+						<GridPane.rowIndex>1</GridPane.rowIndex>
+					</Slider>
+					<Button fx:id="removeColorButton">
+						<text>Remove Color</text>
+						<GridPane.columnIndex>1</GridPane.columnIndex>
+						<GridPane.rowIndex>3</GridPane.rowIndex>
+					</Button>
+					
+					<Label>
+						<text>Range:</text>
+						<GridPane.columnIndex>2</GridPane.columnIndex>
+						<GridPane.rowIndex>0</GridPane.rowIndex>
+					</Label>
+					<ListView fx:id="stopListView">
+						<GridPane.columnIndex>2</GridPane.columnIndex>
+						<GridPane.rowIndex>2</GridPane.rowIndex>
+						<GridPane.columnSpan>2</GridPane.columnSpan>
+					</ListView>
+					<Button>
+						<text>Add Stop</text>
+						<GridPane.columnIndex>2</GridPane.columnIndex>
+						<GridPane.rowIndex>3</GridPane.rowIndex>
+					</Button>
+					
+					<TextField fx:id="rangeField">
+						<GridPane.columnIndex>3</GridPane.columnIndex>
+						<GridPane.rowIndex>0</GridPane.rowIndex>
+					</TextField>
+					<Button fx:id="removeStopButton">
+						<text>Remove Stop</text>
+						<GridPane.columnIndex>3</GridPane.columnIndex>
+						<GridPane.rowIndex>3</GridPane.rowIndex>
+					</Button>
+				</GridPane>
+			</Tab>
+				
+			<Tab>
+				<text>Upload</text>
+				<closable>false</closable>
+				<GridPane>
+					<hgap>10</hgap>
+					<vgap>10</vgap>
+					<padding>
+						<Insets>
+							<top>10</top>
+							<bottom>10</bottom>
+							<left>10</left>
+							<right>10</right>
+						</Insets>
+					</padding>
+					
+					<Label>
+						<text>Name</text>
+						<GridPane.columnIndex>0</GridPane.columnIndex>
+						<GridPane.rowIndex>0</GridPane.rowIndex>
+					</Label>
+					<TextField fx:id="uploadNameField">
+						<GridPane.columnIndex>0</GridPane.columnIndex>
+						<GridPane.rowIndex>1</GridPane.rowIndex>
+					</TextField>
+					<Label>
+						<text>Author</text>
+						<GridPane.columnIndex>0</GridPane.columnIndex>
+						<GridPane.rowIndex>2</GridPane.rowIndex>
+					</Label>
+					<TextField fx:id="uploadAuthorField">
+						<GridPane.columnIndex>0</GridPane.columnIndex>
+						<GridPane.rowIndex>3</GridPane.rowIndex>
+					</TextField>
+					<Label>
+						<text>Description</text>
+						<GridPane.columnIndex>0</GridPane.columnIndex>
+						<GridPane.rowIndex>4</GridPane.rowIndex>
+					</Label>
+					<TextArea fx:id="uploadDescriptionArea">
+						<GridPane.columnIndex>0</GridPane.columnIndex>
+						<GridPane.rowIndex>5</GridPane.rowIndex>
+					</TextArea>
+					<Button fx:id="uploadButton">
+						<text>Upload</text>
+						<GridPane.columnIndex>0</GridPane.columnIndex>
+						<GridPane.rowIndex>6</GridPane.rowIndex>
+					</Button>
+					
+					<ComboBox fx:id="uploadTypeComboBox">
+						<GridPane.columnIndex>1</GridPane.columnIndex>
+						<GridPane.rowIndex>0</GridPane.rowIndex>
+					</ComboBox>
+					<Label>
+						<text>Upload Region:</text>
+						<GridPane.columnIndex>1</GridPane.columnIndex>
+						<GridPane.rowIndex>1</GridPane.rowIndex>
+					</Label>
+					<ComboBox fx:id="uploadRegionComboBox">
+						<GridPane.columnIndex>1</GridPane.columnIndex>
+						<GridPane.rowIndex>2</GridPane.rowIndex>
+					</ComboBox>
+					<Label>
+						<text>Upload Color:</text>
+						<GridPane.columnIndex>1</GridPane.columnIndex>
+						<GridPane.rowIndex>3</GridPane.rowIndex>
+					</Label>
+					<ComboBox fx:id="uploadColorComboBox">
+						<GridPane.columnIndex>1</GridPane.columnIndex>
+						<GridPane.rowIndex>4</GridPane.rowIndex>
+					</ComboBox>
+					
+				</GridPane>
+			</Tab>
+			
+			<Tab>
+				<text>Download</text>
+				<closable>false</closable>
+				<GridPane>
+					<hgap>10</hgap>
+					<vgap>10</vgap>
+					<padding>
+						<Insets>
+							<top>10</top>
+							<bottom>10</bottom>
+							<left>10</left>
+							<right>10</right>
+						</Insets>
+					</padding>
+					
+					<Label>
+						<text>Downloads</text>
+						<GridPane.columnIndex>0</GridPane.columnIndex>
+						<GridPane.rowIndex>0</GridPane.rowIndex>
+					</Label>
+					<TabPane>
+						<GridPane.columnIndex>0</GridPane.columnIndex>
+						<GridPane.rowIndex>1</GridPane.rowIndex>
+						<GridPane.columnSpan>2</GridPane.columnSpan>
+						<GridPane.rowSpan>5</GridPane.rowSpan>
+						<Tab>
+							<text>Images</text>
+							<closable>false</closable>
+							<TableView>
+								<columns>
+								
+									<TableColumn>
+										<text>ID</text>
+									</TableColumn>
+									<TableColumn>
+										<text>Name</text>
+									</TableColumn>
+									<TableColumn>
+										<text>Author</text>
+									</TableColumn>
+									<TableColumn>
+										<text>Description</text>
+									</TableColumn>
+									<TableColumn>
+										<text>File</text>
+									</TableColumn>
+									<TableColumn>
+										<text>SetType</text>
+									</TableColumn>
+									<TableColumn>
+										<text>Width</text>
+									</TableColumn>
+									<TableColumn>
+										<text>Height</text>
+									</TableColumn>
+									<TableColumn>
+										<text>Size</text>
+									</TableColumn>
+									<TableColumn>
+										<text>Date</text>
+									</TableColumn>
+									<TableColumn>
+										<text>FileType</text>
+									</TableColumn>
+								</columns>
+							</TableView>
+						</Tab>
+						<Tab>
+							<text>Regions</text>
+							<closable>false</closable>
+							<TableView>
+								<columns>
+								
+									<TableColumn>
+										<text>ID</text>
+									</TableColumn>
+									<TableColumn>
+										<text>Name</text>
+									</TableColumn>
+									<TableColumn>
+										<text>Author</text>
+									</TableColumn>
+									<TableColumn>
+										<text>Description</text>
+									</TableColumn>
+									<TableColumn>
+										<text>File</text>
+									</TableColumn>
+									<TableColumn>
+										<text>Size</text>
+									</TableColumn>
+									<TableColumn>
+										<text>Date</text>
+									</TableColumn>
+									<TableColumn>
+										<text>HashCode</text>
+									</TableColumn>
+								</columns>
+							</TableView>
+						</Tab>
+						<Tab>
+							<text>Colors</text>
+							<closable>false</closable>
+							<TableView>
+								<columns>
+									<TableColumn>
+										<text>ID</text>
+									</TableColumn>
+									<TableColumn>
+										<text>Name</text>
+									</TableColumn>
+									<TableColumn>
+										<text>Author</text>
+									</TableColumn>
+									<TableColumn>
+										<text>Description</text>
+									</TableColumn>
+									<TableColumn>
+										<text>File</text>
+									</TableColumn>
+									<TableColumn>
+										<text>Size</text>
+									</TableColumn>
+									<TableColumn>
+										<text>Date</text>
+									</TableColumn>
+									<TableColumn>
+										<text>HashCode</text>
+									</TableColumn>
+								</columns>
+							</TableView>
+						</Tab>
+					</TabPane>
+					<Button>
+						<text>Download</text>
+						<GridPane.columnIndex>0</GridPane.columnIndex>
+						<GridPane.rowIndex>6</GridPane.rowIndex>
+					</Button>
+					
+					
+				</GridPane>
+			</Tab>
+		</TabPane>
+	</center>
+</BorderPane>
+	

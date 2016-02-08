@@ -448,6 +448,7 @@ public class OptionsEditor
 	private Tab buildOptionsTab()
 	{
 		Tab optionsTab = new Tab("Options");
+		
 		optionsTab.setClosable(false);
 		GridPane optionsGridPane;
 		optionsGridPane= new GridPane();
