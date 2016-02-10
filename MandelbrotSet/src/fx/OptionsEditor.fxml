@@ -19,8 +19,14 @@
 <?import javafx.stage.*?>
 <?import javafx.util.*?>
 <?import javafx.scene.layout.GridPane?>
+<?import java.net.*?>
+<?import javafx.scene.control.cell.PropertyValueFactory?>
+<?import javafx.scene.image.ImageView?>
 
-<BorderPane xmlns:fx="http://javafx.com/fxml" fx:controller="fx.Test">
+<BorderPane fx:controller="fx.OptionsEditorController" xmlns:fx="fx">
+	<stylesheets>
+		<URL value="@OptionsStyleSheet.css" />
+	</stylesheets>
 	<bottom>
 		<HBox>
 			<padding>
@@ -32,22 +38,22 @@
 				</Insets>
 			</padding>
 			<spacing>10</spacing>
-			<Button>
+			<Button onAction="#applyAndRerender">
 				<text>Apply And Rerender</text>
 			</Button>
-			<Button>
+			<Button onAction="#apply">
 				<text>Apply</text>
 			</Button>
-			<Button>
+			<Button onAction="#save">
 				<text>Save As...</text>
 			</Button>
-			<Button>
+			<Button onAction="#cancel">
 				<text>Cancel</text>
 			</Button>
 		</HBox>
 	</bottom>
 	<center>
-		<TabPane>
+		<TabPane fx:id="tabs">
 		
 			<Tab>
 				<text>Options</text>
@@ -85,7 +91,7 @@
 						<GridPane.rowIndex>4</GridPane.rowIndex>
 					</Label>
 					
-					<CheckBox fx:id="autoIterationsCheckBox">
+					<CheckBox fx:id="autoIterationsCheckBox" onAction="#toggleAutoIterations">
 						<text>Auto Iterations</text>
 						<GridPane.columnIndex>1</GridPane.columnIndex>
 						<GridPane.rowIndex>1</GridPane.rowIndex>
@@ -103,7 +109,7 @@
 						<GridPane.rowIndex>4</GridPane.rowIndex>
 					</TextField>
 					<fx:define>
-						<ToggleGroup fx:id="precisionToggleGroup"/>
+						<ToggleGroup/>
 					</fx:define>
 					<RadioButton fx:id = "doublePrecisionRadioButton" toggleGroup="$precisionToggleGroup">
 						<text>Double Precision</text>
@@ -115,7 +121,7 @@
 						<GridPane.columnIndex>1</GridPane.columnIndex>
 						<GridPane.rowIndex>6</GridPane.rowIndex>
 					</RadioButton>
-					<ComboBox fx:id="savedRegionsComboBox">
+					<ComboBox fx:id="savedRegionsComboBox" onAction="#savedRegionChanged">
 						<GridPane.columnIndex>2</GridPane.columnIndex>
 						<GridPane.rowIndex>0</GridPane.rowIndex>
 					</ComboBox>
@@ -134,7 +140,7 @@
 						<GridPane.rowIndex>3</GridPane.rowIndex>
 					</Label>
 					
-					<Button>
+					<Button onAction="#removeRegion">
 						<text>Remove Region</text>
 						<GridPane.columnIndex>3</GridPane.columnIndex>
 						<GridPane.rowIndex>0</GridPane.rowIndex>
@@ -169,31 +175,35 @@
 						</Insets>
 					</padding>
 					
-					<ComboBox fx:id="colorComboBox">
+					<ComboBox fx:id="colorComboBox" onAction="#colorChanged">
 						<GridPane.columnIndex>0</GridPane.columnIndex>
 						<GridPane.rowIndex>0</GridPane.rowIndex>
 					</ComboBox>
 					<Rectangle fx:id="gradientRectangle">
+						<width>200</width>
+						<height>300</height>
 						<GridPane.columnIndex>0</GridPane.columnIndex>
 						<GridPane.rowIndex>2</GridPane.rowIndex>
 						<GridPane.rowSpan>2</GridPane.rowSpan>
 						<GridPane.columnSpan>2</GridPane.columnSpan>
 					</Rectangle>
-					<Button>
+					<Button onAction="#addColor">
 						<text>Add Color</text>
 						<GridPane.columnIndex>0</GridPane.columnIndex>
 						<GridPane.rowIndex>3</GridPane.rowIndex>
 					</Button>
 					
-					<ColorPicker fx:id="colorPicker">
+					<ColorPicker fx:id="colorPicker" onAction="#colorPickerEvent">
 						<GridPane.columnIndex>1</GridPane.columnIndex>
 						<GridPane.rowIndex>0</GridPane.rowIndex>
 					</ColorPicker>
-					<Slider>
+					<Slider fx:id="colorPositionSlider">
+						<min>0</min>
+						<max>1</max>
 						<GridPane.columnIndex>1</GridPane.columnIndex>
 						<GridPane.rowIndex>1</GridPane.rowIndex>
 					</Slider>
-					<Button fx:id="removeColorButton">
+					<Button fx:id="removeColorButton" onAction="#removeColor">
 						<text>Remove Color</text>
 						<GridPane.columnIndex>1</GridPane.columnIndex>
 						<GridPane.rowIndex>3</GridPane.rowIndex>
@@ -209,7 +219,7 @@
 						<GridPane.rowIndex>2</GridPane.rowIndex>
 						<GridPane.columnSpan>2</GridPane.columnSpan>
 					</ListView>
-					<Button>
+					<Button onAction="#addStop">
 						<text>Add Stop</text>
 						<GridPane.columnIndex>2</GridPane.columnIndex>
 						<GridPane.rowIndex>3</GridPane.rowIndex>
@@ -219,7 +229,7 @@
 						<GridPane.columnIndex>3</GridPane.columnIndex>
 						<GridPane.rowIndex>0</GridPane.rowIndex>
 					</TextField>
-					<Button fx:id="removeStopButton">
+					<Button fx:id="removeStopButton" onAction="#removeStop">
 						<text>Remove Stop</text>
 						<GridPane.columnIndex>3</GridPane.columnIndex>
 						<GridPane.rowIndex>3</GridPane.rowIndex>
@@ -269,13 +279,13 @@
 						<GridPane.columnIndex>0</GridPane.columnIndex>
 						<GridPane.rowIndex>5</GridPane.rowIndex>
 					</TextArea>
-					<Button fx:id="uploadButton">
+					<Button fx:id="uploadButton" onAction="#upload">
 						<text>Upload</text>
 						<GridPane.columnIndex>0</GridPane.columnIndex>
 						<GridPane.rowIndex>6</GridPane.rowIndex>
 					</Button>
 					
-					<ComboBox fx:id="uploadTypeComboBox">
+					<ComboBox fx:id="uploadTypeComboBox" onAction="#uploadTypeChanged">
 						<GridPane.columnIndex>1</GridPane.columnIndex>
 						<GridPane.rowIndex>0</GridPane.rowIndex>
 					</ComboBox>
@@ -284,16 +294,13 @@
 						<GridPane.columnIndex>1</GridPane.columnIndex>
 						<GridPane.rowIndex>1</GridPane.rowIndex>
 					</Label>
-					<ComboBox fx:id="uploadRegionComboBox">
-						<GridPane.columnIndex>1</GridPane.columnIndex>
-						<GridPane.rowIndex>2</GridPane.rowIndex>
-					</ComboBox>
+					<ComboBox fx:id="uploadRegionComboBox" GridPane.columnIndex="1" GridPane.rowIndex="2" onAction="#uploadRegionChanged" />
 					<Label>
 						<text>Upload Color:</text>
 						<GridPane.columnIndex>1</GridPane.columnIndex>
 						<GridPane.rowIndex>3</GridPane.rowIndex>
 					</Label>
-					<ComboBox fx:id="uploadColorComboBox">
+					<ComboBox fx:id="uploadColorComboBox" onAction="#uploadColorChanged">
 						<GridPane.columnIndex>1</GridPane.columnIndex>
 						<GridPane.rowIndex>4</GridPane.rowIndex>
 					</ComboBox>
@@ -321,7 +328,10 @@
 						<GridPane.columnIndex>0</GridPane.columnIndex>
 						<GridPane.rowIndex>0</GridPane.rowIndex>
 					</Label>
-					<TabPane>
+					<Label text="Preview Image:" GridPane.columnIndex="2" GridPane.rowIndex="0"/>
+					<ImageView fx:id="imageView" GridPane.columnIndex="2" GridPane.rowIndex="1" 
+							fitWidth="100" fitHeight="100"/>
+					<TabPane fx:id="tables">
 						<GridPane.columnIndex>0</GridPane.columnIndex>
 						<GridPane.rowIndex>1</GridPane.rowIndex>
 						<GridPane.columnSpan>2</GridPane.columnSpan>
@@ -329,74 +339,105 @@
 						<Tab>
 							<text>Images</text>
 							<closable>false</closable>
-							<TableView>
+							<TableView fx:id="downloadImageTable">
 								<columns>
 								
-									<TableColumn>
-										<text>ID</text>
+									<TableColumn text="ID">
+										<cellValueFactory><PropertyValueFactory property="id" />
+										</cellValueFactory>
 									</TableColumn>
-									<TableColumn>
-										<text>Name</text>
+									<TableColumn text="Name">
+										<cellValueFactory><PropertyValueFactory property="name" />
+										</cellValueFactory>
 									</TableColumn>
-									<TableColumn>
-										<text>Author</text>
+									<TableColumn text="Author">
+										<cellValueFactory><PropertyValueFactory property="author" />
+										</cellValueFactory>
 									</TableColumn>
-									<TableColumn>
-										<text>Description</text>
+									<TableColumn text="Description">
+										
+										<cellValueFactory><PropertyValueFactory property="description" />
+										</cellValueFactory>
 									</TableColumn>
-									<TableColumn>
-										<text>File</text>
+									<TableColumn text="File">
+										
+										<cellValueFactory><PropertyValueFactory property="file" />
+										</cellValueFactory>
 									</TableColumn>
-									<TableColumn>
-										<text>SetType</text>
+									<TableColumn text="Set Type">
+										
+										<cellValueFactory><PropertyValueFactory property="setType" />
+										</cellValueFactory>
 									</TableColumn>
-									<TableColumn>
-										<text>Width</text>
+									<TableColumn text="Width">
+										
+										<cellValueFactory><PropertyValueFactory property="width" />
+										</cellValueFactory>
 									</TableColumn>
-									<TableColumn>
-										<text>Height</text>
+									<TableColumn text="Height">
+										
+										<cellValueFactory><PropertyValueFactory property="height" />
+										</cellValueFactory>
 									</TableColumn>
-									<TableColumn>
-										<text>Size</text>
+									<TableColumn text="Size">
+										
+										<cellValueFactory><PropertyValueFactory property="size" />
+										</cellValueFactory>
 									</TableColumn>
-									<TableColumn>
-										<text>Date</text>
+									<TableColumn text="Date">
+										
+										<cellValueFactory><PropertyValueFactory property="date" />
+										</cellValueFactory>
 									</TableColumn>
-									<TableColumn>
-										<text>FileType</text>
+									<TableColumn text="File Type">
+										<cellValueFactory><PropertyValueFactory property="fileType" />
+										</cellValueFactory>
 									</TableColumn>
 								</columns>
 							</TableView>
+							
 						</Tab>
 						<Tab>
 							<text>Regions</text>
 							<closable>false</closable>
-							<TableView>
+							<TableView fx:id="downloadRegionTable">
 								<columns>
 								
-									<TableColumn>
-										<text>ID</text>
+									<TableColumn text="ID">
+										<cellValueFactory><PropertyValueFactory property="id" />
+										</cellValueFactory>
 									</TableColumn>
-									<TableColumn>
-										<text>Name</text>
+									<TableColumn text="Name">
+										<cellValueFactory><PropertyValueFactory property="name" />
+										</cellValueFactory>
 									</TableColumn>
-									<TableColumn>
-										<text>Author</text>
+									<TableColumn text="Author">
+										<cellValueFactory><PropertyValueFactory property="author" />
+										</cellValueFactory>
 									</TableColumn>
-									<TableColumn>
-										<text>Description</text>
+									<TableColumn text="Description">
+										
+										<cellValueFactory><PropertyValueFactory property="description" />
+										</cellValueFactory>
 									</TableColumn>
-									<TableColumn>
-										<text>File</text>
+									<TableColumn text="File">
+										
+										<cellValueFactory><PropertyValueFactory property="file" />
+										</cellValueFactory>
 									</TableColumn>
-									<TableColumn>
-										<text>Size</text>
+									<TableColumn text="Size">
+										
+										<cellValueFactory><PropertyValueFactory property="size" />
+										</cellValueFactory>
 									</TableColumn>
-									<TableColumn>
-										<text>Date</text>
+									<TableColumn text="Date">
+										
+										<cellValueFactory><PropertyValueFactory property="date" />
+										</cellValueFactory>
 									</TableColumn>
-									<TableColumn>
-										<text>HashCode</text>
+									<TableColumn text="Hash Code">
+										<cellValueFactory><PropertyValueFactory property="hashCode" />
+										</cellValueFactory>
 									</TableColumn>
 								</columns>
 							</TableView>
@@ -404,37 +445,51 @@
 						<Tab>
 							<text>Colors</text>
 							<closable>false</closable>
-							<TableView>
+							<TableView fx:id="downloadColorTable">
 								<columns>
-									<TableColumn>
-										<text>ID</text>
+								
+									<TableColumn text="ID">
+										<cellValueFactory><PropertyValueFactory property="id" />
+										</cellValueFactory>
 									</TableColumn>
-									<TableColumn>
-										<text>Name</text>
+									<TableColumn text="Name">
+										<cellValueFactory><PropertyValueFactory property="name" />
+										</cellValueFactory>
 									</TableColumn>
-									<TableColumn>
-										<text>Author</text>
+									<TableColumn text="Author">
+										<cellValueFactory><PropertyValueFactory property="author" />
+										</cellValueFactory>
 									</TableColumn>
-									<TableColumn>
-										<text>Description</text>
+									<TableColumn text="Description">
+										
+										<cellValueFactory><PropertyValueFactory property="description" />
+										</cellValueFactory>
 									</TableColumn>
-									<TableColumn>
-										<text>File</text>
+									<TableColumn text="File">
+										
+										<cellValueFactory><PropertyValueFactory property="file" />
+										</cellValueFactory>
 									</TableColumn>
-									<TableColumn>
-										<text>Size</text>
+									<TableColumn text="Size">
+										
+										<cellValueFactory><PropertyValueFactory property="size" />
+										</cellValueFactory>
 									</TableColumn>
-									<TableColumn>
-										<text>Date</text>
+									<TableColumn text="Date">
+										
+										<cellValueFactory><PropertyValueFactory property="date" />
+										</cellValueFactory>
 									</TableColumn>
-									<TableColumn>
-										<text>HashCode</text>
+									<TableColumn text="Hash Code">
+										<cellValueFactory><PropertyValueFactory property="hashCode" />
+										</cellValueFactory>
 									</TableColumn>
 								</columns>
 							</TableView>
+							
 						</Tab>
 					</TabPane>
-					<Button>
+					<Button onAction="#download">
 						<text>Download</text>
 						<GridPane.columnIndex>0</GridPane.columnIndex>
 						<GridPane.rowIndex>6</GridPane.rowIndex>

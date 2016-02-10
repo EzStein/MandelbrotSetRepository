@@ -4,6 +4,7 @@ import javafx.animation.Animation.*;
 import javafx.application.*;
 import javafx.beans.value.*;
 import javafx.embed.swing.SwingFXUtils;
+import javafx.fxml.FXMLLoader;
 import javafx.geometry.*;
 import javafx.scene.*;
 import javafx.scene.canvas.*;
@@ -54,7 +55,7 @@ public class MainGUI extends Application
 	ArrayList<PannedImage> pannedImages;
 	ArrayList<Region<BigDecimal>> loggedRegions;
 	//ArrayList<Thread> runningThreads;
-	OptionsEditor optionsEditor;
+	OptionsEditorController optionsEditor;
 	Timeline timeline;
 	BigDecimal magnification;
 	Object lock = new Object();
@@ -168,7 +169,6 @@ public class MainGUI extends Application
 	private void initializeMoreValues()
 	{
 		progressBar.setPrefWidth(window.getScene().getWidth()-50);
-		optionsEditor = new OptionsEditor(this);
 	}
 	
 	private void addWindowListener()
@@ -363,7 +363,7 @@ public class MainGUI extends Application
 	{
 		MenuItem menuItem = new MenuItem("Make Your Own...");
 		menuItem.setOnAction(e ->{
-			optionsEditor.showEditDialog(1);
+			showEditDialog(1);
 		});
 		return menuItem;
 	}
@@ -570,7 +570,7 @@ public class MainGUI extends Application
 		 * Opens the edit dialog 
 		 */
 		edit.setOnAction(e -> {
-				optionsEditor.showEditDialog(0);
+				showEditDialog(0);
 			});
 		return edit;
 	}
@@ -1680,4 +1680,25 @@ public class MainGUI extends Application
 			}
 		}
 	}
+	
+	private void showEditDialog(int tabNumber){
+		Stage stage = new Stage();
+		stage.initModality(Modality.APPLICATION_MODAL);
+		Parent root =null;
+		FXMLLoader loader =new FXMLLoader(this.getClass().getResource("OptionsEditor.fxml"));
+		try {
+			root = loader.load();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		OptionsEditorController controller = loader.getController();
+		controller.initializeController(this, tabNumber, stage);
+		
+		Scene scene = new Scene(root);
+		
+		stage.setScene(scene);
+		stage.show();
+	}
 }
+
