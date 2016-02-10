@@ -80,9 +80,6 @@ public class OptionsEditorController
 	private ComplexBigDecimal currentSeed;
 	private int tabNumber;
 	private SimpleListProperty<CustomColorFunction> savedColors;
-	
-	private Statement stmt = null;
-	private Statement stmt2 = null;
 	private Thread databaseUpdater;
 	private Connection conn;
 	
@@ -90,9 +87,6 @@ public class OptionsEditorController
 		this.gui = gui;
 		this.window = window;
 		this.tabNumber = tabNumber;
-		stmt = null;
-		stmt2 = null;
-		
 		addListeners();
 		readFiles();
 		buildThreads();
@@ -128,13 +122,12 @@ public class OptionsEditorController
 						uploadButton.setDisable(true);
 						uploadButton.setText("Check Internet Connection");
 					});
-
-					stmt = null;
+					conn = null;
 				}
 				else
 				{
 
-					if(stmt == null)
+					if(conn == null)
 					{
 						openConnection();
 					}
@@ -172,10 +165,6 @@ public class OptionsEditorController
 		//THIS DISPLAYS PASS IN PLAINTEXT!!!!
 		try {
 			conn = DriverManager.getConnection("jdbc:mysql://www.ezstein.xyz:3306/WebDatabase", "java", "javaPass");
-			stmt = conn.createStatement();
-			Connection conn2 = DriverManager.getConnection("jdbc:mysql://www.ezstein.xyz:3306/WebDatabase", "java", "javaPass");
-			stmt2 = conn2.createStatement();
-
 		} catch (SQLException e) {
 			downloadRegionTable.setItems(FXCollections.observableArrayList(new ArrayList<RegionRow>()));
 			downloadColorTable.setItems(FXCollections.observableArrayList(new ArrayList<ColorRow>()));
@@ -185,16 +174,27 @@ public class OptionsEditorController
 
 	private void connect()
 	{
+		Statement statement=null;
 		try
 		{
 			if(!isConnectedToInternet())
 			{
 				return;
 			}
+			statement = conn.createStatement();
 			ArrayList<ImageRow> dataImage = new ArrayList<ImageRow>();
-			ResultSet set = stmt.executeQuery("SELECT * FROM Images");
+			ResultSet set = statement.executeQuery("SELECT * FROM Images");
 			while(set.next()){
-					ImageRow imageRow = new ImageRow(
+				boolean newRow=true;
+				int id=set.getInt("ID");
+				for(ImageRow row:downloadImageTable.getItems()){
+					if(row.getId()==id){
+						newRow=false;
+					}
+				}
+				
+				if(newRow){
+					dataImage.add(new ImageRow(
 							set.getInt("ID"),
 							set.getString("Name"),
 							set.getString("Author"),
@@ -205,51 +205,68 @@ public class OptionsEditorController
 							set.getInt("Height"),
 							set.getInt("Size"),
 							set.getInt("Date"),
-							set.getString("FileType"));
-					if(!downloadImageTable.getItems().contains(imageRow))
-					{
-						imageRow.setImage(downloadImageAsObject("https://www.ezstein.xyz/uploads/images/thumbnails/" + set.getString("file")));
-						dataImage.add(imageRow);
-					}
+							set.getString("FileType"),
+							downloadImageAsObject("https://www.ezstein.xyz/uploads/images/thumbnails/"
+							+ set.getString("file"))));
 				}
+			}
 			set.close();
-			Set<ImageRow> imageRowA = new HashSet<ImageRow>(dataImage);
-			Set<ImageRow> imageRowB = new HashSet<ImageRow>(downloadImageTable.getItems());
-			/*Subtracts B From A to find difference in the two sets*/
-			imageRowA.removeAll(imageRowB);
-			downloadImageTable.getItems().addAll(imageRowA);
+			downloadImageTable.getItems().addAll(dataImage);
 
 			if(!isConnectedToInternet())
 			{
 				return;
 			}
+			Statement linkedStatement = conn.createStatement();
 			ArrayList<RegionRow> dataRegion = new ArrayList<RegionRow>();
-			set = stmt.executeQuery("SELECT * FROM Regions");
+			set = statement.executeQuery("SELECT * FROM Regions");
 			while(set.next()){
-					dataRegion.add(new RegionRow(
-							set.getInt("ID"),
+				boolean newRegion = true;
+				int id=set.getInt("ID");
+				for(RegionRow row: downloadRegionTable.getItems()){
+					if(row.getId()==id){
+						newRegion=false;
+					}
+				}
+				if(newRegion){
+					ResultSet linkedResult = linkedStatement.executeQuery("SELECT * FROM Linked WHERE RegionID=" + id + ";");
+					RegionRow regionRow = new RegionRow(
+							id,
 							set.getString("Name"),
 							set.getString("Author"),
 							set.getString("Description"),
 							set.getString("file"),
 							set.getInt("Size"),
 							set.getInt("Date"),
-							set.getInt("HashCode")
-							));
+							set.getInt("HashCode"));
+					if(linkedResult.isBeforeFirst())
+					{
+						//Not Empty
+						linkedResult.next();
+						int imageID=0;
+						if((imageID = linkedResult.getInt("ImageID"))>0){
+							//Not Null
+							linkedResult.close();
+							linkedResult = linkedStatement.executeQuery("SELECT File FROM Images WHERE ID=" + imageID + ";");
+							linkedResult.next();
+							regionRow.setImage(downloadImageAsObject("https://www.ezstein.xyz/uploads/images/thumbnails/"
+							+ linkedResult.getString("file")));
+							
+						}
+					}
+					linkedResult.close();
+					dataRegion.add(regionRow);
+				}
 			}
 			set.close();
-			Set<RegionRow> regionRowA = new HashSet<RegionRow>(dataRegion);
-			Set<RegionRow> regionRowB = new HashSet<RegionRow>(downloadRegionTable.getItems());
-			/*Subtracts B From A to find difference in the two sets*/
-			regionRowA.removeAll(regionRowB);
-			downloadRegionTable.getItems().addAll(regionRowA);
+			downloadRegionTable.getItems().addAll(dataRegion);
 
 			if(!isConnectedToInternet())
 			{
 				return;
 			}
 			ArrayList<ColorRow> dataColor = new ArrayList<ColorRow>();
-			set = stmt.executeQuery("SELECT * FROM Colors");
+			set = statement.executeQuery("SELECT * FROM Colors");
 			while(set.next()){
 					dataColor.add(new ColorRow(
 							set.getInt("ID"),
@@ -271,6 +288,13 @@ public class OptionsEditorController
 
 		} catch (SQLException e) {
 			e.printStackTrace();
+		}finally{
+			try {
+				statement.close();
+			} catch (SQLException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 		}
 	}
 
@@ -404,14 +428,6 @@ public class OptionsEditorController
 			e.printStackTrace();
 		}
 		try{
-			if(stmt != null)
-			{
-				stmt.close();
-			}
-			if(stmt2 != null)
-			{
-				stmt2.close();
-			}
 			if(conn !=null)
 			{
 				conn.close();
@@ -442,7 +458,34 @@ public class OptionsEditorController
 
 			@Override
 			public void changed(ObservableValue<? extends ImageRow> observable, ImageRow oldValue, ImageRow newValue) {
-				imageView.setImage(downloadImageTable.getSelectionModel().getSelectedItem().getImage());
+				ImageRow imageRow = downloadImageTable.getSelectionModel().getSelectedItem();
+				if(imageRow!=null){
+					imageView.setImage(imageRow.getImage());
+				}
+				
+			}
+		});
+		
+		downloadColorTable.getSelectionModel().selectedItemProperty().addListener(new ChangeListener<ColorRow>(){
+
+			@Override
+			public void changed(ObservableValue<? extends ColorRow> observable, ColorRow oldValue, ColorRow newValue) {
+				ColorRow colorRow = downloadColorTable.getSelectionModel().getSelectedItem();
+				if(colorRow!=null){
+					imageView.setImage(colorRow.getImage());
+				}
+				
+			}
+		});
+		
+		downloadRegionTable.getSelectionModel().selectedItemProperty().addListener(new ChangeListener<RegionRow>(){
+
+			@Override
+			public void changed(ObservableValue<? extends RegionRow> observable, RegionRow oldValue, RegionRow newValue) {
+				RegionRow regionRow = downloadRegionTable.getSelectionModel().getSelectedItem();
+				if(regionRow !=null) {
+					imageView.setImage(regionRow.getImage());
+				}
 			}
 		});
 	}
@@ -1366,9 +1409,17 @@ public class OptionsEditorController
 	 */
 	private int existsInDatabase(CustomColorFunction ccf)
 	{
+		Statement statement = null;
+		ResultSet set = null;
+		try {
+			statement = conn.createStatement();
+		} catch (SQLException e1) {
+			// TODO Auto-generated catch block\\
+			e1.printStackTrace();
+		}
 		try
 		{
-			ResultSet set = stmt.executeQuery("SELECT ID, HashCode FROM Colors;");
+			set = statement.executeQuery("SELECT ID, HashCode FROM Colors;");
 			while(set.next())
 			{
 				if(set.getInt("HashCode") == ccf.hashCode())
@@ -1376,10 +1427,23 @@ public class OptionsEditorController
 					return set.getInt("ID");
 				}
 			}
-			set.close();
+			
 		} catch (SQLException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
+		} finally {
+			try {
+				set.close();
+			} catch (SQLException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			try {
+				statement.close();
+			} catch (SQLException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 		}
 		return -1;
 	}
@@ -1391,9 +1455,17 @@ public class OptionsEditorController
 	 */
 	private int existsInDatabase(SavedRegion sr)
 	{
+		Statement statement = null;
+		ResultSet set = null;
+		try {
+			statement = conn.createStatement();
+		} catch (SQLException e1) {
+			// TODO Auto-generated catch block\\
+			e1.printStackTrace();
+		}
 		try
 		{
-			ResultSet set = stmt.executeQuery("SELECT ID, HashCode FROM Regions;");
+			set = statement.executeQuery("SELECT ID, HashCode FROM Regions;");
 			while(set.next())
 			{
 				if(set.getInt("HashCode") == sr.hashCode())
@@ -1401,10 +1473,22 @@ public class OptionsEditorController
 					return set.getInt("ID");
 				}
 			}
-			set.close();
 		} catch (SQLException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
+		} finally {
+			try {
+				set.close();
+			} catch (SQLException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			try {
+				statement.close();
+			} catch (SQLException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 		}
 		return -1;
 	}
@@ -1458,10 +1542,11 @@ public class OptionsEditorController
 		String downloadImageName = "";
 		String newFile = "";
 
-
+		Statement statement = null;
 		try
 		{
-			ResultSet set = stmt2.executeQuery("SELECT * FROM Linked WHERE ColorID = " + row.getId() + ";");
+			statement = conn.createStatement();
+			ResultSet set = statement.executeQuery("SELECT * FROM Linked WHERE ColorID = " + row.getId() + ";");
 			if(set.isBeforeFirst())
 			{
 				set.next();
@@ -1481,7 +1566,7 @@ public class OptionsEditorController
 					{
 						if(result.get().equals(buttonTypeYes))
 						{
-							set = stmt2.executeQuery("SELECT File, HashCode FROM Regions WHERE ID = " + regionID + ";");
+							set = statement.executeQuery("SELECT File, HashCode FROM Regions WHERE ID = " + regionID + ";");
 							if(set.isBeforeFirst())
 							{
 								set.next();
@@ -1501,7 +1586,7 @@ public class OptionsEditorController
 					set.close();
 				}
 
-				set = stmt2.executeQuery("SELECT * FROM Linked WHERE ColorID = " + row.getId() + ";");
+				set = statement.executeQuery("SELECT * FROM Linked WHERE ColorID = " + row.getId() + ";");
 				if(set.isBeforeFirst())
 				{
 					set.next();
@@ -1523,7 +1608,7 @@ public class OptionsEditorController
 							{
 
 
-								set = stmt2.executeQuery("SELECT File, FileType FROM Images WHERE ID = " + imageID + ";");
+								set = statement.executeQuery("SELECT File, FileType FROM Images WHERE ID = " + imageID + ";");
 								if(set.isBeforeFirst())
 								{
 									set.next();
@@ -1573,6 +1658,13 @@ public class OptionsEditorController
 		} catch (SQLException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
+		} finally {
+			try {
+				statement.close();
+			} catch (SQLException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 		}
 
 
@@ -1620,9 +1712,11 @@ public class OptionsEditorController
 		boolean downloadImage = false;
 		String newFile = "";
 		String fileName = "";
+		Statement statement = null;
 		try
 		{
-			ResultSet set = stmt2.executeQuery("SELECT * FROM Linked WHERE RegionID = " + row.getId() + ";");
+			statement=conn.createStatement();
+			ResultSet set = statement.executeQuery("SELECT * FROM Linked WHERE RegionID = " + row.getId() + ";");
 			if(set.isBeforeFirst())
 			{
 				set.next();
@@ -1642,7 +1736,7 @@ public class OptionsEditorController
 					{
 						if(result.get().equals(buttonTypeYes))
 						{
-							set = stmt2.executeQuery("SELECT File, FileType FROM Images WHERE ID = " + imageID + ";");
+							set = statement.executeQuery("SELECT File, FileType FROM Images WHERE ID = " + imageID + ";");
 							System.out.println("***** " + set.isClosed());
 							if(set.isBeforeFirst())
 							{
@@ -1687,6 +1781,13 @@ public class OptionsEditorController
 		} catch(SQLException sqle)
 		{
 			sqle.printStackTrace();
+		} finally {
+			try {
+				statement.close();
+			} catch (SQLException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 		}
 
 		UploadDialog dialog = new UploadDialog();
@@ -1934,9 +2035,10 @@ public class OptionsEditorController
 
 		boolean downloadRegion =false;
 		String downloadFileName = "";
+		Statement statement = null;
 		try
 		{
-			ResultSet set = stmt2.executeQuery("SELECT * FROM Linked WHERE ImageID = " + row.getId() + ";");
+			ResultSet set = statement.executeQuery("SELECT * FROM Linked WHERE ImageID = " + row.getId() + ";");
 			if(set.isBeforeFirst())
 			{
 				set.next();
@@ -1957,7 +2059,7 @@ public class OptionsEditorController
 					{
 						if(result.get().equals(buttonTypeYes))
 						{
-							set = stmt2.executeQuery("SELECT File, HashCode FROM Regions WHERE ID = " + regionID + ";");
+							set = statement.executeQuery("SELECT File, HashCode FROM Regions WHERE ID = " + regionID + ";");
 							if(set.isBeforeFirst())
 							{
 								set.next();
@@ -2003,7 +2105,6 @@ public class OptionsEditorController
 			dialog.getResponseLabel().setText("Done");
 			dialog.enableClose();
 		});
-
 	}
 	
 	@FXML
@@ -2329,7 +2430,7 @@ public class OptionsEditorController
 	{
 		private final IntegerProperty id, size, date, hashCode;
 		private final StringProperty name, author, description, file;
-
+		private Image image;
 		/**
 		 *
 		 * @param id
@@ -2350,6 +2451,20 @@ public class OptionsEditorController
 			this.description = new SimpleStringProperty(description);
 			this.file = new SimpleStringProperty(file);
 			this.hashCode = new SimpleIntegerProperty(hashCode);
+			this.image=new Image("/resource/background.jpg");
+		}
+		
+		public RegionRow(int id, String name, String author, String description, String file, int size, int date, int hashCode, Image image)
+		{
+			this.id = new SimpleIntegerProperty(id);
+			this.size = new SimpleIntegerProperty(size);
+			this.date = new SimpleIntegerProperty(date);
+			this.name = new SimpleStringProperty(name);
+			this.author = new SimpleStringProperty(author);
+			this.description = new SimpleStringProperty(description);
+			this.file = new SimpleStringProperty(file);
+			this.hashCode = new SimpleIntegerProperty(hashCode);
+			this.image=image;
 		}
 
 		public final IntegerProperty getIdProperty()
@@ -2456,6 +2571,12 @@ public class OptionsEditorController
 			hashCode.set(val);
 		}
 
+		public final Image getImage(){
+			return image;
+		}
+		public final void setImage(Image image){
+			this.image=image;
+		}
 
 		@Override
 		public boolean equals(Object o)
@@ -2499,7 +2620,8 @@ public class OptionsEditorController
 	{
 		private final IntegerProperty id, size, date, hashCode;
 		private final StringProperty name, author, description, file;
-
+		private Image image;
+		
 		/**
 		 *
 		 * @param id
@@ -2520,6 +2642,20 @@ public class OptionsEditorController
 			this.description = new SimpleStringProperty(description);
 			this.file = new SimpleStringProperty(file);
 			this.hashCode = new SimpleIntegerProperty(hashCode);
+			this.image = new Image("/resource/background.jpg");
+		}
+		
+		public ColorRow(int id, String name, String author, String description, String file, int size, int date, int hashCode, Image image)
+		{
+			this.id = new SimpleIntegerProperty(id);
+			this.size = new SimpleIntegerProperty(size);
+			this.date = new SimpleIntegerProperty(date);
+			this.name = new SimpleStringProperty(name);
+			this.author = new SimpleStringProperty(author);
+			this.description = new SimpleStringProperty(description);
+			this.file = new SimpleStringProperty(file);
+			this.hashCode = new SimpleIntegerProperty(hashCode);
+			this.image = image;
 		}
 
 		public final IntegerProperty getIdProperty()
@@ -2627,6 +2763,12 @@ public class OptionsEditorController
 			hashCode.set(val);
 		}
 
+		public final Image getImage(){
+			return image;
+		}
+		public final void setImage(Image image){
+			this.image=image;
+		}
 		@Override
 		public boolean equals(Object o)
 		{

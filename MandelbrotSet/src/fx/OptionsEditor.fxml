@@ -447,7 +447,6 @@
 							<closable>false</closable>
 							<TableView fx:id="downloadColorTable">
 								<columns>
-								
 									<TableColumn text="ID">
 										<cellValueFactory><PropertyValueFactory property="id" />
 										</cellValueFactory>
