@@ -30,6 +30,7 @@ import javafx.scene.paint.*;
 import javafx.scene.shape.*;
 import javafx.stage.*;
 import javafx.util.*;
+import java.net.*;
 
 /**
  * This class is used to control all the options of the program including colors iterations threads etc.
@@ -65,13 +66,30 @@ public class OptionsEditorController
 	@FXML private TextField uploadAuthorField;
 	@FXML private TextArea uploadDescriptionArea;
 	@FXML private ComboBox<String> uploadTypeComboBox;
-	@FXML private TableView<ImageRow> downloadImageTable;
-	@FXML private TableView<RegionRow> downloadRegionTable;
-	@FXML private TableView<ColorRow> downloadColorTable;
+	@FXML private ListView<DownloadData> downloadsListView;
+	@FXML private RadioButton imagesRadioButton;
+	@FXML private RadioButton regionsRadioButton;
+	@FXML private RadioButton colorsRadioButton;
 	@FXML private Button uploadButton;
-	@FXML private TabPane tables;
 	@FXML private TabPane tabs;
 	@FXML private ImageView imageView;
+	@FXML private Label downloadNameField;
+	@FXML private Label downloadAuthorField;
+	@FXML private Label downloadDescriptionField;
+	@FXML private Label downloadDimensionsField;
+	@FXML private Label downloadSizeField;
+	@FXML private Label downloadDateField;
+	@FXML private Label downloadSetTypeField;
+	@FXML private Label downloadFileTypeField;
+	@FXML private Label downloadFileField;
+	@FXML private Label downloadIDField;
+	@FXML private ListView<LinkedDownload> linkedDownloadsListView;
+	@FXML private Button downloadButton;
+	@FXML private Label pageNumberLabel;
+	@FXML private ComboBox<SortType> sortByComboBox;
+	@FXML private ComboBox<String> searchTypeComboBox;
+	@FXML private TextField searchTextField;
+	@FXML private Button searchButton;
 	
 	private ObjectOutputStream out, colorOut;
 	private SimpleListProperty<SavedRegion> savedRegions;
@@ -82,11 +100,26 @@ public class OptionsEditorController
 	private SimpleListProperty<CustomColorFunction> savedColors;
 	private Thread databaseUpdater;
 	private Connection conn;
+	private SimpleListProperty<DownloadData> downloads;
+	private String baseImageQuery, baseRegionQuery, baseColorQuery;
+	private int downloadsPerPage, downloadsPageNumber, downloadsMaxPage;
 	
 	public void initializeController(MainGUI gui,int tabNumber, Stage window){
 		this.gui = gui;
 		this.window = window;
 		this.tabNumber = tabNumber;
+		downloads = new SimpleListProperty<DownloadData>(FXCollections.observableArrayList());
+		sortByComboBox.setItems(FXCollections.observableArrayList(
+				new SortType("Name","ASC"), new SortType("Name","DESC"),
+				new SortType("Author","ASC"),new SortType("Author","DESC"),
+				new SortType("Date","ASC"),new SortType("Date","DESC"),
+				new SortType("Size","ASC"),new SortType("Size","DESC")));
+		searchTypeComboBox.setItems(FXCollections.observableArrayList("Name", "Author","ID"));
+		searchTypeComboBox.getSelectionModel().select(0);
+		
+		sortByComboBox.getSelectionModel().select(0);
+		imagesRadioButton.setSelected(true);
+		
 		addListeners();
 		readFiles();
 		buildThreads();
@@ -95,6 +128,17 @@ public class OptionsEditorController
 	}
 	
 	private void initializeFXML() {
+		downloadsPerPage=3;
+		downloadsPageNumber=1;
+		
+		
+		baseImageQuery="SELECT * FROM Images";
+		baseRegionQuery="SELECT * FROM Regions";
+		baseColorQuery= "SELECT * FROM Colors";
+		
+		
+		
+		
 		uploadTypeComboBox.getItems().addAll("Image","Region","Color");
 		uploadTypeComboBox.getSelectionModel().select(0);
 		savedRegionsComboBox.setItems(savedRegions);
@@ -106,6 +150,10 @@ public class OptionsEditorController
 		tabs.getSelectionModel().select(tabNumber);
 		uploadColorComboBox.setDisable(true);
 		uploadRegionComboBox.setDisable(true);
+		linkedDownloadsListView.setPlaceholder(new Label("No Linked Downloads"));
+		downloadsListView.setPlaceholder(new Label("No Images Found\nCheck Internet Connection"));
+		
+		
 	}
 	
 	private void buildThreads()
@@ -116,26 +164,36 @@ public class OptionsEditorController
 				if(!isConnectedToInternet())
 				{
 					Platform.runLater(()->{
-						downloadRegionTable.setItems(FXCollections.observableArrayList(new ArrayList<RegionRow>()));
-						downloadColorTable.setItems(FXCollections.observableArrayList(new ArrayList<ColorRow>()));
-						downloadImageTable.setItems(FXCollections.observableArrayList(new ArrayList<ImageRow>()));
+						downloads.clear();
 						uploadButton.setDisable(true);
 						uploadButton.setText("Check Internet Connection");
+						downloadButton.setDisable(true);
+						downloadButton.setText("Check Internet Connection");
+						linkedDownloadsListView.getItems().clear();
+						imageView.setImage(new Image("/resource/defaultImage.jpg"));
 					});
 					conn = null;
 				}
 				else
 				{
-
+	
 					if(conn == null)
 					{
+						System.out.println("Connecting...");
 						openConnection();
+						updateDownloads();
+						calculateMaxPages();
+						System.out.println("Connection");
 					}
+					
 					Platform.runLater(()->{
+						pageNumberLabel.setText("Page Number: " + downloadsPageNumber + "/" + downloadsMaxPage);
 						uploadButton.setDisable(false);
 						uploadButton.setText("Upload");
+						downloadButton.setDisable(false);
+						downloadButton.setText("Download");
 					});
-					connect();
+					//connect();
 				}
 				try
 				{
@@ -148,6 +206,7 @@ public class OptionsEditorController
 			}
 		});
 		databaseUpdater.start();
+		
 	}
 
 	private void initializeValues()
@@ -166,14 +225,26 @@ public class OptionsEditorController
 		try {
 			conn = DriverManager.getConnection("jdbc:mysql://www.ezstein.xyz:3306/WebDatabase", "java", "javaPass");
 		} catch (SQLException e) {
-			downloadRegionTable.setItems(FXCollections.observableArrayList(new ArrayList<RegionRow>()));
-			downloadColorTable.setItems(FXCollections.observableArrayList(new ArrayList<ColorRow>()));
-			downloadImageTable.setItems(FXCollections.observableArrayList(new ArrayList<ImageRow>()));
+			downloads.clear();
 		}
 	}
 
-	private void connect()
+	private void updateDownloads()
 	{
+		SortType sortType = sortByComboBox.getSelectionModel().getSelectedItem();
+		String imageQuery= baseImageQuery +  " ORDER BY " + sortType.getSort()
+				 + " " + sortType.getDirection() + " LIMIT " + downloadsPerPage + " OFFSET "
+							+ (downloadsPageNumber-1)*downloadsPerPage + ";";
+		
+		
+		String regionQuery=baseRegionQuery + " ORDER BY " + sortType.getSort()
+		 + " " + sortType.getDirection() + " LIMIT " + downloadsPerPage + " OFFSET "
+					+ (downloadsPageNumber-1)*downloadsPerPage +";";
+		
+		
+		String colorQuery=baseColorQuery + " ORDER BY " + sortType.getSort()
+		 + " " + sortType.getDirection() + " LIMIT " + downloadsPerPage + " OFFSET "
+					+ (downloadsPageNumber-1)*downloadsPerPage +";";
 		Statement statement=null;
 		try
 		{
@@ -182,19 +253,11 @@ public class OptionsEditorController
 				return;
 			}
 			statement = conn.createStatement();
-			ArrayList<ImageRow> dataImage = new ArrayList<ImageRow>();
-			ResultSet set = statement.executeQuery("SELECT * FROM Images");
-			while(set.next()){
-				boolean newRow=true;
-				int id=set.getInt("ID");
-				for(ImageRow row:downloadImageTable.getItems()){
-					if(row.getId()==id){
-						newRow=false;
-					}
-				}
-				
-				if(newRow){
-					dataImage.add(new ImageRow(
+			
+			if(imagesRadioButton.isSelected()){
+				ResultSet set = statement.executeQuery(imageQuery);
+				while(set.next()){
+					DownloadData data = new DownloadData(
 							set.getInt("ID"),
 							set.getString("Name"),
 							set.getString("Author"),
@@ -207,89 +270,100 @@ public class OptionsEditorController
 							set.getInt("Date"),
 							set.getString("FileType"),
 							downloadImageAsObject("https://www.ezstein.xyz/uploads/images/thumbnails/"
-							+ set.getString("file"))));
+							+ set.getString("file")), DownloadType.IMAGE);
+					if(!downloads.contains(data)){
+						Platform.runLater(()->{
+							downloads.add(data);
+						});
+						
+					}
 				}
+				set.close();
 			}
-			set.close();
-			downloadImageTable.getItems().addAll(dataImage);
+			
 
 			if(!isConnectedToInternet())
 			{
 				return;
 			}
-			Statement linkedStatement = conn.createStatement();
-			ArrayList<RegionRow> dataRegion = new ArrayList<RegionRow>();
-			set = statement.executeQuery("SELECT * FROM Regions");
-			while(set.next()){
-				boolean newRegion = true;
-				int id=set.getInt("ID");
-				for(RegionRow row: downloadRegionTable.getItems()){
-					if(row.getId()==id){
-						newRegion=false;
-					}
-				}
-				if(newRegion){
-					ResultSet linkedResult = linkedStatement.executeQuery("SELECT * FROM Linked WHERE RegionID=" + id + ";");
-					RegionRow regionRow = new RegionRow(
-							id,
-							set.getString("Name"),
-							set.getString("Author"),
-							set.getString("Description"),
-							set.getString("file"),
-							set.getInt("Size"),
-							set.getInt("Date"),
-							set.getInt("HashCode"));
-					if(linkedResult.isBeforeFirst())
-					{
-						//Not Empty
-						linkedResult.next();
-						int imageID=0;
-						if((imageID = linkedResult.getInt("ImageID"))>0){
-							//Not Null
-							linkedResult.close();
-							linkedResult = linkedStatement.executeQuery("SELECT File FROM Images WHERE ID=" + imageID + ";");
+			if(regionsRadioButton.isSelected()){
+				Statement linkedStatement = conn.createStatement();
+				ResultSet set = statement.executeQuery(regionQuery);
+				while(set.next()){
+					int id=set.getInt("ID");
+						ResultSet linkedResult = linkedStatement.executeQuery("SELECT * FROM Linked WHERE RegionID=" + id + ";");
+						DownloadData data = new DownloadData(
+								id,
+								set.getString("Name"),
+								set.getString("Author"),
+								set.getString("Description"),
+								set.getString("file"),
+								set.getInt("Size"),
+								set.getInt("Date"),
+								DownloadType.REGION,
+								set.getInt("HashCode"));
+						
+						if(linkedResult.isBeforeFirst())
+						{
+							//Not Empty
 							linkedResult.next();
-							regionRow.setImage(downloadImageAsObject("https://www.ezstein.xyz/uploads/images/thumbnails/"
-							+ linkedResult.getString("file")));
-							
+							int imageID=0;
+							if((imageID = linkedResult.getInt("ImageID"))>0){
+								//Not Null
+								linkedResult.close();
+								linkedResult = linkedStatement.executeQuery("SELECT File FROM Images WHERE ID=" + imageID + ";");
+								linkedResult.next();
+								data.setImage(downloadImageAsObject("https://www.ezstein.xyz/uploads/images/thumbnails/"
+								+ linkedResult.getString("file")));
+								
+							}
+						
+						linkedResult.close();
+						if(!downloads.contains(data)){
+							Platform.runLater(()->{
+								downloads.add(data);
+							});
 						}
+						
 					}
-					linkedResult.close();
-					dataRegion.add(regionRow);
 				}
+				set.close();
 			}
-			set.close();
-			downloadRegionTable.getItems().addAll(dataRegion);
+			
 
 			if(!isConnectedToInternet())
 			{
 				return;
 			}
-			ArrayList<ColorRow> dataColor = new ArrayList<ColorRow>();
-			set = statement.executeQuery("SELECT * FROM Colors");
-			while(set.next()){
-					dataColor.add(new ColorRow(
-							set.getInt("ID"),
-							set.getString("Name"),
-							set.getString("Author"),
-							set.getString("Description"),
-							set.getString("file"),
-							set.getInt("Size"),
-							set.getInt("Date"),
-							set.getInt("HashCode")));
+			
+			if(colorsRadioButton.isSelected()){
+				ResultSet set = statement.executeQuery(colorQuery);
+				while(set.next()){
+					DownloadData data =  new DownloadData(set.getInt("ID"),
+									set.getString("Name"),
+									set.getString("Author"),
+									set.getString("Description"),
+									set.getString("file"),
+									set.getInt("Size"),
+									set.getInt("Date"), DownloadType.COLOR,
+									set.getInt("HashCode"));
+					
+					if(!downloads.contains(data)) {
+						Platform.runLater(()->{
+							downloads.add(data);
+						});
+					}
+					
 				}
-			set.close();
-			Set<ColorRow> colorRowA = new HashSet<ColorRow>(dataColor);
-			Set<ColorRow> colorRowB = new HashSet<ColorRow>(downloadColorTable.getItems());
-
-			/*Subtracts B From A to find difference in the two sets*/
-			colorRowA.removeAll(colorRowB);
-			downloadColorTable.getItems().addAll(colorRowA);
+				set.close();
+			}
+			
 
 		} catch (SQLException e) {
 			e.printStackTrace();
 		}finally{
 			try {
+				if(statement!=null)
 				statement.close();
 			} catch (SQLException e) {
 				// TODO Auto-generated catch block
@@ -444,6 +518,9 @@ public class OptionsEditorController
 		buildColorPositionSlider();
 		buildColorComboBox();
 		buildSavedRegionsComboBox();
+		buildListViewBindings();
+		buildDownloadListViews();
+		buildLinkedDownloadsListView();
 		
 		window.setOnCloseRequest(e ->{
 			ResultType result = askToSaveColor();
@@ -454,41 +531,111 @@ public class OptionsEditorController
 			close();
 		});
 		
-		downloadImageTable.getSelectionModel().selectedItemProperty().addListener(new ChangeListener<ImageRow>(){
+		sortByComboBox.getSelectionModel().selectedIndexProperty().addListener(new ChangeListener<Number>(){
 
 			@Override
-			public void changed(ObservableValue<? extends ImageRow> observable, ImageRow oldValue, ImageRow newValue) {
-				ImageRow imageRow = downloadImageTable.getSelectionModel().getSelectedItem();
-				if(imageRow!=null){
-					imageView.setImage(imageRow.getImage());
-				}
+			public void changed(ObservableValue<? extends Number> observable, Number oldValue, Number newValue) {
+			
+				downloads.clear();
+				pageNumberLabel.setText("Page Number: " + downloadsPageNumber + "/" + downloadsMaxPage);
 				
+				new Thread(()->{
+					updateDownloads();
+				}).start();
 			}
+			
 		});
 		
-		downloadColorTable.getSelectionModel().selectedItemProperty().addListener(new ChangeListener<ColorRow>(){
+	}
+	private void buildLinkedDownloadsListView(){
+		linkedDownloadsListView.getSelectionModel().selectedItemProperty().addListener(new ChangeListener<LinkedDownload>(){
 
 			@Override
-			public void changed(ObservableValue<? extends ColorRow> observable, ColorRow oldValue, ColorRow newValue) {
-				ColorRow colorRow = downloadColorTable.getSelectionModel().getSelectedItem();
-				if(colorRow!=null){
-					imageView.setImage(colorRow.getImage());
-				}
+			public void changed(ObservableValue<? extends LinkedDownload> observable, LinkedDownload oldValue,
+					LinkedDownload newValue) {
 				
 			}
+			
 		});
 		
-		downloadRegionTable.getSelectionModel().selectedItemProperty().addListener(new ChangeListener<RegionRow>(){
+		linkedDownloadsListView.setOnMouseClicked((me)->{
+			
+			if(me.getClickCount()==2){
+				if(downloadsListView.getItems().isEmpty()){
+					return;
+				}
+				LinkedDownload download=linkedDownloadsListView.getSelectionModel().getSelectedItem();
+				if(download.getType()==DownloadType.IMAGE){
+					baseImageQuery="SELECT * FROM Images WHERE ID=" + download.getId();
+					imagesRadioButton.setSelected(true);
+				} else if(download.getType()==DownloadType.REGION){
+					baseRegionQuery="SELECT * FROM Regions WHERE ID=" + download.getId();
+					regionsRadioButton.setSelected(true);
+				} else if(download.getType()==DownloadType.COLOR) {
+					baseColorQuery="SELECT * FROM Colors WHERE ID=" + download.getId();
+					colorsRadioButton.setSelected(true);
+				}
+				downloads.clear();
+				downloadsPageNumber=1;
+				downloadsMaxPage=1;
+				pageNumberLabel.setText("Page Number: 1/1");
+				new Thread(()->{
+					updateDownloads();
+				}).start();
+			}
+		});
+	}
+	
+	private void buildDownloadListViews(){
+
+		
+		downloadsListView.getSelectionModel().selectedItemProperty().addListener(new ChangeListener<DownloadData>(){
 
 			@Override
-			public void changed(ObservableValue<? extends RegionRow> observable, RegionRow oldValue, RegionRow newValue) {
-				RegionRow regionRow = downloadRegionTable.getSelectionModel().getSelectedItem();
-				if(regionRow !=null) {
-					imageView.setImage(regionRow.getImage());
+			public void changed(ObservableValue<? extends DownloadData> observable, DownloadData oldValue,
+					DownloadData newValue)
+			{
+				DownloadData data = downloadsListView.getSelectionModel().getSelectedItem();
+				if(data!=null){
+					imageView.setImage(data.getImage());
+					downloadNameField.setText("Name: "+data.getName());
+					downloadAuthorField.setText("Author: "+ data.getAuthor());
+					downloadDescriptionField.setText("Description: "+data.getDescription());
+					downloadSizeField.setText("Size: " + data.getSize() + " bytes");
+					downloadDimensionsField.setText("Dimensions: " + data.getWidth() + " x " + data.getHeight());
+					downloadFileField.setText("File: " + data.getFile());
+					downloadFileTypeField.setText("File Type: " + data.getFileType());
+					downloadSetTypeField.setText("Set Type: " + data.getSetType());
+					downloadDateField.setText("Date: "+data.getDate());
+					downloadIDField.setText("ID: " + data.getId());
+					try {
+						fillLinkedDownloads(data.getId(), data.getType());
+					} catch (SQLException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+					if(data.getType()==DownloadType.IMAGE){
+						
+						downloadFileTypeField.setVisible(true);
+						downloadFileTypeField.setManaged(true);
+						downloadSetTypeField.setVisible(true);
+						downloadSetTypeField.setManaged(true);
+						downloadDimensionsField.setVisible(true);
+						downloadDimensionsField.setManaged(true);
+					} else {
+						downloadFileTypeField.setVisible(false);
+						downloadFileTypeField.setManaged(false);
+						downloadSetTypeField.setVisible(false);
+						downloadSetTypeField.setManaged(false);
+						downloadDimensionsField.setVisible(false);
+						downloadDimensionsField.setManaged(false);
+						
+					}
 				}
 			}
 		});
 	}
+	
 	
 	private void buildSavedRegionsComboBox(){
 		savedRegionsComboBox.setConverter(new StringConverter<SavedRegion>(){
@@ -559,6 +706,20 @@ public class OptionsEditorController
 			}
 
 		});		
+	}
+	
+	private void buildListViewBindings(){
+		downloads.addListener(new ChangeListener<ObservableList<DownloadData>>(){
+
+			@Override
+			public void changed(ObservableValue<? extends ObservableList<DownloadData>> observable,
+					ObservableList<DownloadData> oldValue, ObservableList<DownloadData> newValue) {
+				downloadsListView.setItems(downloads);
+				
+			}
+
+			
+		});
 	}
 	
 	private void buildStopList()
@@ -1149,13 +1310,14 @@ public class OptionsEditorController
 	private boolean isConnectedToInternet()
 	{
 		try {
-			InetAddress address = InetAddress.getByName("www.ezstein.xyz");
-			return address.isReachable(20000);
+			URL url = new URL("https://www.ezstein.xyz");
+			HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+			conn.setConnectTimeout(8000);
+			Object data = conn.getContent();
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			//e.printStackTrace();
+			return false;
 		}
-		return false;
+		return true;
 
 	}
 
@@ -1411,14 +1573,9 @@ public class OptionsEditorController
 	{
 		Statement statement = null;
 		ResultSet set = null;
-		try {
-			statement = conn.createStatement();
-		} catch (SQLException e1) {
-			// TODO Auto-generated catch block\\
-			e1.printStackTrace();
-		}
 		try
 		{
+			statement = conn.createStatement();
 			set = statement.executeQuery("SELECT ID, HashCode FROM Colors;");
 			while(set.next())
 			{
@@ -1433,12 +1590,14 @@ public class OptionsEditorController
 			e.printStackTrace();
 		} finally {
 			try {
+				if(set!=null)
 				set.close();
 			} catch (SQLException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 			try {
+				if(statement!=null)
 				statement.close();
 			} catch (SQLException e) {
 				// TODO Auto-generated catch block
@@ -1492,6 +1651,22 @@ public class OptionsEditorController
 		}
 		return -1;
 	}
+	private int countEntriesInDatabase(String query){
+		int result = 0;
+		try
+		{
+			Statement statement = conn.createStatement();
+			ResultSet set = statement.executeQuery(query);
+			while(set.next()){
+				result++;
+			}
+			set.close();
+			statement.close();
+		} catch(SQLException sqle){
+			sqle.printStackTrace();
+		}
+		return result;
+	}
 
 	private boolean colorExistsLocally(int hashCode)
 	{
@@ -1519,8 +1694,8 @@ public class OptionsEditorController
 	
 	private void requestColorDownload()
 	{
-		ColorRow row;
-		if((row = downloadColorTable.getSelectionModel().selectedItemProperty().get())==null)
+		DownloadData row;
+		if((row = downloadsListView.getSelectionModel().selectedItemProperty().get())==null)
 		{
 			Alert alert = new Alert(AlertType.ERROR);
 			alert.setContentText("Please Choose an entry");
@@ -1690,8 +1865,8 @@ public class OptionsEditorController
 	}
 
 	private void requestRegionDownload(){
-		RegionRow row;
-		if((row = downloadRegionTable.getSelectionModel().selectedItemProperty().get())==null)
+		DownloadData row;
+		if((row = downloadsListView.getSelectionModel().selectedItemProperty().get())==null)
 		{
 			Alert alert = new Alert(AlertType.ERROR);
 			alert.setContentText("Please Choose an entry");
@@ -1967,6 +2142,37 @@ public class OptionsEditorController
 			}
 		}
 	}
+	
+	private void calculateMaxPages(){
+		if(imagesRadioButton.isSelected()){
+			int entries = countEntriesInDatabase(baseImageQuery + ";");
+			int fixFactor;
+			if(entries%downloadsPerPage>0){
+				fixFactor=1;
+			} else{
+				fixFactor=0;
+			}
+			downloadsMaxPage=Math.floorDiv(entries,downloadsPerPage)+fixFactor;
+		} else if(regionsRadioButton.isSelected()){
+			int entries = countEntriesInDatabase(baseRegionQuery + ";");
+			int fixFactor;
+			if(entries%downloadsPerPage>0){
+				fixFactor=1;
+			} else{
+				fixFactor=0;
+			}
+			downloadsMaxPage=Math.floorDiv(entries,downloadsPerPage)+fixFactor;
+		} else if(colorsRadioButton.isSelected()){
+			int entries = countEntriesInDatabase(baseColorQuery + ";");
+			int fixFactor;
+			if(entries%downloadsPerPage>0){
+				fixFactor=1;
+			} else{
+				fixFactor=0;
+			}
+			downloadsMaxPage=Math.floorDiv(entries,downloadsPerPage)+fixFactor;
+		}
+	}
 
 	private Image downloadImageAsObject(String uri){
 		CloseableHttpClient client = HttpClients.createDefault();
@@ -2006,8 +2212,74 @@ public class OptionsEditorController
 		return image;
 	}
 	
+	private void fillLinkedDownloads(int id, DownloadType type) throws SQLException{
+		linkedDownloadsListView.getItems().clear();
+		Statement statement = conn.createStatement();
+		if(type==DownloadType.IMAGE){
+			ResultSet set = statement.executeQuery("SELECT RegionID, ColorID FROM Linked WHERE ImageID=" + id + ";");
+			if(set.isBeforeFirst()){
+				//There is a result.
+				set.next();
+				int regionId = set.getInt("RegionID");
+				int colorId = set.getInt("ColorID");
+				if(regionId !=0){
+					linkedDownloadsListView.getItems().add(new LinkedDownload(regionId, DownloadType.REGION));
+				}
+				if(colorId !=0){
+					linkedDownloadsListView.getItems().add(new LinkedDownload(colorId, DownloadType.COLOR));
+				}	
+			}
+			else
+			{
+				//FOR TESTING
+				throw new RuntimeException("THERE SHOULD ALWAYS BE A RESULT");
+			}
+		} else if(type==DownloadType.REGION){
+			ResultSet set = statement.executeQuery("SELECT ImageID, ColorID FROM Linked WHERE RegionID=" + id + ";");
+			if(set.isBeforeFirst()){
+				//There is a result.
+				set.next();
+				int imageId = set.getInt("ImageID");
+				int colorId = set.getInt("ColorID");
+				if(imageId !=0){
+					linkedDownloadsListView.getItems().add(new LinkedDownload(imageId, DownloadType.IMAGE));
+				}
+				if(colorId !=0){
+					linkedDownloadsListView.getItems().add(new LinkedDownload(colorId, DownloadType.COLOR));
+				}	
+			}
+			else
+			{
+				//FOR TESTING
+				throw new RuntimeException("THERE SHOULD ALWAYS BE A RESULT");
+			}
+			
+		} else if(type==DownloadType.COLOR){
+			ResultSet set = statement.executeQuery("SELECT RegionID, ImageID FROM Linked WHERE ColorID=" + id + ";");
+			if(set.isBeforeFirst()){
+				//There is a result.
+				set.next();
+				int regionId = set.getInt("RegionID");
+				int imageId = set.getInt("ImageID");
+				if(imageId !=0){
+					linkedDownloadsListView.getItems().add(new LinkedDownload(imageId, DownloadType.IMAGE));
+				}
+				if(regionId !=0){
+					linkedDownloadsListView.getItems().add(new LinkedDownload(regionId, DownloadType.REGION));
+				}
+				
+			}
+			else
+			{
+				//FOR TESTING
+				throw new RuntimeException("THERE SHOULD ALWAYS BE A RESULT");
+			}
+			
+		}
+	}
+	
 	private void requestImageDownload(){
-		ImageRow row = downloadImageTable.getSelectionModel().selectedItemProperty().get();
+		DownloadData row = downloadsListView.getSelectionModel().selectedItemProperty().get();
 		if(row==null)
 		{
 			Alert alert = new Alert(AlertType.ERROR);
@@ -2138,7 +2410,60 @@ public class OptionsEditorController
 		}
 	}
 	
-@FXML
+	@FXML
+	private void nextPage(ActionEvent ae){
+		if(downloadsListView.getItems().isEmpty()){
+			return;
+		}
+	
+		downloadsPageNumber++;
+		if(downloadsPageNumber>downloadsMaxPage){
+			downloadsPageNumber=downloadsMaxPage;
+		}
+	
+		downloadsListView.getItems().clear();
+		pageNumberLabel.setText("Page Number: " + downloadsPageNumber + "/" + downloadsMaxPage);
+		new Thread(()->{
+			updateDownloads();
+		}).start();
+			
+		
+	}
+	
+	@FXML
+	private void previousPage(ActionEvent ae){
+		if(downloadsListView.getItems().isEmpty()){
+			return;
+		}
+		downloadsPageNumber--;
+		if(downloadsPageNumber<1){
+			downloadsPageNumber=1;
+		}
+	
+		downloadsListView.getItems().clear();
+		pageNumberLabel.setText("Page Number: " + downloadsPageNumber + "/" + downloadsMaxPage);
+		new Thread(()->{
+			updateDownloads();
+		}).start();
+		
+	}
+	
+	@FXML
+	private void search(ActionEvent ae){
+		String type = searchTypeComboBox.getSelectionModel().getSelectedItem();
+		String value = searchTextField.getText();
+		baseImageQuery="SELECT * FROM Images WHERE " + type + "='" + value+ "'";
+		baseRegionQuery="SELECT * FROM Regions WHERE " + type + "='" + value + "'";
+		baseColorQuery="SELECT * FROM Colors WHERE " + type + "='" + value + "'";
+		downloads.clear();
+		downloadsPageNumber=1;
+		calculateMaxPages();
+		pageNumberLabel.setText("Page Number: " + downloadsPageNumber + "/" + downloadsMaxPage);
+		updateDownloads();
+	}
+	
+	
+	@FXML
 	private void uploadRegionChanged(ActionEvent ae){
 		SavedRegion newValue = uploadRegionComboBox.getValue();
 		if(newValue != null){
@@ -2250,13 +2575,20 @@ public class OptionsEditorController
 	
 	@FXML
 	private void download(ActionEvent ae){
-		String type = tables.getSelectionModel().getSelectedItem().getText();
-		if(type.equals("Images"))
+		DownloadData data = downloadsListView.getSelectionModel().getSelectedItem();
+		if(data==null){
+			Alert alert = new Alert(AlertType.ERROR);
+			alert.setContentText("No Region Selected");
+			alert.show();
+			return;
+		}
+		DownloadType type= data.getType();
+		if(type == DownloadType.IMAGE)
 		{
 			requestImageDownload();
-		} else if (type.equals("Regions")) {
+		} else if (type== DownloadType.REGION) {
 			requestRegionDownload();
-		} else if (type.equals("Colors")) {
+		} else if (type == DownloadType.COLOR) {
 			requestColorDownload();
 		} else {
 			System.out.println("Unknown type");
@@ -2426,21 +2758,12 @@ public class OptionsEditorController
 		}
 	}
 
-	public class RegionRow
+	/*public class RegionRow
 	{
 		private final IntegerProperty id, size, date, hashCode;
 		private final StringProperty name, author, description, file;
 		private Image image;
-		/**
-		 *
-		 * @param id
-		 * @param name
-		 * @param author
-		 * @param description
-		 * @param file
-		 * @param size
-		 * @param date
-		 */
+		
 		public RegionRow(int id, String name, String author, String description, String file, int size, int date, int hashCode)
 		{
 			this.id = new SimpleIntegerProperty(id);
@@ -2451,7 +2774,7 @@ public class OptionsEditorController
 			this.description = new SimpleStringProperty(description);
 			this.file = new SimpleStringProperty(file);
 			this.hashCode = new SimpleIntegerProperty(hashCode);
-			this.image=new Image("/resource/background.jpg");
+			this.image=new Image("/resource/defaultImage.jpg");
 		}
 		
 		public RegionRow(int id, String name, String author, String description, String file, int size, int date, int hashCode, Image image)
@@ -2614,6 +2937,11 @@ public class OptionsEditorController
 					description.get().hashCode() + author.get().hashCode() +
 					name.get().hashCode() + 11*date.get() + 15*size.get() + 18*id.get();
 		}
+		
+		@Override
+		public String toString(){
+			return name.get();
+		}
 	}
 
 	public class ColorRow
@@ -2622,16 +2950,7 @@ public class OptionsEditorController
 		private final StringProperty name, author, description, file;
 		private Image image;
 		
-		/**
-		 *
-		 * @param id
-		 * @param name
-		 * @param author
-		 * @param description
-		 * @param file
-		 * @param size
-		 * @param date
-		 */
+		
 		public ColorRow(int id, String name, String author, String description, String file, int size, int date, int hashCode)
 		{
 			this.id = new SimpleIntegerProperty(id);
@@ -2642,7 +2961,7 @@ public class OptionsEditorController
 			this.description = new SimpleStringProperty(description);
 			this.file = new SimpleStringProperty(file);
 			this.hashCode = new SimpleIntegerProperty(hashCode);
-			this.image = new Image("/resource/background.jpg");
+			this.image = new Image("/resource/defaultImage.jpg");
 		}
 		
 		public ColorRow(int id, String name, String author, String description, String file, int size, int date, int hashCode, Image image)
@@ -2805,210 +3124,183 @@ public class OptionsEditorController
 					description.get().hashCode() + author.get().hashCode() +
 					name.get().hashCode() + 11*date.get() + 15*size.get() + 18*id.get();
 		}
-	}
+		@Override
+		public String toString(){
+			return name.get();
+		}
+	}*/
 	
-	public class ImageRow
+	public class DownloadData
 	{
-		private final IntegerProperty id, width, height, size, date;
-		private final StringProperty name, author, description, file, setType, fileType;
+		private int id, width, height, size, date, hashCode;
+		private String name, author, description, file, setType, fileType;
 		private Image image;
-		/**
-		 *
-		 * @param id
-		 * @param name
-		 * @param author
-		 * @param description
-		 * @param file
-		 * @param setType
-		 * @param width
-		 * @param height
-		 * @param size
-		 * @param date
-		 * @param fileType
-		 * @param image 
-		 */
-		public ImageRow(int id, String name, String author, String description, String file, String setType,
-				int width, int height, int size, int date, String fileType, Image image)
+		private DownloadType type;
+		
+		
+		public DownloadData(int id, String name, String author, String description, String file, String setType,
+				int width, int height, int size, int date, String fileType, Image image,DownloadType type, int hashCode)
 		{
-			this.id = new SimpleIntegerProperty(id);
-			this.width = new SimpleIntegerProperty(width);
-			this.height = new SimpleIntegerProperty(height);
-			this.size = new SimpleIntegerProperty(size);
-			this.date = new SimpleIntegerProperty(date);
-			this.name = new SimpleStringProperty(name);
-			this.author = new SimpleStringProperty(author);
-			this.description = new SimpleStringProperty(description);
-			this.file = new SimpleStringProperty(file);
-			this.fileType = new SimpleStringProperty(fileType);
-			this.setType = new SimpleStringProperty(setType);
+			this.id = id;
+			this.width = width;
+			this.height = height;
+			this.size = size;
+			this.date = date;
+			this.name = name;
+			this.author = author;
+			this.description = description;
+			this.file = file;
+			this.fileType = fileType;
+			this.setType = setType;
 			this.image = image;
+			this.type=type;
+			this.hashCode=hashCode;
+			
 		}
 		
-		public ImageRow(int id, String name, String author, String description, String file, String setType,
-				int width, int height, int size, int date, String fileType)
+		public DownloadData(int id, String name, String author, String description, String file, String setType,
+				int width, int height, int size, int date, String fileType,DownloadType type, int hashCode)
 		{
-			this.id = new SimpleIntegerProperty(id);
-			this.width = new SimpleIntegerProperty(width);
-			this.height = new SimpleIntegerProperty(height);
-			this.size = new SimpleIntegerProperty(size);
-			this.date = new SimpleIntegerProperty(date);
-			this.name = new SimpleStringProperty(name);
-			this.author = new SimpleStringProperty(author);
-			this.description = new SimpleStringProperty(description);
-			this.file = new SimpleStringProperty(file);
-			this.fileType = new SimpleStringProperty(fileType);
-			this.setType = new SimpleStringProperty(setType);
-			this.image = new Image("/resource/background.jpg");
+			this(id, name, author, description, file, setType, width, height,
+					size, date, fileType, new Image("/resource/defaultImage.jpg"), type, hashCode);
+		}
+		
+		public DownloadData(int id, String name, String author, String description, String file, String setType,
+				int width, int height, int size, int date, String fileType,Image image,DownloadType type)
+		{
+			this(id, name, author, description, file, setType, width, height,
+					size, date, fileType, image, type,0);
+		}
+		
+		public DownloadData(int id, String name, String author, String description, String file,
+				int size, int date, DownloadType type, int hashCode)
+		{
+			this(id, name, author, description, file, "", 0, 0,
+					size, date, "", new Image("/resource/defaultImage.jpg"), type, hashCode);
 		}
 
-		public final IntegerProperty getIdProperty()
+		public int getHashCode(){
+			return hashCode;
+		}
+		public void setHashCode(int val){
+			hashCode=val;
+		}
+		
+		public final int getId()
 		{
 			return id;
 		}
-		public final int getId()
-		{
-			return id.get();
-		}
 		public final void setId(int val)
 		{
-			id.set(val);
+			id=val;
 		}
 
-		public final IntegerProperty getHeightProperty()
+		public final int getHeight()
 		{
 			return height;
 		}
-		public final int getHeight()
-		{
-			return height.get();
-		}
 		public final void setHeight(int val)
 		{
-			height.set(val);
+			height=val;
 		}
 
-		public final IntegerProperty getWidthProperty()
+		public final int getWidth()
 		{
 			return width;
 		}
-		public final int getWidth()
-		{
-			return width.get();
-		}
 		public final void setWidth(int val)
 		{
-			width.set(val);
+			width=val;
 		}
 
-		public final IntegerProperty getSizeProperty()
+		public final int getSize()
 		{
 			return size;
 		}
-		public final int getSize()
-		{
-			return size.get();
-		}
 		public final void setSize(int val)
 		{
-			size.set(val);
+			size=val;
 		}
-
-		public final IntegerProperty getDateProperty()
+		
+		public final int getDate()
 		{
 			return date;
 		}
-		public final int getDate()
-		{
-			return date.get();
-		}
 		public final void setDate(int val)
 		{
-			date.set(val);
+			date=val;
 		}
 
-		public final StringProperty getNameProperty()
+		
+		public final String getName()
 		{
 			return name;
 		}
-		public final String getName()
-		{
-			return name.get();
-		}
 		public final void setName(String val)
 		{
-			name.set(val);
+			name=val;
 		}
 
-		public final StringProperty getAuthorProperty()
+		
+		public final String getAuthor()
 		{
 			return author;
 		}
-		public final String getAuthor()
-		{
-			return author.get();
-		}
 		public final void setAuthor(String val)
 		{
-			author.set(val);
+			author=val;
 		}
 
-		public final StringProperty getDescriptionProperty()
+		
+		public final String getDescription()
 		{
 			return description;
 		}
-		public final String getDescription()
-		{
-			return description.get();
-		}
 		public final void setDescription(String val)
 		{
-			description.set(val);
+			description=val;
 		}
 
-		public final StringProperty getFileProperty()
+		
+		public final String getFile()
 		{
 			return file;
 		}
-		public final String getFile()
-		{
-			return file.get();
-		}
 		public final void setFile(String val)
 		{
-			file.set(val);
+			file=val;
 		}
 
-		public final StringProperty getFileTypeProperty()
+		
+		public final String getFileType()
 		{
 			return fileType;
 		}
-		public final String getFileType()
-		{
-			return fileType.get();
-		}
 		public final void setFileType(String val)
 		{
-			fileType.set(val);
+			fileType=val;
 		}
 
-		public final StringProperty getSetTypeProperty()
+		
+		public final String getSetType()
 		{
 			return setType;
 		}
-		public final String getSetType()
-		{
-			return setType.get();
-		}
 		public final void setSetType(String val)
 		{
-			setType.set(val);
+			setType=val;
 		}
+		
 		
 		public final Image getImage(){
 			return image;
 		}
 		public final void setImage(Image image){
 			this.image=image;
+		}
+		
+		public DownloadType getType(){
+			return type;
 		}
 		
 		@Override
@@ -3022,20 +3314,22 @@ public class OptionsEditorController
 			{
 				return true;
 			}
-			if(o instanceof ImageRow)
+			if(o instanceof DownloadData)
 			{
-				ImageRow row = (ImageRow) o;
-				if(row.getWidth()==width.get()
-				&& row.getHeight()==height.get()
-				&& row.getSetType().equals(setType.get())
-				&& row.getFileType().equals(fileType.get())
-				&& row.getFile().equals(file.get())
-				&& row.getDescription().equals(description.get())
-				&& row.getAuthor().equals(author.get())
-				&& row.getName().equals(name.get())
-				&& row.getDate() == date.get()
-				&& row.getSize() == size.get()
-				&& row.getId() == id.get())
+				DownloadData row = (DownloadData) o;
+				if(row.getWidth()==width
+				&& row.getHeight()==height
+				&& row.getSetType().equals(setType)
+				&& row.getFileType().equals(fileType)
+				&& row.getFile().equals(file)
+				&& row.getDescription().equals(description)
+				&& row.getAuthor().equals(author)
+				&& row.getName().equals(name)
+				&& row.getDate() == date
+				&& row.getSize() == size
+				&& row.getId() == id
+				&& row.getType()==type
+				&& row.getHashCode()==hashCode)
 				{
 					return true;
 				}
@@ -3046,10 +3340,15 @@ public class OptionsEditorController
 		@Override
 		public int hashCode()
 		{
-			return 100*width.get() + 30*height.get() + fileType.get().hashCode()
-					+ setType.get().hashCode()+ file.get().hashCode() +
-					description.get().hashCode() + author.get().hashCode() +
-					name.get().hashCode() + 11*date.get() + 15*size.get() + 18*id.get();
+			return 100*width + 30*height + fileType.hashCode()
+				+ setType.hashCode()+ file.hashCode() +
+				description.hashCode() + author.hashCode() +
+				name.hashCode() + 11*date + 15*size + 18*id + type.hashCode() + 300*hashCode;
+		}
+		
+		@Override
+		public String toString(){
+			return name + " " + type;
 		}
 	}
 	
@@ -3098,5 +3397,73 @@ public class OptionsEditorController
 		}
 	}
 	
+ 	public class LinkedDownload {
+		private int id;
+		private DownloadType type;
+		public LinkedDownload(int id, DownloadType type){
+			this.id=id;
+			this.type=type;
+		}
+		
+		public DownloadType getType(){
+			return type;
+		}
+		
+		public int getId(){
+			return id;
+		}
+		
+		@Override
+		public boolean equals(Object o){
+			if(o==null)
+			{
+				return false;
+			}
+			if(o==this)
+			{
+				return true;
+			}
+			if(o instanceof LinkedDownload){
+				LinkedDownload other = (LinkedDownload) o;
+				if(other.getType()==type && other.getId()==id){
+					return true;
+				}
+			}
+			return false;
+		}
+		
+		@Override
+		public int hashCode(){
+			return type.hashCode() + id*(-124);
+		}
+		
+		@Override
+		public String toString() {
+			return type+ ": " + id;
+		}
+	}
+	
+	public class SortType{
+		String sort;
+		String direction;
+		public SortType(String sort, String direction){
+			this.sort =sort;
+			this.direction=direction;
+		}
+		public String getSort(){
+			return sort;
+		}
+		public String getDirection(){
+			return direction;
+		}
+		
+		@Override
+		public String toString(){
+			return sort + " " + direction;
+		}
+	}
+	
 	enum ResultType {YES, CANCEL, NO}
+	enum DownloadType {IMAGE, REGION, COLOR}
+	
 }

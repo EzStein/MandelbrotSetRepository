@@ -1,3 +1,10 @@
 TextField:hover {
 	-fx-background-color:orange;
-} 
+}
+
+ImageView {
+	-fx-border-style:solid;
+	-fx-border-color: black;
+	-fx-border-width: 2px;
+	-fx-border-radius: 4px;
+}

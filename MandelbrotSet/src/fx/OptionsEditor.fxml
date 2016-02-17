@@ -22,6 +22,9 @@
 <?import java.net.*?>
 <?import javafx.scene.control.cell.PropertyValueFactory?>
 <?import javafx.scene.image.ImageView?>
+<?import javafx.scene.control.ListView?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.image.*?>
 
 <BorderPane fx:controller="fx.OptionsEditorController" xmlns:fx="fx">
 	<stylesheets>
@@ -109,7 +112,7 @@
 						<GridPane.rowIndex>4</GridPane.rowIndex>
 					</TextField>
 					<fx:define>
-						<ToggleGroup/>
+						<ToggleGroup fx:id="precisionToggleGroup"/>
 					</fx:define>
 					<RadioButton fx:id = "doublePrecisionRadioButton" toggleGroup="$precisionToggleGroup">
 						<text>Double Precision</text>
@@ -308,6 +311,93 @@
 				</GridPane>
 			</Tab>
 			
+			
+			
+			
+			
+			
+			<Tab text="Downloads" closable="false">
+				<GridPane hgap="10" vgap="10">
+					<padding><Insets top="10" bottom="10" left="10" right="10"/></padding>
+					
+					<HBox spacing="20" GridPane.columnIndex="0" GridPane.rowIndex="0">
+						<Label text="Search Type: "/>
+						<ComboBox fx:id="searchTypeComboBox"/>
+						<TextField fx:id="searchTextField" text=""/>
+						<Button fx:id="searchButton" text="Search" onAction="#search"/>
+					</HBox>
+					
+					<HBox spacing="15" GridPane.columnIndex="0" GridPane.rowIndex="1">
+						<fx:define>
+							<ToggleGroup fx:id="searchToggleGroup"/>
+						</fx:define>
+						<RadioButton text="Images" toggleGroup="$searchToggleGroup" fx:id="imagesRadioButton"/>
+						<RadioButton text="Regions" toggleGroup="$searchToggleGroup" fx:id="regionsRadioButton"/>
+						<RadioButton text="Colors" toggleGroup="$searchToggleGroup" fx:id="colorsRadioButton"/>
+					</HBox>
+					
+					<HBox spacing="10" GridPane.columnIndex="0" GridPane.rowIndex="2">
+						<Label text="Sort By:"/>
+						<ComboBox fx:id="sortByComboBox"/>
+						<Button fx:id="previousPageButton" text="Previous Page" onAction="#previousPage"/>
+						<Button fx:id="nextPageButton" text="Next Page" onAction="#nextPage"/>
+						<Label fx:id="pageNumberLabel" text="Page Number: 1"/>
+						
+					</HBox>
+					
+					
+					<ListView fx:id="downloadsListView" minWidth="300" GridPane.columnIndex="0" GridPane.rowIndex="3"/>
+					
+					
+					<VBox spacing="10" GridPane.columnIndex="1" GridPane.rowIndex="0" GridPane.rowSpan="4">
+						<HBox spacing="50">
+							<VBox>
+								<Label fx:id="downloadNameField" text="Name" />
+								<Label fx:id="downloadAuthorField" text="Author"/>
+								<Label fx:id="downloadDescriptionField" text="Description"/>
+							</VBox>
+							<VBox>
+								<Label fx:id="downloadFileField" text="File"/>
+								<Label fx:id="downloadIDField" text="ID" />
+								<Label fx:id="downloadSizeField" text="Size"/>
+								<Label fx:id="downloadDateField" text="Date"/>
+							</VBox>
+							<VBox>
+								<Label fx:id="downloadDimensionsField" text="Dimensions"/>
+								<Label fx:id="downloadSetTypeField" text="Set Type"/>
+								<Label fx:id="downloadFileTypeField" text="File Type"/>
+							</VBox>
+							
+						</HBox>
+						<HBox spacing="30">
+							
+							<ListView fx:id="linkedDownloadsListView" />
+							<VBox spacing="30">
+								<ImageView fx:id="imageView" fitWidth="150" fitHeight="150">
+									<image>
+										<Image url="@../resource/defaultImage.jpg"/>
+									</image>
+								</ImageView>
+								<Button fx:id="downloadButton" text="Download" onAction="#download"/>
+							</VBox>
+						</HBox>
+					</VBox>
+					
+					
+					
+					
+				
+					
+					
+					
+					
+				</GridPane>
+			</Tab>
+			
+			
+			
+			
+			<!--
 			<Tab>
 				<text>Download</text>
 				<closable>false</closable>
@@ -496,7 +586,7 @@
 					
 					
 				</GridPane>
-			</Tab>
+			</Tab>-->
 		</TabPane>
 	</center>
 </BorderPane>
