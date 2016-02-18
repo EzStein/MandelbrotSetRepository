@@ -25,6 +25,7 @@ import javafx.scene.control.*;
 import javafx.scene.control.Alert.*;
 import javafx.scene.control.ButtonBar.*;
 import javafx.scene.image.*;
+import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.*;
 import javafx.scene.paint.*;
 import javafx.scene.shape.*;
@@ -67,9 +68,6 @@ public class OptionsEditorController
 	@FXML private TextArea uploadDescriptionArea;
 	@FXML private ComboBox<String> uploadTypeComboBox;
 	@FXML private ListView<DownloadData> downloadsListView;
-	@FXML private RadioButton imagesRadioButton;
-	@FXML private RadioButton regionsRadioButton;
-	@FXML private RadioButton colorsRadioButton;
 	@FXML private Button uploadButton;
 	@FXML private TabPane tabs;
 	@FXML private ImageView imageView;
@@ -87,9 +85,9 @@ public class OptionsEditorController
 	@FXML private Button downloadButton;
 	@FXML private Label pageNumberLabel;
 	@FXML private ComboBox<SortType> sortByComboBox;
-	@FXML private ComboBox<String> searchTypeComboBox;
 	@FXML private TextField searchTextField;
 	@FXML private Button searchButton;
+	@FXML private ComboBox<String> searchTableComboBox;
 	
 	private ObjectOutputStream out, colorOut;
 	private SimpleListProperty<SavedRegion> savedRegions;
@@ -101,8 +99,10 @@ public class OptionsEditorController
 	private Thread databaseUpdater;
 	private Connection conn;
 	private SimpleListProperty<DownloadData> downloads;
-	private String baseImageQuery, baseRegionQuery, baseColorQuery;
-	private int downloadsPerPage, downloadsPageNumber, downloadsMaxPage;
+	//private String baseImageQuery, baseRegionQuery, baseColorQuery;
+	private Object searchValue;
+	private int downloadsPerPage;
+	private SimpleIntegerProperty downloadsPageNumber, downloadsMaxPage;
 	
 	public void initializeController(MainGUI gui,int tabNumber, Stage window){
 		this.gui = gui;
@@ -114,12 +114,12 @@ public class OptionsEditorController
 				new SortType("Author","ASC"),new SortType("Author","DESC"),
 				new SortType("Date","ASC"),new SortType("Date","DESC"),
 				new SortType("Size","ASC"),new SortType("Size","DESC")));
-		searchTypeComboBox.setItems(FXCollections.observableArrayList("Name", "Author","ID"));
-		searchTypeComboBox.getSelectionModel().select(0);
-		
 		sortByComboBox.getSelectionModel().select(0);
-		imagesRadioButton.setSelected(true);
-		
+		searchTableComboBox.setItems(FXCollections.observableArrayList("Image", "Region", "Color"));
+		searchTableComboBox.getSelectionModel().select(0);
+		downloadsPageNumber = new SimpleIntegerProperty(1);
+		downloadsMaxPage = new SimpleIntegerProperty(1);
+		searchValue=1;
 		addListeners();
 		readFiles();
 		buildThreads();
@@ -129,12 +129,6 @@ public class OptionsEditorController
 	
 	private void initializeFXML() {
 		downloadsPerPage=3;
-		downloadsPageNumber=1;
-		
-		
-		baseImageQuery="SELECT * FROM Images";
-		baseRegionQuery="SELECT * FROM Regions";
-		baseColorQuery= "SELECT * FROM Colors";
 		
 		
 		
@@ -179,15 +173,15 @@ public class OptionsEditorController
 	
 					if(conn == null)
 					{
-						System.out.println("Connecting...");
 						openConnection();
 						updateDownloads();
-						calculateMaxPages();
-						System.out.println("Connection");
+						Platform.runLater(()->{
+							calculateMaxPages();
+						});
 					}
 					
 					Platform.runLater(()->{
-						pageNumberLabel.setText("Page Number: " + downloadsPageNumber + "/" + downloadsMaxPage);
+						
 						uploadButton.setDisable(false);
 						uploadButton.setText("Upload");
 						downloadButton.setDisable(false);
@@ -232,30 +226,26 @@ public class OptionsEditorController
 	private void updateDownloads()
 	{
 		SortType sortType = sortByComboBox.getSelectionModel().getSelectedItem();
-		String imageQuery= baseImageQuery +  " ORDER BY " + sortType.getSort()
-				 + " " + sortType.getDirection() + " LIMIT " + downloadsPerPage + " OFFSET "
-							+ (downloadsPageNumber-1)*downloadsPerPage + ";";
+		String imageQuery= "SELECT * FROM Images WHERE Author=? OR ID=? OR Name=? ORDER BY "+ sortType.getSort()+" "+ sortType.getDirection() +" LIMIT ? OFFSET ?;";
+		String regionQuery="SELECT * FROM Regions WHERE Author=? OR ID=? OR Name=? ORDER BY "+ sortType.getSort()+" "+ sortType.getDirection() +" LIMIT ? OFFSET ?;";
+		String colorQuery= "SELECT * FROM Colors WHERE Author=? OR ID=? OR Name=? ORDER BY "+ sortType.getSort()+" "+ sortType.getDirection() +" LIMIT ? OFFSET ?;";
 		
-		
-		String regionQuery=baseRegionQuery + " ORDER BY " + sortType.getSort()
-		 + " " + sortType.getDirection() + " LIMIT " + downloadsPerPage + " OFFSET "
-					+ (downloadsPageNumber-1)*downloadsPerPage +";";
-		
-		
-		String colorQuery=baseColorQuery + " ORDER BY " + sortType.getSort()
-		 + " " + sortType.getDirection() + " LIMIT " + downloadsPerPage + " OFFSET "
-					+ (downloadsPageNumber-1)*downloadsPerPage +";";
-		Statement statement=null;
+		String searchTable=searchTableComboBox.getSelectionModel().getSelectedItem();
+		PreparedStatement statement=null;
 		try
 		{
 			if(!isConnectedToInternet())
 			{
 				return;
 			}
-			statement = conn.createStatement();
-			
-			if(imagesRadioButton.isSelected()){
-				ResultSet set = statement.executeQuery(imageQuery);
+			if(searchTable.equals("Image")){
+				statement = conn.prepareStatement(imageQuery);
+				statement.setObject(1,searchValue);
+				statement.setObject(2,searchValue);
+				statement.setObject(3,searchValue);
+				statement.setInt(4, downloadsPerPage);
+				statement.setInt(5, (downloadsPageNumber.get()-1)*downloadsPerPage);
+				ResultSet set = statement.executeQuery();
 				while(set.next()){
 					DownloadData data = new DownloadData(
 							set.getInt("ID"),
@@ -279,6 +269,7 @@ public class OptionsEditorController
 					}
 				}
 				set.close();
+				statement.close();
 			}
 			
 
@@ -286,9 +277,16 @@ public class OptionsEditorController
 			{
 				return;
 			}
-			if(regionsRadioButton.isSelected()){
+			if(searchTable.equals("Region")){
+				statement = conn.prepareStatement(regionQuery);
+				statement.setObject(1,searchValue);
+				statement.setObject(2,searchValue);
+				statement.setObject(3,searchValue);
+				statement.setInt(4, downloadsPerPage);
+				statement.setInt(5, (downloadsPageNumber.get()-1)*downloadsPerPage);
+				
 				Statement linkedStatement = conn.createStatement();
-				ResultSet set = statement.executeQuery(regionQuery);
+				ResultSet set = statement.executeQuery();
 				while(set.next()){
 					int id=set.getInt("ID");
 						ResultSet linkedResult = linkedStatement.executeQuery("SELECT * FROM Linked WHERE RegionID=" + id + ";");
@@ -328,6 +326,7 @@ public class OptionsEditorController
 					}
 				}
 				set.close();
+				statement.close();
 			}
 			
 
@@ -336,8 +335,14 @@ public class OptionsEditorController
 				return;
 			}
 			
-			if(colorsRadioButton.isSelected()){
-				ResultSet set = statement.executeQuery(colorQuery);
+			if(searchTable.equals("Color")){
+				statement = conn.prepareStatement(colorQuery);
+				statement.setObject(1,searchValue);
+				statement.setObject(2,searchValue);
+				statement.setObject(3,searchValue);
+				statement.setInt(4, downloadsPerPage);
+				statement.setInt(5, (downloadsPageNumber.get()-1)*downloadsPerPage);
+				ResultSet set = statement.executeQuery();
 				while(set.next()){
 					DownloadData data =  new DownloadData(set.getInt("ID"),
 									set.getString("Name"),
@@ -491,7 +496,10 @@ public class OptionsEditorController
 
 		});
 	}
-
+	
+	/**
+	 * Closes the window and cleans up threads.
+	 */
 	public void close(){
 		
 		databaseUpdater.interrupt();
@@ -531,13 +539,31 @@ public class OptionsEditorController
 			close();
 		});
 		
+		downloadsPageNumber.addListener(new ChangeListener<Number>(){
+
+			@Override
+			public void changed(ObservableValue<? extends Number> observable, Number oldValue, Number newValue) {
+				pageNumberLabel.setText(downloadsPageNumber.get()+"/"+downloadsMaxPage.get());
+			}
+			
+		});
+		
+		downloadsMaxPage.addListener(new ChangeListener<Number>(){
+
+			@Override
+			public void changed(ObservableValue<? extends Number> observable, Number oldValue, Number newValue) {
+				pageNumberLabel.setText(downloadsPageNumber.get()+"/"+downloadsMaxPage.get());
+			}
+			
+		});
+		
 		sortByComboBox.getSelectionModel().selectedIndexProperty().addListener(new ChangeListener<Number>(){
 
 			@Override
 			public void changed(ObservableValue<? extends Number> observable, Number oldValue, Number newValue) {
 			
 				downloads.clear();
-				pageNumberLabel.setText("Page Number: " + downloadsPageNumber + "/" + downloadsMaxPage);
+				
 				
 				new Thread(()->{
 					updateDownloads();
@@ -547,6 +573,7 @@ public class OptionsEditorController
 		});
 		
 	}
+	
 	private void buildLinkedDownloadsListView(){
 		linkedDownloadsListView.getSelectionModel().selectedItemProperty().addListener(new ChangeListener<LinkedDownload>(){
 
@@ -565,20 +592,13 @@ public class OptionsEditorController
 					return;
 				}
 				LinkedDownload download=linkedDownloadsListView.getSelectionModel().getSelectedItem();
-				if(download.getType()==DownloadType.IMAGE){
-					baseImageQuery="SELECT * FROM Images WHERE ID=" + download.getId();
-					imagesRadioButton.setSelected(true);
-				} else if(download.getType()==DownloadType.REGION){
-					baseRegionQuery="SELECT * FROM Regions WHERE ID=" + download.getId();
-					regionsRadioButton.setSelected(true);
-				} else if(download.getType()==DownloadType.COLOR) {
-					baseColorQuery="SELECT * FROM Colors WHERE ID=" + download.getId();
-					colorsRadioButton.setSelected(true);
-				}
+				
+				
 				downloads.clear();
-				downloadsPageNumber=1;
-				downloadsMaxPage=1;
-				pageNumberLabel.setText("Page Number: 1/1");
+				downloadsPageNumber.set(1);
+				downloadsMaxPage.set(1);
+				
+				searchValue=download.getId();
 				new Thread(()->{
 					updateDownloads();
 				}).start();
@@ -1651,12 +1671,15 @@ public class OptionsEditorController
 		}
 		return -1;
 	}
-	private int countEntriesInDatabase(String query){
+	private int countEntriesInDatabase(String table, Object value){
 		int result = 0;
 		try
 		{
-			Statement statement = conn.createStatement();
-			ResultSet set = statement.executeQuery(query);
+			PreparedStatement statement = conn.prepareStatement("SELECT * FROM "+ table +" WHERE Author=? OR ID=? OR Name=?;");
+			statement.setObject(1, value);
+			statement.setObject(2, value);
+			statement.setObject(3, value);
+			ResultSet set = statement.executeQuery();
 			while(set.next()){
 				result++;
 			}
@@ -2144,33 +2167,34 @@ public class OptionsEditorController
 	}
 	
 	private void calculateMaxPages(){
-		if(imagesRadioButton.isSelected()){
-			int entries = countEntriesInDatabase(baseImageQuery + ";");
+		String searchTable=searchTableComboBox.getSelectionModel().getSelectedItem();
+		if(searchTable.equals("Image")){
+			int entries = countEntriesInDatabase("Images", searchValue);
 			int fixFactor;
 			if(entries%downloadsPerPage>0){
 				fixFactor=1;
 			} else{
 				fixFactor=0;
 			}
-			downloadsMaxPage=Math.floorDiv(entries,downloadsPerPage)+fixFactor;
-		} else if(regionsRadioButton.isSelected()){
-			int entries = countEntriesInDatabase(baseRegionQuery + ";");
+			downloadsMaxPage.set(Math.floorDiv(entries,downloadsPerPage)+fixFactor);
+		} else if(searchTable.equals("Region")){
+			int entries = countEntriesInDatabase("Regions", searchValue);
 			int fixFactor;
 			if(entries%downloadsPerPage>0){
 				fixFactor=1;
 			} else{
 				fixFactor=0;
 			}
-			downloadsMaxPage=Math.floorDiv(entries,downloadsPerPage)+fixFactor;
-		} else if(colorsRadioButton.isSelected()){
-			int entries = countEntriesInDatabase(baseColorQuery + ";");
+			downloadsMaxPage.set(Math.floorDiv(entries,downloadsPerPage)+fixFactor);
+		} else if(searchTable.equals("Color")){
+			int entries = countEntriesInDatabase("Colors", searchValue);
 			int fixFactor;
 			if(entries%downloadsPerPage>0){
 				fixFactor=1;
 			} else{
 				fixFactor=0;
 			}
-			downloadsMaxPage=Math.floorDiv(entries,downloadsPerPage)+fixFactor;
+			downloadsMaxPage.set(Math.floorDiv(entries,downloadsPerPage)+fixFactor);
 		}
 	}
 
@@ -2209,14 +2233,17 @@ public class OptionsEditorController
 			}
 			
 		}
+		
 		return image;
 	}
 	
 	private void fillLinkedDownloads(int id, DownloadType type) throws SQLException{
 		linkedDownloadsListView.getItems().clear();
-		Statement statement = conn.createStatement();
+		
 		if(type==DownloadType.IMAGE){
-			ResultSet set = statement.executeQuery("SELECT RegionID, ColorID FROM Linked WHERE ImageID=" + id + ";");
+			PreparedStatement statement = conn.prepareStatement("SELECT RegionID, ColorID FROM Linked WHERE ImageID=?;");
+			statement.setInt(1, id);
+			ResultSet set = statement.executeQuery();
 			if(set.isBeforeFirst()){
 				//There is a result.
 				set.next();
@@ -2234,8 +2261,13 @@ public class OptionsEditorController
 				//FOR TESTING
 				throw new RuntimeException("THERE SHOULD ALWAYS BE A RESULT");
 			}
+			set.close();
+			statement.close();
+			
 		} else if(type==DownloadType.REGION){
-			ResultSet set = statement.executeQuery("SELECT ImageID, ColorID FROM Linked WHERE RegionID=" + id + ";");
+			PreparedStatement statement = conn.prepareStatement("SELECT ImageID, ColorID FROM Linked WHERE RegionID=?;");
+			statement.setInt(1, id);
+			ResultSet set = statement.executeQuery();
 			if(set.isBeforeFirst()){
 				//There is a result.
 				set.next();
@@ -2253,9 +2285,13 @@ public class OptionsEditorController
 				//FOR TESTING
 				throw new RuntimeException("THERE SHOULD ALWAYS BE A RESULT");
 			}
+			set.close();
+			statement.close();
 			
 		} else if(type==DownloadType.COLOR){
-			ResultSet set = statement.executeQuery("SELECT RegionID, ImageID FROM Linked WHERE ColorID=" + id + ";");
+			PreparedStatement statement = conn.prepareStatement("SELECT RegionID, ImageID FROM Linked WHERE ColorID=?;");
+			statement.setInt(1, id);
+			ResultSet set = statement.executeQuery();
 			if(set.isBeforeFirst()){
 				//There is a result.
 				set.next();
@@ -2274,7 +2310,8 @@ public class OptionsEditorController
 				//FOR TESTING
 				throw new RuntimeException("THERE SHOULD ALWAYS BE A RESULT");
 			}
-			
+			set.close();
+			statement.close();
 		}
 	}
 	
@@ -2310,6 +2347,7 @@ public class OptionsEditorController
 		Statement statement = null;
 		try
 		{
+			statement = conn.createStatement();
 			ResultSet set = statement.executeQuery("SELECT * FROM Linked WHERE ImageID = " + row.getId() + ";");
 			if(set.isBeforeFirst())
 			{
@@ -2411,37 +2449,37 @@ public class OptionsEditorController
 	}
 	
 	@FXML
-	private void nextPage(ActionEvent ae){
+	private void nextPage(MouseEvent me){
 		if(downloadsListView.getItems().isEmpty()){
 			return;
 		}
 	
-		downloadsPageNumber++;
-		if(downloadsPageNumber>downloadsMaxPage){
-			downloadsPageNumber=downloadsMaxPage;
+		downloadsPageNumber.set(downloadsPageNumber.get()+1);
+		if(downloadsPageNumber.get()>downloadsMaxPage.get()){
+			downloadsPageNumber.set(downloadsMaxPage.get());
 		}
 	
 		downloadsListView.getItems().clear();
-		pageNumberLabel.setText("Page Number: " + downloadsPageNumber + "/" + downloadsMaxPage);
+		
 		new Thread(()->{
 			updateDownloads();
 		}).start();
-			
+		
 		
 	}
 	
 	@FXML
-	private void previousPage(ActionEvent ae){
+	private void previousPage(MouseEvent me){
 		if(downloadsListView.getItems().isEmpty()){
 			return;
 		}
-		downloadsPageNumber--;
-		if(downloadsPageNumber<1){
-			downloadsPageNumber=1;
+		downloadsPageNumber.set(downloadsPageNumber.get()-1);;
+		if(downloadsPageNumber.get()<1){
+			downloadsPageNumber.set(1);
 		}
 	
 		downloadsListView.getItems().clear();
-		pageNumberLabel.setText("Page Number: " + downloadsPageNumber + "/" + downloadsMaxPage);
+		
 		new Thread(()->{
 			updateDownloads();
 		}).start();
@@ -2450,15 +2488,12 @@ public class OptionsEditorController
 	
 	@FXML
 	private void search(ActionEvent ae){
-		String type = searchTypeComboBox.getSelectionModel().getSelectedItem();
 		String value = searchTextField.getText();
-		baseImageQuery="SELECT * FROM Images WHERE " + type + "='" + value+ "'";
-		baseRegionQuery="SELECT * FROM Regions WHERE " + type + "='" + value + "'";
-		baseColorQuery="SELECT * FROM Colors WHERE " + type + "='" + value + "'";
+		searchValue=value;
 		downloads.clear();
-		downloadsPageNumber=1;
+		downloadsPageNumber.set(1);
 		calculateMaxPages();
-		pageNumberLabel.setText("Page Number: " + downloadsPageNumber + "/" + downloadsMaxPage);
+		
 		updateDownloads();
 	}
 	

@@ -25,8 +25,9 @@
 <?import javafx.scene.control.ListView?>
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.image.*?>
+<?import javafx.scene.layout.HBox?>
 
-<BorderPane fx:controller="fx.OptionsEditorController" xmlns:fx="fx">
+<BorderPane fx:controller="fx.OptionsEditorController" xmlns:fx="fx" prefWidth="750" prefHeight="400">
 	<stylesheets>
 		<URL value="@OptionsStyleSheet.css" />
 	</stylesheets>
@@ -46,9 +47,6 @@
 			</Button>
 			<Button onAction="#apply">
 				<text>Apply</text>
-			</Button>
-			<Button onAction="#save">
-				<text>Save As...</text>
 			</Button>
 			<Button onAction="#cancel">
 				<text>Cancel</text>
@@ -142,6 +140,9 @@
 						<GridPane.columnIndex>2</GridPane.columnIndex>
 						<GridPane.rowIndex>3</GridPane.rowIndex>
 					</Label>
+					<Button GridPane.columnIndex="3" GridPane.rowIndex="4" onAction="#save">
+						<text>Save As...</text>
+					</Button>
 					
 					<Button onAction="#removeRegion">
 						<text>Remove Region</text>
@@ -182,16 +183,12 @@
 						<GridPane.columnIndex>0</GridPane.columnIndex>
 						<GridPane.rowIndex>0</GridPane.rowIndex>
 					</ComboBox>
-					<Rectangle fx:id="gradientRectangle">
-						<width>200</width>
-						<height>300</height>
-						<GridPane.columnIndex>0</GridPane.columnIndex>
-						<GridPane.rowIndex>2</GridPane.rowIndex>
-						<GridPane.rowSpan>2</GridPane.rowSpan>
-						<GridPane.columnSpan>2</GridPane.columnSpan>
-					</Rectangle>
+					<VBox GridPane.columnIndex="0" GridPane.rowIndex="2" GridPane.columnSpan="2" GridPane.rowSpan="2">
+						<Rectangle fx:id="gradientRectangle" width="300" height="200"/>
+					</VBox>
+					
 					<Button onAction="#addColor">
-						<text>Add Color</text>
+						<text>Save Color</text>
 						<GridPane.columnIndex>0</GridPane.columnIndex>
 						<GridPane.rowIndex>3</GridPane.rowIndex>
 					</Button>
@@ -278,7 +275,7 @@
 						<GridPane.columnIndex>0</GridPane.columnIndex>
 						<GridPane.rowIndex>4</GridPane.rowIndex>
 					</Label>
-					<TextArea fx:id="uploadDescriptionArea">
+					<TextArea fx:id="uploadDescriptionArea" prefRowCount="4">
 						<GridPane.columnIndex>0</GridPane.columnIndex>
 						<GridPane.rowIndex>5</GridPane.rowIndex>
 					</TextArea>
@@ -320,71 +317,61 @@
 				<GridPane hgap="10" vgap="10">
 					<padding><Insets top="10" bottom="10" left="10" right="10"/></padding>
 					
-					<HBox spacing="20" GridPane.columnIndex="0" GridPane.rowIndex="0">
-						<Label text="Search Type: "/>
-						<ComboBox fx:id="searchTypeComboBox"/>
-						<TextField fx:id="searchTextField" text=""/>
+					<HBox spacing="15" GridPane.columnIndex="0" GridPane.rowIndex="0" GridPane.columnSpan="2">
+						<ComboBox fx:id="sortByComboBox"/>
+						<ComboBox fx:id="searchTableComboBox"/>
+						<TextField fx:id="searchTextField" text="" prefColumnCount="30"/>
 						<Button fx:id="searchButton" text="Search" onAction="#search"/>
 					</HBox>
 					
-					<HBox spacing="15" GridPane.columnIndex="0" GridPane.rowIndex="1">
-						<fx:define>
-							<ToggleGroup fx:id="searchToggleGroup"/>
-						</fx:define>
-						<RadioButton text="Images" toggleGroup="$searchToggleGroup" fx:id="imagesRadioButton"/>
-						<RadioButton text="Regions" toggleGroup="$searchToggleGroup" fx:id="regionsRadioButton"/>
-						<RadioButton text="Colors" toggleGroup="$searchToggleGroup" fx:id="colorsRadioButton"/>
-					</HBox>
-					
 					<HBox spacing="10" GridPane.columnIndex="0" GridPane.rowIndex="2">
-						<Label text="Sort By:"/>
-						<ComboBox fx:id="sortByComboBox"/>
-						<Button fx:id="previousPageButton" text="Previous Page" onAction="#previousPage"/>
-						<Button fx:id="nextPageButton" text="Next Page" onAction="#nextPage"/>
-						<Label fx:id="pageNumberLabel" text="Page Number: 1"/>
+						<ImageView fitWidth="25" fitHeight="25" onMouseClicked="#previousPage">
+							<image>
+								<Image url="@../resource/leftArrow.png"/>
+							</image>
+						</ImageView>
+						<ImageView fitWidth="25" fitHeight="25" onMouseClicked="#nextPage">
+							<image>
+								<Image url="@../resource/rightArrow.png"/>
+							</image>
+						</ImageView>
+						<Label fx:id="pageNumberLabel" text="1/1"/>
 						
 					</HBox>
 					
 					
-					<ListView fx:id="downloadsListView" minWidth="300" GridPane.columnIndex="0" GridPane.rowIndex="3"/>
+					<ListView fx:id="downloadsListView" minWidth="300" GridPane.columnIndex="0" GridPane.rowIndex="1"/>
 					
 					
-					<VBox spacing="10" GridPane.columnIndex="1" GridPane.rowIndex="0" GridPane.rowSpan="4">
-						<HBox spacing="50">
-							<VBox>
-								<Label fx:id="downloadNameField" text="Name" />
-								<Label fx:id="downloadAuthorField" text="Author"/>
-								<Label fx:id="downloadDescriptionField" text="Description"/>
-							</VBox>
-							<VBox>
-								<Label fx:id="downloadFileField" text="File"/>
-								<Label fx:id="downloadIDField" text="ID" />
-								<Label fx:id="downloadSizeField" text="Size"/>
-								<Label fx:id="downloadDateField" text="Date"/>
-							</VBox>
-							<VBox>
-								<Label fx:id="downloadDimensionsField" text="Dimensions"/>
-								<Label fx:id="downloadSetTypeField" text="Set Type"/>
-								<Label fx:id="downloadFileTypeField" text="File Type"/>
-							</VBox>
+					<VBox spacing="20" GridPane.columnIndex="1" GridPane.rowIndex="1">
+						<HBox spacing="20">
 							
-						</HBox>
-						<HBox spacing="30">
-							
-							<ListView fx:id="linkedDownloadsListView" />
-							<VBox spacing="30">
-								<ImageView fx:id="imageView" fitWidth="150" fitHeight="150">
-									<image>
-										<Image url="@../resource/defaultImage.jpg"/>
-									</image>
-								</ImageView>
-								<Button fx:id="downloadButton" text="Download" onAction="#download"/>
+							<ImageView fx:id="imageView" fitWidth="150" fitHeight="150">
+								<image>
+									<Image url="@../resource/defaultImage.jpg"/>
+								</image>
+							</ImageView>
+							<VBox spacing="10">
+								<Label fx:id="downloadNameField" text="" />
+								<Label fx:id="downloadAuthorField" text=""/>
+								<Label fx:id="downloadDescriptionField" text=""/>
 							</VBox>
 						</HBox>
+						<Button fx:id="downloadButton" text="Download" onAction="#download"/>
 					</VBox>
 					
 					
-					
+					<!-- Hidden Elements -->
+					<HBox managed="false" visible="false">
+						<ListView fx:id="linkedDownloadsListView" />
+						<Label fx:id="downloadFileField" text="File"/>
+						<Label fx:id="downloadIDField" text="ID" />
+						<Label fx:id="downloadSizeField" text="Size"/>
+						<Label fx:id="downloadDateField" text="Date"/>
+						<Label fx:id="downloadDimensionsField" text="Dimensions"/>
+						<Label fx:id="downloadSetTypeField" text="Set Type"/>
+						<Label fx:id="downloadFileTypeField" text="File Type"/>
+					</HBox>	
 					
 				
 					
@@ -589,5 +576,8 @@
 			</Tab>-->
 		</TabPane>
 	</center>
+	
+	
+	
 </BorderPane>
 	

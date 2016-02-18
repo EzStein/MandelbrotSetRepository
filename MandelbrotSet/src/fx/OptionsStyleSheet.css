@@ -8,3 +8,7 @@ ImageView {
 	-fx-border-width: 2px;
 	-fx-border-radius: 4px;
 }
+
+ImageView:hover{
+	-fx-background-color:orange;
+}
