@@ -3,8 +3,18 @@ package fx;
 import java.io.*;
 import java.math.*;
 import java.net.*;
+import java.nio.file.*;
+import java.nio.file.Path;
+import java.security.KeyStore;
+import java.security.cert.*;
 import java.sql.*;
 import java.util.*;
+
+import javax.net.ssl.HttpsURLConnection;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLSocketFactory;
+import javax.net.ssl.TrustManagerFactory;
+
 import org.apache.http.*;
 import org.apache.http.client.*;
 import org.apache.http.client.methods.*;
@@ -40,6 +50,36 @@ import java.net.*;
  */
 public class OptionsEditorController
 {
+	private static SSLContext sslContext;
+	static {
+        try {
+            KeyStore keyStore = KeyStore.getInstance(KeyStore.getDefaultType());
+            Path ksPath = Paths.get(System.getProperty("java.home"),
+                    "lib", "security", "cacerts");
+            keyStore.load(Files.newInputStream(ksPath),
+                    "changeit".toCharArray());
+
+            CertificateFactory cf = CertificateFactory.getInstance("X.509");
+            try (InputStream isrg = new BufferedInputStream(OptionsEditorController.class.getResourceAsStream("/resource/isrgrootx1.der"));
+            		InputStream iden = new BufferedInputStream(OptionsEditorController.class.getResourceAsStream("/resource/identrustx3.der"))) {
+                Certificate crt = cf.generateCertificate(isrg);
+
+                keyStore.setCertificateEntry("ISRG Root X1", crt);
+                crt = cf.generateCertificate(iden);
+                keyStore.setCertificateEntry("ST Root CA X3", crt);
+            }
+
+            TrustManagerFactory tmf = TrustManagerFactory
+                    .getInstance(TrustManagerFactory.getDefaultAlgorithm());
+            tmf.init(keyStore);
+            sslContext = SSLContext.getInstance("TLS");
+            sslContext.init(null, tmf.getTrustManagers(), null);
+            SSLContext.setDefault(sslContext);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+	
 	private MainGUI gui;
 	private Stage window;
 	@FXML private Label centerLabel;
@@ -217,8 +257,9 @@ public class OptionsEditorController
 	{
 		//THIS DISPLAYS PASS IN PLAINTEXT!!!!
 		try {
-			conn = DriverManager.getConnection("jdbc:mysql://www.ezstein.xyz:3306/WebDatabase", "java", "javaPass");
+			conn = DriverManager.getConnection("jdbc:mysql://sub1.s1.ezstein.xyz:3306/WebDatabase", "java", "javaPass");
 		} catch (SQLException e) {
+			e.printStackTrace();
 			downloads.clear();
 		}
 	}
@@ -259,7 +300,7 @@ public class OptionsEditorController
 							set.getInt("Size"),
 							set.getInt("Date"),
 							set.getString("FileType"),
-							downloadImageAsObject("https://www.ezstein.xyz/uploads/images/thumbnails/"
+							downloadImageAsObject("https://sub1.s1.ezstein.xyz/uploads/images/thumbnails/"
 							+ set.getString("file")), DownloadType.IMAGE);
 					if(!downloads.contains(data)){
 						Platform.runLater(()->{
@@ -311,7 +352,7 @@ public class OptionsEditorController
 								linkedResult.close();
 								linkedResult = linkedStatement.executeQuery("SELECT File FROM Images WHERE ID=" + imageID + ";");
 								linkedResult.next();
-								data.setImage(downloadImageAsObject("https://www.ezstein.xyz/uploads/images/thumbnails/"
+								data.setImage(downloadImageAsObject("https://sub1.s1.ezstein.xyz/uploads/images/thumbnails/"
 								+ linkedResult.getString("file")));
 								
 							}
@@ -344,6 +385,7 @@ public class OptionsEditorController
 				statement.setInt(5, (downloadsPageNumber.get()-1)*downloadsPerPage);
 				ResultSet set = statement.executeQuery();
 				while(set.next()){
+				
 					DownloadData data =  new DownloadData(set.getInt("ID"),
 									set.getString("Name"),
 									set.getString("Author"),
@@ -353,8 +395,16 @@ public class OptionsEditorController
 									set.getInt("Date"), DownloadType.COLOR,
 									set.getInt("HashCode"));
 					
+					
+					CustomColorFunction color = downloadColorAsObject("https://sub1.s1.ezstein.xyz/uploads/colors/"+set.getString("file"));
 					if(!downloads.contains(data)) {
 						Platform.runLater(()->{
+							
+							Rectangle rectangle = new Rectangle(150,150);
+							rectangle.setFill(new LinearGradient(0,0.5,1,0.5,true, CycleMethod.NO_CYCLE, color.getStops()));
+							WritableImage image = new WritableImage(150,150);
+							rectangle.snapshot(new SnapshotParameters(), image);
+							data.setImage(image);
 							downloads.add(data);
 						});
 					}
@@ -537,6 +587,24 @@ public class OptionsEditorController
 				e.consume();
 			}
 			close();
+		});
+		
+		searchTextField.setText("ez");
+		tabs.getSelectionModel().selectedIndexProperty().addListener((ObservableValue<? extends Number> a,Number old, Number newVal)->{
+			if(tabs.getSelectionModel().getSelectedIndex()==3) {
+				new Thread(()->{
+					try {
+						Thread.sleep(1000);
+					} catch (Exception e1) {
+						// TODO Auto-generated catch block
+						e1.printStackTrace();
+					}
+					Platform.runLater(()->{
+						search(new ActionEvent());
+					});
+				}).start();
+				
+			}
 		});
 		
 		downloadsPageNumber.addListener(new ChangeListener<Number>(){
@@ -938,8 +1006,8 @@ public class OptionsEditorController
 			dialog.show();
 			dialog.getResponseLabel().setText("Uploading...");
 		});
-		HttpClient client = HttpClients.createDefault();
-		HttpPost post = new HttpPost("https://www.ezstein.xyz/serverScripts/regionUploader.php");
+		HttpClient client = HttpClients.custom().setSSLContext(sslContext).build();
+		HttpPost post = new HttpPost("https://sub1.s1.ezstein.xyz/serverScripts/regionUploader.php");
 		HttpResponse response = null;
 		ObjectOutputStream fileOut = null, fileOut2 = null;
 
@@ -1063,8 +1131,8 @@ public class OptionsEditorController
 			dialog.getResponseLabel().setText("Uploading...");
 		});
 
-		HttpClient client = HttpClients.createDefault();
-		HttpPost post = new HttpPost("https://www.ezstein.xyz/serverScripts/colorUploader.php");
+		HttpClient client = HttpClients.custom().setSSLContext(sslContext).build();
+		HttpPost post = new HttpPost("https://sub1.s1.ezstein.xyz/serverScripts/colorUploader.php");
 		HttpResponse response = null;
 		ObjectOutputStream fileOut = null;
 		try
@@ -1148,8 +1216,8 @@ public class OptionsEditorController
 			dialog.getResponseLabel().setText("Uploading...");
 		});
 
-		HttpClient client = HttpClients.createDefault();
-		HttpPost post = new HttpPost("https://www.ezstein.xyz/serverScripts/imageUploader.php");
+		HttpClient client = HttpClients.custom().setSSLContext(sslContext).build();
+		HttpPost post = new HttpPost("https://sub1.s1.ezstein.xyz/serverScripts/imageUploader.php");
 		HttpResponse response = null;
 		BufferedReader in = null;
 
@@ -1330,11 +1398,13 @@ public class OptionsEditorController
 	private boolean isConnectedToInternet()
 	{
 		try {
-			URL url = new URL("https://www.ezstein.xyz");
-			HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+			URL url = new URL("https://sub1.s1.ezstein.xyz");
+			HttpsURLConnection conn = (HttpsURLConnection) url.openConnection();
 			conn.setConnectTimeout(8000);
 			Object data = conn.getContent();
+			
 		} catch (IOException e) {
+			e.printStackTrace();
 			return false;
 		}
 		return true;
@@ -1871,14 +1941,14 @@ public class OptionsEditorController
 			dialog.show();
 			dialog.getResponseLabel().setText("Downloading Image...");
 		});
-		downloadColor("https://www.ezstein.xyz/serverScripts/download.php?download=/uploads/colors/" + row.getFile());
+		downloadColor("https://sub1.s1.ezstein.xyz/serverScripts/download.php?download=/uploads/colors/" + row.getFile());
 		if(downloadRegion)
 		{
-			downloadRegion("https://www.ezstein.xyz/serverScripts/download.php?download=/uploads/regions/" + downloadRegionName);
+			downloadRegion("https://sub1.s1.ezstein.xyz/serverScripts/download.php?download=/uploads/regions/" + downloadRegionName);
 		}
 		if(downloadImage)
 		{
-			downloadImage("https://www.ezstein.xyz/serverScripts/download.php?download=/uploads/images/" + downloadImageName, newFile);
+			downloadImage("https://sub1.s1.ezstein.xyz/serverScripts/download.php?download=/uploads/images/" + downloadImageName, newFile);
 		}
 
 		Platform.runLater(()->{
@@ -1994,11 +2064,11 @@ public class OptionsEditorController
 			dialog.getResponseLabel().setText("Downloading...");
 		});
 
-		downloadRegion("https://www.ezstein.xyz/serverScripts/download.php?download=/uploads/regions/" + row.getFile());
+		downloadRegion("https://sub1.s1.ezstein.xyz/serverScripts/download.php?download=/uploads/regions/" + row.getFile());
 		
 		if(downloadImage)
 		{
-			downloadImage("https://www.ezstein.xyz/serverScripts/download.php?download=/uploads/images/" + fileName, newFile);
+			downloadImage("https://sub1.s1.ezstein.xyz/serverScripts/download.php?download=/uploads/images/" + fileName, newFile);
 		}
 
 		Platform.runLater(()->{
@@ -2009,7 +2079,7 @@ public class OptionsEditorController
 
 	private void downloadImage(String uri, String imagePath)
 	{
-		HttpClient client = HttpClients.createDefault();
+		HttpClient client = HttpClients.custom().setSSLContext(sslContext).build();
 		HttpGet get = new HttpGet(uri);
 		InputStream in = null;
 		FileOutputStream out = null;
@@ -2052,7 +2122,7 @@ public class OptionsEditorController
 
 	private void downloadColor(String uri)
 	{
-		HttpClient client = HttpClients.createDefault();
+		HttpClient client = HttpClients.custom().setSSLContext(sslContext).build();
 		HttpGet get = new HttpGet(uri);
 		InputStream in = null;
 		OutputStream out = null;
@@ -2102,7 +2172,7 @@ public class OptionsEditorController
 
 	private void downloadRegion(String uri)
 	{
-		HttpClient client = HttpClients.createDefault();
+		HttpClient client = HttpClients.custom().setSSLContext(sslContext).build();
 		HttpGet get = new HttpGet(uri);
 		InputStream in = null;
 		OutputStream out = null;
@@ -2198,8 +2268,46 @@ public class OptionsEditorController
 		}
 	}
 
+	private CustomColorFunction downloadColorAsObject(String uri){
+		CloseableHttpClient client = HttpClients.custom().setSSLContext(sslContext).build();
+		CloseableHttpResponse response=null;
+		CustomColorFunction color=null;
+		HttpGet get = new HttpGet(uri);
+		try {
+			response = client.execute(get);
+			ObjectInputStream in = new ObjectInputStream(response.getEntity().getContent());
+			color = (CustomColorFunction)in.readObject();
+		} catch (ClientProtocolException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (ClassNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} finally{
+			
+			try {
+				if(client!=null)
+				client.close();
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			try {
+				if(response!=null)
+				response.close();
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+		return color;
+	}
+	
 	private Image downloadImageAsObject(String uri){
-		CloseableHttpClient client = HttpClients.createDefault();
+		CloseableHttpClient client = HttpClients.custom().setSSLContext(sslContext).build();
 		HttpGet get = new HttpGet(uri);
 		Image image = null;
 		CloseableHttpResponse response = null;
@@ -2404,11 +2512,11 @@ public class OptionsEditorController
 			dialog.getResponseLabel().setText("Downloading...");
 		});
 
-		downloadImage("https://www.ezstein.xyz/serverScripts/download.php?download=/uploads/images/" + row.getFile(),newFile);
+		downloadImage("https://sub1.s1.ezstein.xyz/serverScripts/download.php?download=/uploads/images/" + row.getFile(),newFile);
 
 		if(downloadRegion)
 		{
-			downloadRegion("https://www.ezstein.xyz/serverScripts/download.php?download=/uploads/regions/" +downloadFileName);
+			downloadRegion("https://sub1.s1.ezstein.xyz/serverScripts/download.php?download=/uploads/regions/" +downloadFileName);
 		}
 
 		Platform.runLater(()->{
@@ -2493,8 +2601,10 @@ public class OptionsEditorController
 		downloads.clear();
 		downloadsPageNumber.set(1);
 		calculateMaxPages();
+		new Thread(()->{
+			updateDownloads();
+		}).start();
 		
-		updateDownloads();
 	}
 	
 	
@@ -2792,378 +2902,6 @@ public class OptionsEditorController
 			stage.show();
 		}
 	}
-
-	/*public class RegionRow
-	{
-		private final IntegerProperty id, size, date, hashCode;
-		private final StringProperty name, author, description, file;
-		private Image image;
-		
-		public RegionRow(int id, String name, String author, String description, String file, int size, int date, int hashCode)
-		{
-			this.id = new SimpleIntegerProperty(id);
-			this.size = new SimpleIntegerProperty(size);
-			this.date = new SimpleIntegerProperty(date);
-			this.name = new SimpleStringProperty(name);
-			this.author = new SimpleStringProperty(author);
-			this.description = new SimpleStringProperty(description);
-			this.file = new SimpleStringProperty(file);
-			this.hashCode = new SimpleIntegerProperty(hashCode);
-			this.image=new Image("/resource/defaultImage.jpg");
-		}
-		
-		public RegionRow(int id, String name, String author, String description, String file, int size, int date, int hashCode, Image image)
-		{
-			this.id = new SimpleIntegerProperty(id);
-			this.size = new SimpleIntegerProperty(size);
-			this.date = new SimpleIntegerProperty(date);
-			this.name = new SimpleStringProperty(name);
-			this.author = new SimpleStringProperty(author);
-			this.description = new SimpleStringProperty(description);
-			this.file = new SimpleStringProperty(file);
-			this.hashCode = new SimpleIntegerProperty(hashCode);
-			this.image=image;
-		}
-
-		public final IntegerProperty getIdProperty()
-		{
-			return id;
-		}
-		public final int getId()
-		{
-			return id.get();
-		}
-		public final void setId(int val)
-		{
-			id.set(val);
-		}
-
-		public final IntegerProperty getSizeProperty()
-		{
-			return size;
-		}
-		public final int getSize()
-		{
-			return size.get();
-		}
-		public final void setSize(int val)
-		{
-			size.set(val);
-		}
-
-		public final IntegerProperty getDateProperty()
-		{
-			return date;
-		}
-		public final int getDate()
-		{
-			return date.get();
-		}
-		public final void setDate(int val)
-		{
-			date.set(val);
-		}
-
-		public final StringProperty getNameProperty()
-		{
-			return name;
-		}
-		public final String getName()
-		{
-			return name.get();
-		}
-		public final void setName(String val)
-		{
-			name.set(val);
-		}
-
-		public final StringProperty getAuthorProperty()
-		{
-			return author;
-		}
-		public final String getAuthor()
-		{
-			return author.get();
-		}
-		public final void setAuthor(String val)
-		{
-			author.set(val);
-		}
-
-		public final StringProperty getDescriptionProperty()
-		{
-			return description;
-		}
-		public final String getDescription()
-		{
-			return description.get();
-		}
-		public final void setDescription(String val)
-		{
-			description.set(val);
-		}
-
-		public final StringProperty getFileProperty()
-		{
-			return file;
-		}
-		public final String getFile()
-		{
-			return file.get();
-		}
-		public final void setFile(String val)
-		{
-			file.set(val);
-		}
-
-		public final IntegerProperty getHashCodeProperty()
-		{
-			return hashCode;
-		}
-		public final int getHashCode()
-		{
-			return hashCode.get();
-		}
-		public final void setHashCode(int val)
-		{
-			hashCode.set(val);
-		}
-
-		public final Image getImage(){
-			return image;
-		}
-		public final void setImage(Image image){
-			this.image=image;
-		}
-
-		@Override
-		public boolean equals(Object o)
-		{
-			if(o==null)
-			{
-				return false;
-			}
-			if(o==this)
-			{
-				return true;
-			}
-			if(o instanceof RegionRow)
-			{
-				RegionRow row = (RegionRow) o;
-				if(row.getHashCode()==hashCode.get()
-				&& row.getFile().equals(file.get())
-				&& row.getDescription().equals(description.get())
-				&& row.getAuthor().equals(author.get())
-				&& row.getName().equals(name.get())
-				&& row.getDate() == date.get()
-				&& row.getSize() == size.get()
-				&& row.getId() == id.get())
-				{
-					return true;
-				}
-			}
-			return false;
-		}
-
-		@Override
-		public int hashCode()
-		{
-			return 100*hashCode.get() + file.get().hashCode() +
-					description.get().hashCode() + author.get().hashCode() +
-					name.get().hashCode() + 11*date.get() + 15*size.get() + 18*id.get();
-		}
-		
-		@Override
-		public String toString(){
-			return name.get();
-		}
-	}
-
-	public class ColorRow
-	{
-		private final IntegerProperty id, size, date, hashCode;
-		private final StringProperty name, author, description, file;
-		private Image image;
-		
-		
-		public ColorRow(int id, String name, String author, String description, String file, int size, int date, int hashCode)
-		{
-			this.id = new SimpleIntegerProperty(id);
-			this.size = new SimpleIntegerProperty(size);
-			this.date = new SimpleIntegerProperty(date);
-			this.name = new SimpleStringProperty(name);
-			this.author = new SimpleStringProperty(author);
-			this.description = new SimpleStringProperty(description);
-			this.file = new SimpleStringProperty(file);
-			this.hashCode = new SimpleIntegerProperty(hashCode);
-			this.image = new Image("/resource/defaultImage.jpg");
-		}
-		
-		public ColorRow(int id, String name, String author, String description, String file, int size, int date, int hashCode, Image image)
-		{
-			this.id = new SimpleIntegerProperty(id);
-			this.size = new SimpleIntegerProperty(size);
-			this.date = new SimpleIntegerProperty(date);
-			this.name = new SimpleStringProperty(name);
-			this.author = new SimpleStringProperty(author);
-			this.description = new SimpleStringProperty(description);
-			this.file = new SimpleStringProperty(file);
-			this.hashCode = new SimpleIntegerProperty(hashCode);
-			this.image = image;
-		}
-
-		public final IntegerProperty getIdProperty()
-		{
-			return id;
-		}
-		public final int getId()
-		{
-			return id.get();
-		}
-		public final void setId(int val)
-		{
-			id.set(val);
-		}
-
-		public final IntegerProperty getSizeProperty()
-		{
-			return size;
-		}
-		public final int getSize()
-		{
-			return size.get();
-		}
-		public final void setSize(int val)
-		{
-			size.set(val);
-		}
-
-		public final IntegerProperty getDateProperty()
-		{
-			return date;
-		}
-		public final int getDate()
-		{
-			return date.get();
-		}
-		public final void setDate(int val)
-		{
-			date.set(val);
-		}
-
-		public final StringProperty getNameProperty()
-		{
-			return name;
-		}
-		public final String getName()
-		{
-			return name.get();
-		}
-		public final void setName(String val)
-		{
-			name.set(val);
-		}
-
-		public final StringProperty getAuthorProperty()
-		{
-			return author;
-		}
-		public final String getAuthor()
-		{
-			return author.get();
-		}
-		public final void setAuthor(String val)
-		{
-			author.set(val);
-		}
-
-		public final StringProperty getDescriptionProperty()
-		{
-			return description;
-		}
-		public final String getDescription()
-		{
-			return description.get();
-		}
-		public final void setDescription(String val)
-		{
-			description.set(val);
-		}
-
-		public final StringProperty getFileProperty()
-		{
-			return file;
-		}
-		public final String getFile()
-		{
-			return file.get();
-		}
-		public final void setFile(String val)
-		{
-			file.set(val);
-		}
-
-
-		public final IntegerProperty getHashCodeProperty()
-		{
-			return hashCode;
-		}
-		public final int getHashCode()
-		{
-			return hashCode.get();
-		}
-		public final void setHashCode(int val)
-		{
-			hashCode.set(val);
-		}
-
-		public final Image getImage(){
-			return image;
-		}
-		public final void setImage(Image image){
-			this.image=image;
-		}
-		@Override
-		public boolean equals(Object o)
-		{
-			if(o==null)
-			{
-				return false;
-			}
-			if(o==this)
-			{
-				return true;
-			}
-			if(o instanceof ColorRow)
-			{
-				ColorRow row = (ColorRow) o;
-				if(row.getHashCode()==hashCode.get()
-				&& row.getFile().equals(file.get())
-				&& row.getDescription().equals(description.get())
-				&& row.getAuthor().equals(author.get())
-				&& row.getName().equals(name.get())
-				&& row.getDate() == date.get()
-				&& row.getSize() == size.get()
-				&& row.getId() == id.get())
-				{
-					return true;
-				}
-			}
-			return false;
-		}
-
-		@Override
-		public int hashCode()
-		{
-			return 100*hashCode.get() + file.get().hashCode() +
-					description.get().hashCode() + author.get().hashCode() +
-					name.get().hashCode() + 11*date.get() + 15*size.get() + 18*id.get();
-		}
-		@Override
-		public String toString(){
-			return name.get();
-		}
-	}*/
 	
 	public class DownloadData
 	{

@@ -10,7 +10,7 @@ import java.math.*;
  * @author Ezra
  * @version 1.0
  * @since 2015
- * @param <T> The parameter maybe any class that extends Number
+ * @param <T> The parameter may be any class that extends Number
  */
 public class Region<T extends Number> implements Serializable
 {

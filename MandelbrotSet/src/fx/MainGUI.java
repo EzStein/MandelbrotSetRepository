@@ -1,4 +1,5 @@
 package fx;
+
 import javafx.animation.*;
 import javafx.animation.Animation.*;
 import javafx.application.*;
